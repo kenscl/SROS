@@ -18,30 +18,6 @@ void idle_thread () {
   }
 }
 
-void template_thread () {
-  // variable initialisation
-  while (1) {
-      // your code
-      sleep(1 * SECONDS);
-  }
-}
-
-void sec1 () {
-  uint64_t cnt = 0;
-  while (1) {
-      os_printf ("1 second thread \n");
-      sleep(1 * SECONDS);
-  }
-}
-
-void sec5 () {
-  uint64_t cnt = 0;
-  while (1) {
-      os_printf ("5 second thread \n");
-      sleep(5 * SECONDS);
-  }
-}
-
 void print_welcome_msg() {
     os_printf("\n\n|-----------------------------------------| \n");
     os_printf("System initialisation done. \n");
@@ -71,9 +47,6 @@ int main (void) {
     register_thread_auto(&idle_thread, 128, 0, "idle_thread");
 
     // User Threads are defined here
-
-    register_thread_auto(&sec1);
-    register_thread_auto(&sec5);
 
     // End of user thread definitions
 
