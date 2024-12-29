@@ -8,6 +8,7 @@
 #include "thread.h"
 #include "usart.h"
 #include "mem.h"
+#include "i2c.h"
 #define STM32F100xB
 #define SYSCLK_FREQ_72MHz  72000 
 
