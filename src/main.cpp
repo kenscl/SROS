@@ -9,8 +9,9 @@
 #include "usart.h"
 #include "mem.h"
 #include "i2c.h"
+#include "LSM9DS1.h"
 #define STM32F100xB
-#define SYSCLK_FREQ_72MHz  72000 
+#define SYSCLK_FREQ_72MHz  72000
 
 void idle_thread () {
   uint64_t cnt = 0;
@@ -48,11 +49,12 @@ int main (void) {
     register_thread_auto(&idle_thread, 128, 0, "idle_thread");
 
     // User Threads are defined here
-
+    uint8_t res = LSM9DS1_read_acc_and_gyro_register(LSM9DS1_WHO_AM_I)[0];
+    os_printf("res: %d \n",res); 
     // End of user thread definitions
 
     print_thread_info();
     // start system
-    scheduler_enable();
+    //scheduler_enable();
     while (1);
 }
