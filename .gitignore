@@ -3,4 +3,5 @@
 *.bin
 *.o
 /.cache/
+build/
 serial_data.txt
