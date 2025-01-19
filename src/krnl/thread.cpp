@@ -1,6 +1,6 @@
 #include "thread.h"
 #include "scheduler.h"
-#include "globals.h"
+#include "../globals.h"
 #include "mem.h"
 #include <stdio.h>
 #include <cstdlib>

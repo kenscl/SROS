@@ -1,6 +1,6 @@
 #include "globals.h"
-#include "usart.h"
-#include "scheduler.h"
+#include "communication/usart.h"
+#include "krnl/scheduler.h"
 void OS_WARN (char * msg) {
     __disable_irq();
     os_printf("WARNING: %s \n", msg);

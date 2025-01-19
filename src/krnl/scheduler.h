@@ -1,7 +1,7 @@
 #ifndef scheduler
 #define scheduler
 #include "thread.h"
-#include "globals.h"
+#include "../globals.h"
 
 extern uint64_t ticks;
 extern "C" {

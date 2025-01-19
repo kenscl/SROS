@@ -3,7 +3,7 @@
 #include "stm32f103xb.h"
 #include <stdio.h>
 #include <stdarg.h>
-#include "mem.h"
+#include "../../krnl/mem.h"
 
 void enable_usart1(){
 

@@ -11,6 +11,7 @@
 
 // registers
 #define LSM9DS1_WHO_AM_I           0x0F
+#define LSM9DS1_STATUS_REG         0x17
 
 //void LSM9DS1_write_register();
 uint8_t * LSM9DS1_read_acc_and_gyro_register(uint8_t reg);

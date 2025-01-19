@@ -1,8 +1,8 @@
-#include "i2c.h"
+#include "../../communication/i2c.h"
 #include <stm32f1xx.h>
 #include <stdint.h>
-#include "mem.h"
-#include "usart.h"
+#include "../../krnl/mem.h"
+#include "../../communication/usart.h"
 
 void configure_i2c() {
     I2C2->CR1 &= ~(1 << 0); // disable i2c for config 

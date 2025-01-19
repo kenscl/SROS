@@ -1,7 +1,7 @@
 #ifndef thread
 #define thread
 #include <stdint.h>
-#include "globals.h"
+#include "../globals.h"
 
 
 typedef struct {

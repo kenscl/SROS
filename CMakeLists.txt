@@ -26,8 +26,11 @@ include_directories(
     cmsis/CMSIS/Core/Include
 )
 
-file(GLOB_RECURSE C_SOURCES ${CMAKE_SOURCE_DIR}/src/*.c)
-file(GLOB_RECURSE CPP_SOURCES ${CMAKE_SOURCE_DIR}/src/*.cpp)
+set(STM32F103_FILES_C ${CMAKE_SOURCE_DIR}/src/hal/stm32f103*.c)
+set(STM32F103_FILES_CPP ${CMAKE_SOURCE_DIR}/src/hal/stm32f103*.cpp)
+
+file(GLOB_RECURSE C_SOURCES ${CMAKE_SOURCE_DIR}/src/*.c ${STM32F103_FILES_C} ${CMAKE_SOURCE_DIR}/src/krnl/*.c ${CMAKE_SOURCE_DIR}/src/hal/*.c ${CMAKE_SOURCE_DIR}/src/communication*.c)
+file(GLOB_RECURSE CPP_SOURCES ${CMAKE_SOURCE_DIR}/src/*.cpp ${STM32F103_FILES_CPP} ${CMAKE_SOURCE_DIR}/src/krnl/*.cpp ${CMAKE_SOURCE_DIR}/src/hal/*.cpp ${CMAKE_SOURCE_DIR}/src/communication*.cpp)
 set(SOURCES ${C_SOURCES} ${CPP_SOURCES} cmsis/Device/ST/STM32F1/Source/Templates/system_stm32f1xx.c)
 
 add_executable(${TARGET_NAME}.elf ${SOURCES})
