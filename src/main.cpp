@@ -11,6 +11,8 @@
 #include "communication/i2c.h"
 #include "communication/LSM9DS1.h"
 #include "hal/hw_specific.h"
+#define STM32F100xB
+#define SYSCLK_FREQ_72MHz  72000
 
 void idle_thread () {
   uint64_t cnt = 0;
@@ -40,7 +42,6 @@ void print_welcome_msg() {
     os_printf("Simple Realtime Operating System 0.2 \n");
     os_printf("\n");
 }
-
 
 int main (void) {
     // system config
