@@ -1,5 +1,4 @@
 #include "scheduler.h"
-#include <stm32f1xx.h>
 #include "../communication/usart.h"
 #include <cstdio>
 

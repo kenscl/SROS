@@ -5,8 +5,7 @@
 #include <stdarg.h>
 #include "../../krnl/mem.h"
 
-void enable_usart1(){
-
+void enable_usart(){
     volatile uint32_t dummy;
     RCC->APB2ENR |= RCC_APB2ENR_USART1EN;
     dummy = RCC->APB1ENR;
@@ -23,7 +22,6 @@ void enable_usart1(){
     USART1->CR1 &= ~(USART_CR1_PCE | USART_CR1_PS); // No parity
     USART1->BRR = 0x271; //115200 Baud @ 72MHz yes its odd i know
     USART1->CR1 |= USART_CR1_UE | USART_CR1_TE;
-
 }
 
 void usart_write(USART_TypeDef *usart, char c) {

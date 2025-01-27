@@ -1,15 +1,16 @@
 #include "globals.h"
 #include "communication/usart.h"
 #include "krnl/scheduler.h"
+#include "hal/hw_specific.h"
 void OS_WARN (char * msg) {
-    __disable_irq();
+    os_interrupt_disable();
     os_printf("WARNING: %s \n", msg);
-    __enable_irq();
+    os_interrupt_enable();
 }
 
 uint8_t forced_restard = 0;
 void OS_PANIC (char* msg) {
-    __disable_irq();
+    os_interrupt_disable();
     scheduler_disable();
     os_printf("PANIC (hard error): %s \n", msg); 
     os_printf("Calling reset_handler! \n");
