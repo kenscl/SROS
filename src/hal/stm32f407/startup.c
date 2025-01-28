@@ -230,8 +230,27 @@ void default_handler(void)
 {
   while(1);
 }
+volatile uint32_t memManageFault = 0;
+volatile uint32_t busFault = 0;
+volatile uint32_t usageFault = 0;
+volatile uint32_t busFaultAddress = 0;
+volatile uint32_t memManageFaultAddress = 0;
 
 void hard_fault_handler (void)
 {
+    uint32_t cfsr = SCB->CFSR;   
+
+    memManageFault = (cfsr & 0xFF);
+    busFault = (cfsr >> 8) & 0xFF;
+    usageFault = (cfsr >> 16) & 0xFFFF; 
+
+    if (busFault & (1 << 7)) {                
+        busFaultAddress = SCB->BFAR;          
+    }
+
+    if (memManageFault & (1 << 7)) {          
+        memManageFaultAddress = SCB->MMFAR;   
+    }
+
     while (1);
 }

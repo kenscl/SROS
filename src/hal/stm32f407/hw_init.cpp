@@ -36,5 +36,20 @@ void clock_init(){
     //SystemCoreClockUpdate();
 }
 
+
 void interrupt_init() {
+    // configure systick handler
+    // rvr = (cpu clock / 1000) - 1 = 168 MHz / 1000 - 1 = 167999
+    SysTick->LOAD = 167999;
+    SysTick->VAL = 0;
+    SysTick->CTRL |= (1 << 2); // cpu clock source
+    SysTick->CTRL |= (1 << 1); // set status to pending on count == 0 
+    
+    // set pendsv prio to 0xff and systick to 0x00
+    SCB->SHP[10] = 0xff;
+    SCB->SHP[11] = 0x00;
+    // enable systick and pendsv
+    SysTick->CTRL |= (1 << 0); // enable  
+    // enable global interrupts
+    __enable_irq();
 }
