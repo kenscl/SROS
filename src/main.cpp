@@ -1,5 +1,7 @@
+#include <cstdint>
 #include <stdint.h>
 #include <stdio.h>
+#include "globals.h"
 #include "hw_init.h"
 #include "krnl/scheduler.h"
 #include "krnl/thread.h"
@@ -9,6 +11,7 @@
 #include "communication/i2c.h"
 #include "communication/LSM9DS1.h"
 #include "hal/hw_specific.h"
+#include <stm32f4xx.h>
 
 void idle_thread () {
   uint64_t cnt = 0;
@@ -21,7 +24,8 @@ void idle1_thread () {
   uint64_t cnt = 0;
   while (1) {
     cnt++; 
-    os_printf("id1 \n");
+    os_printf("id1 %f \n", 1.12);
+    sleep(1 * SECONDS);
   }
 }
 
@@ -30,6 +34,7 @@ void idle2_thread () {
   while (1) {
     cnt++; 
     os_printf("id2 \n");
+    sleep(1 * SECONDS);
   }
 }
 void print_welcome_msg() {
@@ -41,10 +46,10 @@ void print_welcome_msg() {
 
 int main (void) {
     // system config
+    clock_init();
     mem_init();
     enable_usart();
     scheduler_init();
-    clock_init();
     interrupt_init();
 
     // default run parameters
@@ -61,6 +66,10 @@ int main (void) {
     print_thread_info();
     // start system
     scheduler_enable();
-    while (1);
+    
+    uint64_t cnt = 0;
+
+    while (1) {
+    }
 }
 

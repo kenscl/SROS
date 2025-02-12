@@ -39,20 +39,75 @@ void enable_usart(){
 
 }
 
-void os_putf(float f) { // broken
-}
 
 void os_putchar(char c) {
     USART2->DR = c;
     while (!(USART2->SR & USART_SR_TC));
 }
 
-void os_putstr(const char * s) {
-
+void os_putstr(const char *s) {
+	while (*s != '\000') {
+		os_putchar(*s);
+		s++;
+	}
 }
 
-void os_putint(int i) {
+int get_int_size (int i) {
+    int cnt = 0;
+    while (1) {
+        i = i / 10; 
+        cnt ++;
+        if (i == 0) {
+            return cnt;
+        }
+    }
+    return 0;
+}
 
+void os_putint(int num) {
+    if (num == 0) {
+        os_putchar('0');
+        return;
+    }
+    int is_negative = 0;
+    int i = 0;
+    int size = get_int_size(num);
+    if (num < 0) {
+        is_negative = 1;
+        num = - num;
+    }
+    
+    char* result = (char *) os_alloc(size + is_negative + 1);
+    int it = 0;
+    while (num > 0 && it < 1000) {
+        it++;
+        result[i++] = (num % 10) + '0';
+        num /= 10;
+    }
+
+    if (is_negative == 1) {
+        result[i++] = '-';
+        size++;
+    }
+
+    for (int j = 0; j < i / 2; j++) {
+        char temp = result[j];
+        result[j] = result[i - j - 1];
+        result[i - j - 1] = temp;
+    }
+    for (int i = 0; i < size; ++i) {
+        os_putchar(result[i]);
+    }
+
+    os_free(result);
+}
+
+void os_putf(float f) {
+    int i_part = f;
+    int f_part = (f  - i_part)* 10e6;
+    os_putint(i_part);
+    os_putchar('.');
+    os_putint(f_part);
 }
 
 void os_printf(const char* format, ... ) {
@@ -62,7 +117,6 @@ void os_printf(const char* format, ... ) {
 
     char c;
     const char *str;
-    int num;
 
     for (int i = 0; format[i] != '\0'; i++) {
         if (format[i] == '%') {
@@ -70,13 +124,15 @@ void os_printf(const char* format, ... ) {
 
             switch (format[i]) {
             case 'd': 
-                num = va_arg(args, int);
-                os_putint(num);
+                int num_i;
+                num_i = va_arg(args, int);
+                os_putint(num_i);
                 break;
 
             case 'f': 
-                num = va_arg(args, int);
-                os_putf(num);
+                float num_f;
+                num_f = va_arg(args, double);
+                os_putf(num_f);
                 break;
 
             case 's':
