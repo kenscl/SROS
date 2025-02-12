@@ -20,4 +20,5 @@ while True:
             ser.close()
             output_file.close()
     except UnicodeDecodeError:
+        print("err")
         pass

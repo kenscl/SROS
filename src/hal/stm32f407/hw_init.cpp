@@ -22,7 +22,8 @@ void clock_init(){
     RCC->PLLCFGR |= (1 << 22); // select HSE as pllsrc
     RCC->PLLCFGR |= (336 << 6); // select vco ouput scaler
     RCC->PLLCFGR |= (8 << 0); // pllm 
-    RCC->PLLCFGR |= (2 << 16); // pllp 
+    RCC->PLLCFGR &= ~(0b11 << 16); // pllp 
+    RCC->PLLCFGR |= (0b00 << 16); // pllp 
 
     RCC->CR |= (1 << 24);                  // Turn on HSE
     while (!(RCC->CR & (1 << 25)));       // Wait for HSE to stabilize
@@ -33,7 +34,6 @@ void clock_init(){
     // use pll as sysclock source 
     RCC->CFGR |= (0b10 << 0);
     while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_PLL); // Wait for PLL to be used
-    //SystemCoreClockUpdate();
 }
 
 
