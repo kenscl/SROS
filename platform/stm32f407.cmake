@@ -3,8 +3,8 @@ set(MCU_DEFINE "STM32F407G")
 
 set(LINKER_SCRIPT ${CMAKE_SOURCE_DIR}/src/hal/stm32f407/linker_script.ld)
 
-set(CMAKE_C_FLAGS "-mcpu=${MCU_SPEC} -DSTM32F407xx -mthumb -g")
-set(CMAKE_CXX_FLAGS "-mcpu=${MCU_SPEC} -DSTM32F407xx -mthumb -g -std=c++11 -fno-exceptions -fno-rtti")
+set(CMAKE_C_FLAGS "-mcpu=${MCU_SPEC} -DSTM32F407xx -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -g")
+set(CMAKE_CXX_FLAGS "-mcpu=${MCU_SPEC} -DSTM32F407xx -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -g -std=c++11 -fno-exceptions -fno-rtti")
 set(CMAKE_EXE_LINKER_FLAGS "-T${LINKER_SCRIPT} -mcpu=${MCU_SPEC} --specs=nano.specs -Wl,--gc-sections")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fmessage-length=0 -fno-common -ffunction-sections -fdata-sections")
 

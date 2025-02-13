@@ -51,5 +51,9 @@ void interrupt_init() {
     // enable systick and pendsv
     SysTick->CTRL |= (1 << 0); // enable  
     // enable global interrupts
+
+    // some more work is needed to preserve fpu context on expetion
+    FPU->FPCCR |= (1 << 31); // Set ASPEN (Automatic State Preservation Enable)
+    FPU->FPCCR |= (1 << 30); // Set LSPEN (Lazy State Preservation Enable)
     __enable_irq();
 }

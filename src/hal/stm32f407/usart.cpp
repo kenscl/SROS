@@ -102,59 +102,58 @@ void os_putint(int num) {
     os_free(result);
 }
 
-void os_putf(float f) {
-    int i_part = f;
-    int f_part = (f  - i_part)* 10e6;
-    os_putint(i_part);
-    os_putchar('.');
-    os_putint(f_part);
-}
-
 void os_printf(const char* format, ... ) {
+    GPIOD->ODR |= (1 << 12);
     __disable_irq();
     va_list args;
     va_start(args, format);
 
     char c;
     const char *str;
-
+    double num_f;
+    int i_part;
+    int f_part;
     for (int i = 0; format[i] != '\0'; i++) {
-        if (format[i] == '%') {
-            i++; 
+      if (format[i] == '%') {
+        i++;
 
-            switch (format[i]) {
-            case 'd': 
-                int num_i;
-                num_i = va_arg(args, int);
-                os_putint(num_i);
-                break;
+        switch (format[i]) {
+        case 'd':
+          int num_i;
+          num_i = va_arg(args, int);
+          os_putint(num_i);
+          break;
 
-            case 'f': 
-                float num_f;
-                num_f = va_arg(args, double);
-                os_putf(num_f);
-                break;
+        case 'f':
+          num_f = va_arg(args, double);
+          i_part = num_f;
+          f_part = (num_f - i_part) * 10e6;
+          os_putint(i_part);
+          os_putchar('.');
+          os_putint(f_part);
+          break;
 
-            case 's':
-                str = va_arg(args, const char*);
-                os_putstr(str);
-                break;
+        case 's':
+          str = va_arg(args, const char *);
+          os_putstr(str);
+          break;
 
-            case 'c':
-                c = (char) va_arg(args, int);
-                os_putchar(c);
-                break;
+        case 'c':
+          c = (char)va_arg(args, int);
+          os_putchar(c);
+          break;
 
-            default:
-                os_putchar('%');
-                os_putchar(format[i]);
-                break;
-            }
-        } else {
-            os_putchar(format[i]);
+        default:
+          os_putchar('%');
+          os_putchar(format[i]);
+          break;
         }
+      } else {
+        os_putchar(format[i]);
+      }
     }
     os_putchar('\0');
     va_end(args);
+    GPIOD->ODR &= ~(1 << 12);
     __enable_irq();
 }

@@ -13,12 +13,6 @@
 #include "hal/hw_specific.h"
 #include <stm32f4xx.h>
 
-void idle_thread () {
-  uint64_t cnt = 0;
-  while (1) {
-    cnt++; 
-  }
-}
 
 void idle1_thread () {
   uint64_t cnt = 0;
@@ -37,12 +31,6 @@ void idle2_thread () {
     sleep(1 * SECONDS);
   }
 }
-void print_welcome_msg() {
-    os_printf("\n\n|-----------------------------------------| \n");
-    os_printf("System initialisation done. \n");
-    os_printf("Simple Realtime Operating System 0.2 \n");
-    os_printf("\n");
-}
 
 int main (void) {
     // system config
@@ -51,6 +39,7 @@ int main (void) {
     enable_usart();
     scheduler_init();
     interrupt_init();
+    miscellaneous_init();
 
     // default run parameters
     print_welcome_msg();
@@ -72,4 +61,3 @@ int main (void) {
     while (1) {
     }
 }
-

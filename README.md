@@ -5,14 +5,26 @@ It features preemptive real-time scheduling and blocking printf.
 
 ## Compiling
 
-Go to the project directory and execute:
-
+First you will have to create the build folder: 
 ``` bash
-make 
+mkdir build && cd build
+``` 
+And then you'll have to run CMake with the selected compilation target passed in: 
+For STM32F407G:
+``` bash
+cmake -DPLATFORM_CONFIG_FILE=platform/stm32f407.cmake ..
+```
+For STM32F103:
+``` bash
+cmake -DPLATFORM_CONFIG_FILE=platform/stm32f103.cmake ..
+```
+You can then build the project with:
+``` bash
+make
 ```
 
 ## Flashing
-
+The make script already includes a flashing script:
 ``` bash
 make flash
 ```
