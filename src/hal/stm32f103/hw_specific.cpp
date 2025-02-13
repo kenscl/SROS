@@ -1,5 +1,6 @@
 #include "../hw_specific.h"
 #include "../../krnl/scheduler.h"
+#include "../../communication/usart.h"
 #include <stm32f1xx.h>
 
 extern "C" {
@@ -37,4 +38,22 @@ extern "C" {
     if (!sched_on) return;
     SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;
   }
+}
+
+void idle_thread () {
+  uint64_t cnt = 0;
+  while (1) {
+    cnt++; 
+  }
+}
+
+void miscellaneous_init() {
+}
+
+void print_welcome_msg() {
+    os_printf("\n\n|-----------------------------------------| \n");
+    os_printf("System initialisation done. \n");
+    os_printf("Simple Realtime Operating System 0.2 \n");
+    os_printf("Compiled for STM32f103\n");
+    os_printf("\n");
 }

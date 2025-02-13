@@ -13,8 +13,8 @@ include_directories(
     cmsis/CMSIS/Core/Include
 )
 
-set(HAL_FILES_C ${CMAKE_SOURCE_DIR}/src/hal/stm32f103*.c)
-set(HAL_FILES_CPP ${CMAKE_SOURCE_DIR}/src/hal/stm32f103*.cpp)
+set(HAL_FILES_C ${CMAKE_SOURCE_DIR}/src/hal/stm32f103/*.c)
+set(HAL_FILES_CPP ${CMAKE_SOURCE_DIR}/src/hal/stm32f103/*.cpp)
 
 set(OTHER_SOURCES cmsis/Device/ST/STM32F1/Source/Templates/system_stm32f1xx.c)
 

@@ -11,7 +11,6 @@
 #include "communication/i2c.h"
 #include "communication/LSM9DS1.h"
 #include "hal/hw_specific.h"
-#include <stm32f4xx.h>
 
 
 void idle1_thread () {

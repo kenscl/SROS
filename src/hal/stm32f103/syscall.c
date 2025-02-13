@@ -106,22 +106,8 @@ int _wait(int *status) {
   return -1;
 }
 
-void usart_write_c(USART_TypeDef *usart, char c) {
-    if (c == '\n') {
-        usart->DR = '\r';
-        while (!(usart->SR & USART_SR_TC));
-    }
-    usart->DR = c;
-    while (!(usart->SR & USART_SR_TC));
-}
 
 int _write(int file, char *ptr, int len) {
   (void) file;
-  
-  for (uint32_t i = 0; i < len; i++)
-  {
-    usart_write_c(USART1, *ptr++);
-  }
-  
   return len;
 }
