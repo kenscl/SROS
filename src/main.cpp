@@ -13,23 +13,6 @@
 #include "hal/hw_specific.h"
 
 
-void idle1_thread () {
-  uint64_t cnt = 0;
-  while (1) {
-    cnt++; 
-    os_printf("id1 %f \n", 1.12);
-    sleep(1 * SECONDS);
-  }
-}
-
-void idle2_thread () {
-  uint64_t cnt = 0;
-  while (1) {
-    cnt++; 
-    os_printf("id2 \n");
-    sleep(1 * SECONDS);
-  }
-}
 
 int main (void) {
     // system config
@@ -45,15 +28,13 @@ int main (void) {
     register_thread_auto(&idle_thread, 128, 0, "idle_thread");
 
     // User Threads are defined here
-    //uint8_t res = LSM9DS1_read_acc_and_gyro_register(LSM9DS1_STATUS_REG)[0];
-    //os_printf("res: %d \n",res); 
-    register_thread_auto(&idle1_thread);
-    register_thread_auto(&idle2_thread);
+    uint8_t res = LSM9DS1_read_acc_and_gyro_register(LSM9DS1_WHO_AM_I)[0];
+    os_printf("res: %d \n",res); 
     // End of user thread definitions
 
     print_thread_info();
     // start system
-    scheduler_enable();
+    //scheduler_enable();
     
     uint64_t cnt = 0;
 
