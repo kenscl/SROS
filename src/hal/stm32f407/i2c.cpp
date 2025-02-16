@@ -102,6 +102,7 @@ uint8_t * i2c_recieve_data(uint8_t adress, uint32_t size) {
         while (!(I2C1->SR1 & (1 << 6))); // Wait for RxNE
         buffer[0] = I2C1->DR; // Read data
     } else {
+        I2C1->CR1 |= (1 << 10); // Enable ACK
         for (uint32_t i = 0; i < size; i++) {
             while (!(I2C1->SR1 & (1 << 6))); // Wait for RxNE
             buffer[i] = I2C1->DR; // Read data

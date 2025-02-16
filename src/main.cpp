@@ -28,13 +28,12 @@ int main (void) {
     register_thread_auto(&idle_thread, 128, 0, "idle_thread");
 
     // User Threads are defined here
-    uint8_t res = LSM9DS1_read_acc_and_gyro_register(LSM9DS1_WHO_AM_I)[0];
-    os_printf("res: %d \n",res); 
+    register_thread_auto(&LSM9DS1_thread, OS_STD_STACK_SIZE , 20, "LSM9DS1_thread");
     // End of user thread definitions
 
     print_thread_info();
     // start system
-    //scheduler_enable();
+    scheduler_enable();
     
     uint64_t cnt = 0;
 
