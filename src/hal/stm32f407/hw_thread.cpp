@@ -11,7 +11,7 @@ void os_stack_init(os_pcb * thrd, void * thread_handler, void * stack, uint32_t 
     *(--sp) = 0x00000001U;                //r1
     *(--sp) = 0x00000000U;                //r0
 
-    *(--sp) = 0xfffffff9U; // LR - on initial run
+    *(--sp) = 0xfffffffdU; // LR - on initial run
     *(--sp) = 0x0000000BU; // r11-r4 
     *(--sp) = 0x0000000AU;
     *(--sp) = 0x00000009U; 

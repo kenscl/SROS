@@ -25,10 +25,10 @@ int main (void) {
 
     // default run parameters
     print_welcome_msg();
-    register_thread_auto(&idle_thread, 128, 0, "idle_thread");
+    register_thread_auto(&idle_thread, 200, 0, "idle_thread");
 
     // User Threads are defined here
-    register_thread_auto(&LSM9DS1_thread, OS_STD_STACK_SIZE , 20, "LSM9DS1_thread");
+    register_thread_auto(&LSM9DS1_thread, 1000, 20, "LSM9DS1_thread");
     // End of user thread definitions
 
     print_thread_info();

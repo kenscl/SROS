@@ -12,6 +12,7 @@ struct Chunk ledger[LEDGER_SIZE];
 
 void mem_init() {
     for (int i = 0; i < LEDGER_SIZE - 1; ++i) {
+        int a = (OS_ALLOC_HEAP_SIZE + 63) / 64 + 1;
         ledger[i].free = 1;
         ledger[i].size = 0;
     }
@@ -41,7 +42,9 @@ void *os_alloc(size_t size) {
         }
     }
 
-    if (best_fit_size == 65535) return nullptr; // error return
+    if (best_fit_size == 65535) {
+        return nullptr;// error return
+    }
 
     // shrink best fit until its small enough
     while (best_fit_size / 2 >= size) {

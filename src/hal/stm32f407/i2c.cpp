@@ -1,7 +1,9 @@
 #include "../../communication/i2c.h"
+#include <cstdint>
 #include <stm32f4xx.h>
 #include <stdint.h>
 #include "../../krnl/mem.h"
+#include "../../krnl/scheduler.h"
 #include "../../communication/usart.h"
 
 void configure_i2c() {
@@ -56,9 +58,30 @@ void configure_i2c() {
     I2C1->CR1 |= (1 << 0); // i2c enable 
 }
 
+void i2c_recover() {
+    I2C1->CR1 &= ~(1 << 0); // disable i2c1
+
+    GPIOB->MODER &= ~(0b11 << 12);  // Clear MODE6
+    GPIOB->MODER |= (0b01 << 12);   // Set MODE6 to Alternate function open drain
+    GPIOB->OTYPER |= (1 << 6) | (1 << 7); // open-drain for I2C
+    GPIOB->PUPDR &= ~((0b11 << 12) | (0b11 << 14)); // clea for PB6, PB7
+    GPIOB->PUPDR |= (0b01 << 12) | (0b01 << 14);    // Set pull-up mode
+    
+    for (int i = 0; i < 18; ++i)  {
+        for (volatile int delay = 0; delay < 1000; delay++);
+        GPIOB->ODR ^= (1 << 6);
+    }
+}
+
 void start_i2c_communication() {
+    if (I2C1->SR2 & (1 << 1)) { // Bus is busy, need to reset the i2c device
+        i2c_recover();
+        configure_i2c();
+    }
     I2C1->CR1 |= (1 << 8); // generate start condition
-    while (!(I2C1->SR1 & (1<<0))); // wait for start condition generated
+    uint64_t time = now();
+    while (!(I2C1->SR1 & (1<<0))) {
+    } // wait for start condition generated
 }
 
 void i2c_send_adress(uint8_t adress) {

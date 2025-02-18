@@ -67,7 +67,7 @@ extern "C" {
             if ( exists && is_ready && is_not_sleeping ) {
                 uint8_t is_larger_priority = thread_list[i]->priority >= current_thread->priority;
                 uint8_t last_time_was_earlier = thread_list[i]->last_time < current_thread->last_time;
-                uint8_t current_is_sleeping = current_thread->sleep_until >= now();
+                uint8_t current_is_sleeping = (current_thread->sleep_until >= now());
                 if ( (is_larger_priority || current_is_sleeping ) && last_time_was_earlier ) {
                     current_thread = thread_list[i];
                 }

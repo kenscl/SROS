@@ -13,21 +13,22 @@ extern "C" {
                     "LDR           r1,[r1,#0x00] \n"
                     "CBZ           r1,_restore \n"
 
-                    "stmdb	sp!, {r4, r5, r6, r7, r8, r9, r10, r11, r14} \n"
-                    "tst lr, #0x10 \n" //            Check if FPU registers need saving
-                    "it eq \n"
-                    "vstmdbeq sp!, {s16-s31} \n"
+                    "mrs r0, psp \n"
+                    "stmdb	r0!, {r4, r5, r6, r7, r8, r9, r10, r11, r14} \n"
                     "LDR           r1,=current_thread \n"
                     "LDR           r1,[r1,#0x00] \n"
-                    "STR           sp,[r1,#0x00] \n"
+                    "STR           r0,[r1,#0x00] \n"
 
                     "_restore: \n"
                     "bl schedule \n"
                     "LDR           r1,=current_thread \n"
                     "LDR           r1,[r1,#0x00] \n"
-                    "LDR           sp,[r1,#0x00] \n"
+                    "LDR           r0,[r1,#0x00] \n"
 
-                    "ldmia	sp!, {r4, r5, r6, r7, r8, r9, r10, r11, r14} \n"
+
+                    "ldmia	r0!, {r4, r5, r6, r7, r8, r9, r10, r11, r14} \n"
+
+                    "msr            psp,r0 \n"
 
                     "CPSIE         I \n"
 
@@ -60,6 +61,10 @@ void one_second_thread () {
 }
 
 void miscellaneous_init() {
+    FPU->FPCCR |= (1 << 30) | (1 << 31);  // Set ASPEN and LSPEN
+    SCB->CPACR |= (0xF << 20); 
+    __DSB();
+    __ISB();
     // led for idle [orange] toggle after 1000000 itterations
     // led for print [green] on while printing
     // led every second [blue]
