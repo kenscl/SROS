@@ -18,8 +18,9 @@ void mem_init() {
     }
     ledger[LEDGER_SIZE].free = 0;
 }
-
+int alloc;
 void *os_alloc(size_t size) {
+    alloc = 1;
     size = (size + 63) & ~63;  // Align to the next multiple of 64 
     size = size / 64; // adjust to the ledger size
     uint16_t current_begin = 0;
@@ -59,6 +60,7 @@ void *os_alloc(size_t size) {
 
     // return allocated
     return (void *) &heap[best_fit * 64];
+    alloc = 0;
 }
 
 void os_free(void * pointer) {

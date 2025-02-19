@@ -59,25 +59,40 @@ void configure_i2c() {
 }
 
 void i2c_recover() {
-    I2C1->CR1 &= ~(1 << 0); // disable i2c1
+    I2C1->CR1 &= ~(1 << 0); // disable I2C1
 
-    GPIOB->MODER &= ~(0b11 << 12);  // Clear MODE6
-    GPIOB->MODER |= (0b01 << 12);   // Set MODE6 to Alternate function open drain
-    GPIOB->OTYPER |= (1 << 6) | (1 << 7); // open-drain for I2C
-    GPIOB->PUPDR &= ~((0b11 << 12) | (0b11 << 14)); // clea for PB6, PB7
-    GPIOB->PUPDR |= (0b01 << 12) | (0b01 << 14);    // Set pull-up mode
+    // Configure SCL and SDA as GPIO open-drain with pull-up
+    GPIOB->MODER &= ~((0b11 << 12) | (0b11 << 14));  // Clear MODER6, MODER7
+    GPIOB->MODER |= (0b01 << 12) | (0b01 << 14);     // Set to General-Purpose Output mode
+    GPIOB->OTYPER |= (1 << 6) | (1 << 7);           // Open-drain
+    GPIOB->PUPDR &= ~((0b11 << 12) | (0b11 << 14)); // Clear pull-ups
+    GPIOB->PUPDR |= (0b01 << 12) | (0b01 << 14);    // Enable pull-ups
     
     for (int i = 0; i < 18; ++i)  {
         for (volatile int delay = 0; delay < 1000; delay++);
         GPIOB->ODR ^= (1 << 6);
     }
+
+    // Generate a STOP condition manually
+    GPIOB->ODR &= ~(1 << 7); // SDA low
+    for (volatile int delay = 0; delay < 1000; delay++);
+    GPIOB->ODR |= (1 << 6);  // SCL high
+    for (volatile int delay = 0; delay < 1000; delay++);
+    GPIOB->ODR |= (1 << 7);  // SDA high (STOP condition)
+    for (volatile int delay = 0; delay < 1000; delay++);
+
+    // Restore alternate function mode for I2C operation
+    GPIOB->MODER &= ~((0b11 << 12) | (0b11 << 14)); 
+    GPIOB->MODER |= (0b10 << 12) | (0b10 << 14);   // Set to Alternate Function
+
+    I2C1->CR1 |= (1 << 0); // Enable I2C1
 }
 
 void start_i2c_communication() {
-    if (I2C1->SR2 & (1 << 1)) { // Bus is busy, need to reset the i2c device
-        i2c_recover();
-        configure_i2c();
-    }
+    //if (I2C1->SR2 & (1 << 1)) { // Bus is busy, need to reset the i2c device
+    //    i2c_recover(); // this causes more issues that it solves
+    //    configure_i2c();
+    //}
     I2C1->CR1 |= (1 << 8); // generate start condition
     uint64_t time = now();
     while (!(I2C1->SR1 & (1<<0))) {
@@ -112,8 +127,11 @@ void i2c_send_data_multiple(uint8_t * data, uint32_t size) {
 }
 
 uint8_t * i2c_recieve_data(uint8_t adress, uint32_t size) {
- uint8_t * buffer = (uint8_t *)os_alloc(size);
-    if (!buffer) return NULL;
+    uint8_t * buffer = (uint8_t *)os_alloc(size);
+    if (!buffer) {
+        OS_WARN("Cannot allocate ");
+        return NULL;
+    }
 
     I2C1->DR = adress; // Send address
     while (!(I2C1->SR1 & (1 << 1))); // Wait for ADDR

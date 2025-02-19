@@ -3,9 +3,9 @@
 #include "krnl/scheduler.h"
 #include "hal/hw_specific.h"
 void OS_WARN (char * msg) {
-    os_interrupt_disable();
+    //os_interrupt_disable();
     os_printf("WARNING: %s \n", msg);
-    os_interrupt_enable();
+    //os_interrupt_enable();
 }
 
 uint8_t forced_restard = 0;
