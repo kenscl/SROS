@@ -11,6 +11,7 @@
 #include "communication/i2c.h"
 #include "communication/LSM9DS1.h"
 #include "hal/hw_specific.h"
+#include "math/vector.h"
 
 
 
@@ -33,7 +34,17 @@ int main (void) {
 
     print_thread_info();
     // start system
-    scheduler_enable();
+    //scheduler_enable();
+    
+    Vector v1(3);
+    v1[0] = 1;
+    v1[1] = -1;
+    v1[2] = 0;
+    v1.print();
+    Vector v2 = v1;
+    //os_printf("Dot product: %f \n", v1 * v2);
+    v2 = v2.normalize();
+    v2.print();
     
     uint64_t cnt = 0;
 
