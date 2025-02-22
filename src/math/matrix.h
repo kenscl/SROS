@@ -271,8 +271,6 @@ class Mat {
           }
         }
 
-        void *operator new(size_t size) { return math_alloc(size); }
-        void operator delete(void *ptr) { return math_free(ptr); }
     friend Quaternion;
 };
 

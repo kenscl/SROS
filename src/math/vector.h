@@ -126,14 +126,6 @@ class Vec {
             }
             os_printf("\n");
         }
-    //memory allocation
-    // do not use these they cause bugs for some reason
-    //void *operator new(size_t size) { return math_alloc(size); }
-    //void *operator new[](size_t size) { return math_alloc(size); }
-
-    //void operator delete(void *ptr) { return math_free(ptr); }
-    //void operator delete[](void *ptr) { return math_free(ptr); }
-    //friend Matrix;
 };
 typedef Vec<4> Vec4D;
 typedef Vec<3> Vec3D;

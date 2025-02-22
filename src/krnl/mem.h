@@ -8,7 +8,4 @@ void mem_init();
 void * os_alloc(size_t size);
 void os_free(void * pointer);
 
-void * math_alloc(size_t size);
-void math_free(void * pointer);
-
 #endif

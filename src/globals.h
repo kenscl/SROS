@@ -10,8 +10,6 @@ typedef uint64_t time_t;
 #define STD_THREAD_NAME       "Unnamed thread"
 #define OS_ALLOC_HEAP_SIZE    1024 * 20
 
-// math defines
-#define MATH_ALLOC_HEAP_SIZE    1024 * 2
 
 #define MILLISECONDS 1
 #define SECONDS 1000

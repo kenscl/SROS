@@ -11,8 +11,6 @@
 #include "communication/i2c.h"
 #include "communication/LSM9DS1.h"
 #include "hal/hw_specific.h"
-#include "math/vector.h"
-#include "math/matrix.h"
 
 
 int main (void) {
@@ -35,14 +33,7 @@ int main (void) {
 
     print_thread_info();
     // start system
-    //scheduler_enable();
-    Vec<3> v3;
-    Mat<3,3> m;
-    m = m.diag(1);
-    m[1][1] = 3.0;
-    m[1][3] = 3.0;
-    m.print();
-    m.inverse().print();
+    scheduler_enable();
 
 
     while (1) {
