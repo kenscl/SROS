@@ -1,7 +1,10 @@
+#ifndef __VECTOR
+#define __VECTOR
 #include <cstddef>
 #include <cstdint>
+#include "../krnl/mem.h"
 class Vector {
-    protected:
+    public:
       size_t size;
       double *r;
 
@@ -26,8 +29,19 @@ class Vector {
 
       double norm() const;
       Vector normalize();
+      Vector sub_vector(size_t bottom, size_t top);
 
 
       void print();
+      void print_bare();
+
+    //memory allocation
+    // do not use these they cause bugs for some reason
+    //void *operator new(size_t size) { return math_alloc(size); }
+    //void *operator new[](size_t size) { return math_alloc(size); }
+
+    //void operator delete(void *ptr) { return math_free(ptr); }
+    //void operator delete[](void *ptr) { return math_free(ptr); }
 };
 
+#endif __VECTOR

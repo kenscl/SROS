@@ -12,6 +12,7 @@
 #include "communication/LSM9DS1.h"
 #include "hal/hw_specific.h"
 #include "math/vector.h"
+#include "math/matrix.h"
 
 
 
@@ -36,17 +37,16 @@ int main (void) {
     // start system
     //scheduler_enable();
     
-    Vector v1(3);
-    v1[0] = 1;
-    v1[1] = -1;
-    v1[2] = 0;
-    v1.print();
-    Vector v2 = v1;
-    //os_printf("Dot product: %f \n", v1 * v2);
-    v2 = v2.normalize();
-    v2.print();
-    
-    uint64_t cnt = 0;
+    Matrix a(3,3);
+    a[0][0] = 1;
+    a[1][0] = 1;
+    a[0][1] = -1;
+    a[1][1] = -4;
+    a[2][2] = 4;
+    a.print();
+    Matrix b (a.inverse());
+    b.print();
+    //uint64_t cnt = 0;
 
     while (1) {
     }

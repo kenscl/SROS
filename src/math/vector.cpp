@@ -18,9 +18,10 @@ Vector::Vector(size_t size, double *r) {
     this->size = size;
     this->r = r; 
 }
+
 Vector::Vector(const Vector &other) {
     this->size = other.size;
-    this->r = (double *) math_alloc(size * sizeof(double));
+    this->r = (double *) math_alloc(other.size * sizeof(double));
     for (int i = 0; i < this->size; ++i) {
         this->r[i] = other.r[i];
     }
@@ -77,7 +78,8 @@ Vector Vector::operator+(const Vector other) const {
 Vector & Vector::operator=(const Vector &other) {
     this->size = other.size;
     if (this->r) math_free(this->r);
-    this->r = (double *) math_alloc(size * sizeof(double));
+    this->r = (double *) math_alloc(other.size * sizeof(double));
+    //os_printf("alloc in copy at: %d %d \n", this->r, other.r);
     for (int i = 0; i < this->size; ++i) {
         this->r[i] = other.r[i];
     }
@@ -123,9 +125,31 @@ Vector Vector::normalize() {
     return ret;
 }
 
+
+Vector Vector::sub_vector(size_t bottom, size_t top) {
+    if ((bottom < top) && (top <= this->size) && (bottom >= 0)) {
+        Vector res(top - bottom);
+        for (int i = bottom; i < top; ++i) {
+            res[i-bottom] = this->r[i];
+        }
+        return res;
+    }
+    else {
+        OS_WARN("Out of bounds in subvector!");
+        return r[0];
+    }
+}
+
 void Vector::print() {
     os_printf("Vector: \n");
     for (int i = 0; i < this->size; ++i) {
         os_printf("%f \n", this->r[i]);
     }
+}
+
+void Vector::print_bare() {
+    for (int i = 0; i < this->size; ++i) {
+        os_printf("%f ", this->r[i]);
+    }
+    os_printf("\n");
 }

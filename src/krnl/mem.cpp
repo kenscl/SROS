@@ -10,7 +10,7 @@ uint8_t heap[OS_ALLOC_HEAP_SIZE] __attribute__((aligned(8)));
 #define LEDGER_SIZE    (OS_ALLOC_HEAP_SIZE + 63) / 64 + 1
 struct Chunk ledger[LEDGER_SIZE];
 
-uint8_t math_heap[MATH_ALLOC_HEAP_SIZE];
+uint8_t math_heap[MATH_ALLOC_HEAP_SIZE] __attribute__((aligned(8)));
 #define MATH_LEDGER_SIZE    (MATH_ALLOC_HEAP_SIZE + 7) / 8+ 1
 struct Chunk math_ledger[MATH_LEDGER_SIZE];
 
@@ -107,6 +107,7 @@ void *math_alloc(size_t size) {
     }
 
     if (best_fit_size == 65535) {
+        OS_WARN("MATH IS LOW ON MEMORY!");
         return nullptr;// error return
     }
 
@@ -127,7 +128,7 @@ void *math_alloc(size_t size) {
 }
 
 void math_free(void * pointer) {
-    int id = ((uint64_t) pointer - (uint64_t)&math_heap) / 64;
+    int id = ((uint64_t) pointer - (uint64_t)&math_heap) / 8;
     struct Chunk * cur = &math_ledger[id];
     int size = cur->size;
     for  (int i = 0; i < size; i++) {
