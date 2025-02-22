@@ -13,8 +13,6 @@
 #include "hal/hw_specific.h"
 #include "math/vector.h"
 #include "math/matrix.h"
-#include "math/quaternion.h"
-
 
 
 int main (void) {
@@ -31,12 +29,21 @@ int main (void) {
     register_thread_auto(&idle_thread, 200, 0, "idle_thread");
 
     // User Threads are defined here
-    register_thread_auto(&LSM9DS1_thread, 1000, 20, "LSM9DS1_thread");
+    //register_thread_auto(&test_thread, 200, 10, "test_thread");
+    //register_thread_auto(&LSM9DS1_thread, 1000, 20, "LSM9DS1_thread");
     // End of user thread definitions
 
     print_thread_info();
     // start system
-    scheduler_enable();
+    //scheduler_enable();
+    Vec<3> v3;
+    Mat<3,3> m;
+    m = m.diag(1);
+    m[1][1] = 3.0;
+    m[1][3] = 3.0;
+    m.print();
+    m.inverse().print();
+
 
     while (1) {
     }
