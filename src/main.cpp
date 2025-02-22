@@ -13,6 +13,7 @@
 #include "hal/hw_specific.h"
 #include "math/vector.h"
 #include "math/matrix.h"
+#include "math/quaternion.h"
 
 
 
@@ -35,18 +36,7 @@ int main (void) {
 
     print_thread_info();
     // start system
-    //scheduler_enable();
-    
-    Matrix a(3,3);
-    a[0][0] = 1;
-    a[1][0] = 1;
-    a[0][1] = -1;
-    a[1][1] = -4;
-    a[2][2] = 4;
-    a.print();
-    Matrix b (a.inverse());
-    b.print();
-    //uint64_t cnt = 0;
+    scheduler_enable();
 
     while (1) {
     }

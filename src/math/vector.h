@@ -3,8 +3,9 @@
 #include <cstddef>
 #include <cstdint>
 #include "../krnl/mem.h"
+class Matrix;
 class Vector {
-    public:
+    protected:
       size_t size;
       double *r;
 
@@ -42,6 +43,7 @@ class Vector {
 
     //void operator delete(void *ptr) { return math_free(ptr); }
     //void operator delete[](void *ptr) { return math_free(ptr); }
+    friend Matrix;
 };
 
 #endif __VECTOR
