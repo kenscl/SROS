@@ -46,7 +46,7 @@ class Vec {
         Vec operator/(double d) const {
             if (d == 0) {
                 OS_WARN("Vector div by 0!");
-                return this;
+                return *this;
             }
             Vec result;
             for (size_t i = 0; i < size; i++) {
@@ -121,14 +121,15 @@ class Vec {
         }
 
         void print_bare() {
-            for (int i = 0; i < size; ++i) {
-                os_printf("%f ", this->r[i]);
+            for (int i = 0; i < size - 1; ++i) {
+                os_printf("%f ,", this->r[i]);
             }
+            os_printf("%f ", this->r[size-1]);
             os_printf("\n");
         }
 };
-typedef Vec<4> Vec4D;
-typedef Vec<3> Vec3D;
-typedef Vec<2> Vec2D;
+typedef Vec<4> Vec4;
+typedef Vec<3> Vec3;
+typedef Vec<2> Vec2;
 
 #endif __VECTOR

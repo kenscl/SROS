@@ -274,8 +274,8 @@ class Mat {
     friend Quaternion;
 };
 
-typedef Mat<4,4> Mat4D;
-typedef Mat<3,3> Mat3D;
-typedef Mat<2,2> Mat2D;
+typedef Mat<4,4> Mat4;
+typedef Mat<3,3> Mat3;
+typedef Mat<2,2> Mat2;
 
 #endif

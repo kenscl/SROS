@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <stdint.h> 
 #include "i2c.h"
+#include "../math/vector.h"
 
 // devices
 #define LSM9DS1_ACC_AND_GYRO_READ  0xD7
@@ -83,17 +84,11 @@ void LSM9DS1_configure_mag();
 void LSM9DS1_calibrate_sensors();
 
 // data values
-extern double LSM9DS1_gyro_x;
-extern double LSM9DS1_gyro_y;
-extern double LSM9DS1_gyro_z;
+extern Vec3 LSM9DS1_gyro;
 extern double LSM9DS1_gyro_availiable;
-extern double LSM9DS1_accel_x;
-extern double LSM9DS1_accel_y;
-extern double LSM9DS1_accel_z;
+extern Vec3 LSM9DS1_acc;
 extern double LSM9DS1_acc_availiable;
-extern double LSM9DS1_mag_x;
-extern double LSM9DS1_mag_y;
-extern double LSM9DS1_mag_z;
+extern Vec3 LSM9DS1_mag;
 extern double LSM9DS1_mag_availiable;
 
 // data read

@@ -98,32 +98,18 @@ uint8_t * LSM9DS1_read_mag_multi(uint8_t reg, uint16_t size) {
 #define READ LSM9DS1_read_acc_and_gyro_register
 
 // data values
-double LSM9DS1_gyro_x = 0;
-double LSM9DS1_gyro_y = 0;
-double LSM9DS1_gyro_z = 0;
+Vec3 LSM9DS1_gyro;
 double LSM9DS1_gyro_availiable = 0;
 
-double LSM9DS1_acc_x = 0;
-double LSM9DS1_acc_y = 0;
-double LSM9DS1_acc_z = 0;
+Vec3 LSM9DS1_acc;
 double LSM9DS1_acc_availiable = 0;
 
-double LSM9DS1_mag_x = 0;
-double LSM9DS1_mag_y = 0;
-double LSM9DS1_mag_z = 0;
+Vec3 LSM9DS1_mag;
 double LSM9DS1_mag_availiable = 0;
 
-volatile double acc_bias_x = 0;
-volatile double acc_bias_y = 0;
-volatile double acc_bias_z = 0;
-
-volatile double gyro_bias_x = 0;
-volatile double gyro_bias_y = 0;
-volatile double gyro_bias_z = 0;
-
-volatile double mag_bias_x = 0;
-volatile double mag_bias_y = 0;
-volatile double mag_bias_z = 0;
+Vec3 acc_bias;
+Vec3 gyro_bias;
+Vec3 mag_bias;
 
 void LSM9DS1_reset() {
     WRITE(CTRL_REG8, 0b0000001);
@@ -166,15 +152,13 @@ void LSM9DS1_configure_mag() {
 }
 
 void LSM9DS1_calibrate_sensors() {
-    gyro_bias_x = gyro_bias_y = gyro_bias_z = 0;
-    acc_bias_x = acc_bias_y = acc_bias_z = 0;
+    gyro_bias = gyro_bias * 0;
+    acc_bias = acc_bias * 0;
+    mag_bias = mag_bias * 0;
 
-    double tmp_x = 0;
-    double tmp_y = 0;
-    double tmp_z = 0;
-    double tmp_x_acc = 0;
-    double tmp_y_acc = 0;
-    double tmp_z_acc = 0;
+    Vec3 temp_gyro;
+    Vec3 temp_acc;
+    Vec3 temp_mag;
 
     sleep(1 * SECONDS);
     int gyro_cnt = 0;
@@ -183,28 +167,18 @@ void LSM9DS1_calibrate_sensors() {
         LSM9DS1_read_status();
         if (LSM9DS1_gyro_availiable) {
             LSM9DS1_read_gyro();
-            tmp_x += LSM9DS1_gyro_x;
-            tmp_y += LSM9DS1_gyro_y;
-            tmp_z += LSM9DS1_gyro_z;
+            temp_gyro = temp_gyro + LSM9DS1_gyro;
             gyro_cnt++;
         }
         if (LSM9DS1_acc_availiable) {
             LSM9DS1_read_accel();
-            tmp_x_acc += LSM9DS1_acc_x;
-            tmp_y_acc += LSM9DS1_acc_y;
-            tmp_z_acc += LSM9DS1_acc_z;
+            temp_acc = temp_acc + LSM9DS1_acc;
             acc_cnt++;
         }
         sleep(3 * MILLISECONDS);
     }
-    gyro_bias_x = tmp_x / gyro_cnt;
-    gyro_bias_y = tmp_y / gyro_cnt;
-    gyro_bias_z = tmp_z / gyro_cnt;
-    acc_bias_x = tmp_x_acc / acc_cnt;
-    acc_bias_y = tmp_y_acc / acc_cnt;
-    acc_bias_z = tmp_z_acc / acc_cnt;
-
-
+    gyro_bias = temp_gyro / gyro_cnt;
+    acc_bias = temp_acc / acc_cnt;
 }
 
 void LSM9DS1_read_status() {
@@ -222,12 +196,10 @@ void LSM9DS1_read_gyro() {
     int16_t x = (data[1] << 8) | data[0];
     int16_t y = (data[3] << 8) | data[2];
     int16_t z = (data[5] << 8) | data[4];
-    LSM9DS1_gyro_x = (double) (x * GYRO_SENSITIVITY) / 1000 ;
-    LSM9DS1_gyro_y = (double) (y * GYRO_SENSITIVITY) / 1000 ;
-    LSM9DS1_gyro_z = (double) (z * GYRO_SENSITIVITY) / 1000 ;
-    LSM9DS1_gyro_x -= gyro_bias_x;
-    LSM9DS1_gyro_y -= gyro_bias_y;
-    LSM9DS1_gyro_z -= gyro_bias_z;
+    LSM9DS1_gyro[0] = (double) (x * GYRO_SENSITIVITY) / 1000 ;
+    LSM9DS1_gyro[1] = (double) (y * GYRO_SENSITIVITY) / 1000 ;
+    LSM9DS1_gyro[2] = (double) (z * GYRO_SENSITIVITY) / 1000 ;
+    LSM9DS1_gyro = LSM9DS1_gyro - gyro_bias;
     os_free(data);
 }
 
@@ -236,12 +208,10 @@ void LSM9DS1_read_accel() {
     int16_t x = (data[1] << 8) | data[0];
     int16_t y = (data[3] << 8) | data[2];
     int16_t z = (data[5] << 8) | data[4];
-    LSM9DS1_acc_x = (double) (x * ACC_SENSITIVITY) / 1000 ;
-    LSM9DS1_acc_y = (double) (y * ACC_SENSITIVITY) / 1000 ;
-    LSM9DS1_acc_z = (double) (z * ACC_SENSITIVITY) / 1000 ;
-    LSM9DS1_acc_x -= acc_bias_x;
-    LSM9DS1_acc_y -= acc_bias_y;
-    LSM9DS1_acc_z -= acc_bias_z;
+    LSM9DS1_acc[0] = (double) (x * ACC_SENSITIVITY) / 1000 ;
+    LSM9DS1_acc[1] = (double) (y * ACC_SENSITIVITY) / 1000 ;
+    LSM9DS1_acc[2] = (double) (z * ACC_SENSITIVITY) / 1000 ;
+    LSM9DS1_acc = LSM9DS1_acc - acc_bias;
     os_free(data);
 }
 
@@ -250,14 +220,13 @@ void LSM9DS1_read_mag() {
     int16_t x = (data[1] << 8) | data[0];
     int16_t y = (data[3] << 8) | data[2];
     int16_t z = (data[5] << 8) | data[4];
-    LSM9DS1_mag_x = (double) (x * MAG_SENSITIVITY) / 1000 ;
-    LSM9DS1_mag_y = (double) (y * MAG_SENSITIVITY) / 1000 ;
-    LSM9DS1_mag_z = (double) (z * MAG_SENSITIVITY) / 1000 ;
-    LSM9DS1_mag_x -= mag_bias_x;
-    LSM9DS1_mag_y -= mag_bias_y;
-    LSM9DS1_mag_z -= mag_bias_z;
+    LSM9DS1_mag[0] = (double) (x * MAG_SENSITIVITY) / 1000 ;
+    LSM9DS1_mag[1] = (double) (y * MAG_SENSITIVITY) / 1000 ;
+    LSM9DS1_mag[2] = (double) (z * MAG_SENSITIVITY) / 1000 ;
+    LSM9DS1_mag = LSM9DS1_mag - mag_bias;
     os_free(data);
 }
+
 void LSM9DS1_thread() {
     LSM9DS1_reset();
     LSM9DS1_configure_gyro();
@@ -268,20 +237,20 @@ void LSM9DS1_thread() {
 
     while (1) {
         LSM9DS1_read_status();
-        //if (LSM9DS1_gyro_availiable) {
-        //  LSM9DS1_read_gyro();
-        //  os_printf("%d, %f, %f, %f\n", (int) now(), LSM9DS1_gyro_x,
-        //            LSM9DS1_gyro_y, LSM9DS1_gyro_z);
-        //  }
-        //if (LSM9DS1_acc_availiable) {
-        //    LSM9DS1_read_accel();
-        //    os_printf("%d, %f, %f, %f\n", (int) now(), LSM9DS1_acc_x,
-        //              LSM9DS1_acc_y, LSM9DS1_acc_z);
-        //}
+        if (LSM9DS1_gyro_availiable) {
+            LSM9DS1_read_gyro();
+            os_printf("LSM9DS1_gyro, ");
+            LSM9DS1_gyro.print_bare();
+        }
+        if (LSM9DS1_acc_availiable) {
+            LSM9DS1_read_accel();
+            os_printf("LSM9DS1_acc, ");
+            LSM9DS1_acc.print_bare();
+        }
         if (LSM9DS1_mag_availiable) {
             LSM9DS1_read_mag();
-            os_printf("%d, %f, %f, %f\n", (int) now(), LSM9DS1_mag_x,
-                      LSM9DS1_mag_y, LSM9DS1_mag_z);
+            os_printf("LSM9DS1_mag, ");
+            LSM9DS1_mag.print_bare();
         }
 
         sleep(3 * MILLISECONDS);
