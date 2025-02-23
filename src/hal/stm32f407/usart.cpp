@@ -112,7 +112,9 @@ void os_printf(const char* format, ... ) {
     const char *str;
     double num_f;
     int i_part;
-    int f_part;
+    double f_part;
+
+    uint16_t n_of_0 = 0;
     for (int i = 0; format[i] != '\0'; i++) {
       if (format[i] == '%') {
         i++;
@@ -127,14 +129,30 @@ void os_printf(const char* format, ... ) {
         case 'f':
           num_f = va_arg(args, double);
           i_part = num_f;
-          f_part = (num_f - i_part) * 10e6;
+          f_part = (num_f - i_part) ;
           if (f_part < 0) {
               f_part *= -1;
               os_putchar('-');
           }
           os_putint(i_part);
+
+          //f part
           os_putchar('.');
-          os_putint(f_part);
+
+          n_of_0 = 0;
+          for (int i = 0; i < 7; ++i) {
+              f_part = f_part * 10;
+              if (f_part > 1) {}
+              else n_of_0++;
+          }
+
+          if (n_of_0 < 7) {
+              for (int i = 0; i < n_of_0; ++i) {
+                  os_putint(0);
+              }
+              os_putint( (int) f_part);
+          }
+          else os_putint(0);
           break;
 
         case 's':

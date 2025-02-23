@@ -179,6 +179,7 @@ void LSM9DS1_calibrate_sensors() {
     }
     gyro_bias = temp_gyro / gyro_cnt;
     acc_bias = temp_acc / acc_cnt;
+    acc_bias[2] -= 1;
 }
 
 void LSM9DS1_read_status() {
@@ -212,6 +213,8 @@ void LSM9DS1_read_accel() {
     LSM9DS1_acc[1] = (double) (y * ACC_SENSITIVITY) / 1000 ;
     LSM9DS1_acc[2] = (double) (z * ACC_SENSITIVITY) / 1000 ;
     LSM9DS1_acc = LSM9DS1_acc - acc_bias;
+    LSM9DS1_acc [0] += 0.02; 
+    LSM9DS1_acc [1] += 0.02; 
     os_free(data);
 }
 

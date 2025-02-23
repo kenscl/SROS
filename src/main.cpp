@@ -33,7 +33,15 @@ int main (void) {
 
     print_thread_info();
     // start system
-    scheduler_enable();
+    //scheduler_enable();
+    os_printf("%f \n", 0.1234567);
+    os_printf("%f \n", 0.01234567);
+    os_printf("%f \n", 0.001234567);
+    os_printf("%f \n", 0.0001234567);
+    os_printf("%f \n", 0.00001234567);
+    os_printf("%f \n", 0.000001234567);
+    os_printf("%f \n", 0.0000001234567);
+    os_printf("%f \n", 0.00000001234567);
 
 
     while (1) {
