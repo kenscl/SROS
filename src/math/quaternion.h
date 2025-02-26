@@ -18,6 +18,27 @@ class Quaternion {
           this->k = other.k;
         }
 
+        Quaternion(double roll, double pitch, double yaw) {
+          double cr = cos(roll * 0.5);
+          double sr = sin(roll * 0.5);
+          double cp = cos(pitch * 0.5);
+          double sp = sin(pitch * 0.5);
+          double cy = cos(yaw * 0.5);
+          double sy = sin(yaw * 0.5);
+
+          this->q = cr * cp * cy + sr * sp * sy;
+          this->i = sr * cp * cy - cr * sp * sy;
+          this->j = cr * sp * cy + sr * cp * sy;
+          this->k = cr * cp * sy - sr * sp * cy;
+        }
+
+        Quaternion(const Quaternion &other) {
+          this->q = other.q;
+          this->i = other.i;
+          this->j = other.j;
+          this->k = other.k;
+        }
+
         Quaternion(const Vec4D &vec) {
           this->q = vec[0];
           this->i = vec[1];
