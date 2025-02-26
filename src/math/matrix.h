@@ -116,9 +116,8 @@ class Mat {
             return *this;
         }
 
-        template <size_t p>
-        Vec<p> operator*(const Vec<m> &v) const {
-            Vec<p> result;
+        Vec<m> operator*(Vec<n> &v) const {
+            Vec<m> result;
             for (size_t i = 0; i < m; ++i) {
                 double sum = 0.0;
                 for (size_t j = 0; j < n; ++j) {
@@ -213,11 +212,11 @@ class Mat {
             return adj;
         }
 
-        Mat transpose() {
+        Mat<n, m> transpose() {
             Mat<n, m> result;
             for (size_t i = 0; i < m; ++i) {
                 for (size_t j = 0; j < n; ++j) {
-                    result[j][i] = r[i][j]; 
+                    result[j][i] = r[i][j];
                 }
             }
             return result;

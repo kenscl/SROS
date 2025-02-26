@@ -94,7 +94,6 @@ void start_i2c_communication() {
     //    configure_i2c();
     //}
     I2C1->CR1 |= (1 << 8); // generate start condition
-    uint64_t time = now();
     while (!(I2C1->SR1 & (1<<0))) {
     } // wait for start condition generated
 }

@@ -56,8 +56,8 @@ void EKF::init(Vec3 *gyro, Vec3 *acc, Vec3 *mag) {
     double mag_sum;
 
     for (int i = 0; i < num_init; ++i) {
-        gyro_sum = gyro_sum + (gyro[i] - mean_gyro) * (gyro[i] - mean_gyro);
-        acc_sum = acc_sum + (acc[i] + mean_acc) * (acc[i] + mean_acc);
+        gyro_sum = gyro_sum + (gyro[i] - mean_gyro).mult(gyro[i] - mean_gyro);
+        acc_sum = acc_sum + (acc[i] + mean_acc).mult(acc[i] + mean_acc);
 
         Vec3 mw = this->Rot * mag[i]; 
         double mag_yaw = atan2(-mw[1], mw[0]);
@@ -107,7 +107,7 @@ void EKF::init(Vec3 *gyro, Vec3 *acc, Vec3 *mag) {
     U[3][3] = v_bias;
     U[4][4] = v_bias;
     U[5][5] = v_bias;
-    this->Q = Fu * U * Fu.transpose();
+    this->Q = Fu * (U * Fu.transpose());
 }
 
 void EKF::update_acc(Vec3 acc) {
@@ -367,7 +367,7 @@ void EKF::update() {
         v[3] += 2 * M_PI; 
     }
 
-    Mat<10,10> S = this->H * this->P * this->H.transpose() + this->R;
+    Mat<4,4> S = this->H * this->P * this->H.transpose() + this->R;
     this->K = this->P * this->H.transpose() * S.inverse();
     this->x = this->x + this->K * v;
     Quaternion q(this->x[0], this->x[1], this->x[2], this->x[3]);

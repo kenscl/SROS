@@ -43,6 +43,14 @@ class Vec {
             return dot_product;
         }
 
+        Vec mult(Vec other) const {
+            Vec res;
+            for (size_t i = 0; i < size; i++) {
+                res[i] = this->r[i] * other.r[i];
+            }
+            return res;
+        }
+
         Vec operator/(double d) const {
             if (d == 0) {
                 OS_WARN("Vector div by 0!");

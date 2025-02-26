@@ -1,16 +1,13 @@
-#include <cstdint>
 #include <stdint.h>
-#include <stdio.h>
-#include "globals.h"
 #include "hw_init.h"
 #include "krnl/scheduler.h"
 #include "krnl/thread.h"
 #include "krnl/mem.h"
 #include "communication/usart.h"
 #include "communication/usart.h"
-#include "communication/i2c.h"
 #include "communication/LSM9DS1.h"
 #include "hal/hw_specific.h"
+
 
 
 int main (void) {

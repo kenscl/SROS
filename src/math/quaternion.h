@@ -11,12 +11,6 @@ class Quaternion {
     public:
         Quaternion() : q(1), i(0), j(0), k(0) {}
         Quaternion(double w, double i, double j, double k) : q(w), i(i), j(j), k(k) {}
-        Quaternion(const Quaternion &other) {
-          this->q = other.q;
-          this->i = other.i;
-          this->j = other.j;
-          this->k = other.k;
-        }
 
         Quaternion(double roll, double pitch, double yaw) {
           double cr = cos(roll * 0.5);
@@ -39,13 +33,13 @@ class Quaternion {
           this->k = other.k;
         }
 
-        Quaternion(const Vec4D &vec) {
+        Quaternion(const Vec4 &vec) {
           this->q = vec[0];
           this->i = vec[1];
           this->j = vec[2];
           this->k = vec[3];
         }
-        Quaternion(const Mat3D & mat) {
+        Quaternion(const Mat3 & mat) {
             Quaternion ret = Quaternion(1, 0, 0, 0);
 
             double trace = mat[0][0] + mat[1][1] + mat[2][2];
@@ -101,8 +95,8 @@ class Quaternion {
             return Quaternion(q * nbr, i * nbr, j * nbr, k * nbr);
         }
 
-        Quaternion operator*(const Mat4D& other) const {
-            Vec4D v;
+        Quaternion operator*(const Mat4& other) const {
+            Vec4 v;
             v[0] = this->q;
             v[1] = this->i;
             v[2] = this->j;
@@ -124,8 +118,8 @@ class Quaternion {
             return Quaternion(q, -i, -j, -k);
         }
 
-        Vec3D to_rpy() const {
-            Vec3D result;
+        Vec3 to_rpy() const {
+            Vec3 result;
             result[0] = atan2(2 * (q * i + j * k), 1 - 2 * (i * i + j * j));
             result[1] = asin(2 * (q * j - k * i));
             result[2] = atan2(2 * (q * k + i * j), 1 - 2 * (j * j + k * k));
@@ -133,16 +127,17 @@ class Quaternion {
 
         }
 
-        Vec4D to_vector() const {
-            Vec4D ret;
+        Vec4 to_vector() const {
+            Vec4 ret;
             ret[0] = q;
             ret[1] = i;
             ret[2] = j;
             ret[3] = k;
+            return ret;
         }
 
-        Mat3D to_rotation_matrix() const {
-            Mat3D result;
+        Mat3 to_rotation_matrix() const {
+            Mat3 result;
             result[0][0] = 1 - 2 * (j * j + k * k);
             result[0][1] = 2 * (i * j - k * q);
             result[0][2] = 2 * (i * k + j * q);
@@ -161,6 +156,7 @@ class Quaternion {
 
         Quaternion normalize() const {
             double norm = this->norm();
+            if (norm == 0) norm = 1;
             return Quaternion(q / norm, i / norm, j / norm, k / norm);
         }
 
