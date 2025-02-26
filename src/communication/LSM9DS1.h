@@ -39,7 +39,7 @@
 
 // gyro constants
 #define GYRO_SENSITIVITY           17.5 // convert to dps
-#define NBR_CALIB                  1000
+#define NBR_CALIB                  100
 
 // acc registers
 #define CTRL_REG5_XL               0x1F
