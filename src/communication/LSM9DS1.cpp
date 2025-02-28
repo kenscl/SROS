@@ -251,8 +251,8 @@ void LSM9DS1_thread() {
         LSM9DS1_read_status();
         if (LSM9DS1_gyro_availiable) {
             LSM9DS1_read_gyro();
-            //os_printf("LSM9DS1_gyro, ");
-            //LSM9DS1_gyro.print_bare();
+            os_printf("LSM9DS1_gyro, ");
+            LSM9DS1_gyro.print_bare();
             gyro_cnt++;
             if (gyro_cnt < 100)
                 gyro[gyro_cnt] = LSM9DS1_gyro;
@@ -260,33 +260,34 @@ void LSM9DS1_thread() {
                 uint8_t n = now();
                 ekf.predict(LSM9DS1_gyro, now() - last_time);
                 last_time = now();
+                ekf.update();
                 ekf.attitude.print();
             }
         }
         if (LSM9DS1_acc_availiable) {
             LSM9DS1_read_accel();
-            //os_printf("LSM9DS1_acc, ");
-            //LSM9DS1_acc.print_bare();
+            os_printf("LSM9DS1_acc, ");
+            LSM9DS1_acc.print_bare();
             acc_cnt++;
             if (acc_cnt < 100)
                 acc[acc_cnt] = LSM9DS1_acc; 
             if (has_init) {
-                ekf.update_acc(LSM9DS1_acc);
+                //ekf.update_acc(LSM9DS1_acc);
             }
         }
         if (LSM9DS1_mag_availiable) {
             LSM9DS1_read_mag();
-            ////os_printf("LSM9DS1_mag, ");
-            ////LSM9DS1_mag.print_bare();
+            os_printf("LSM9DS1_mag, ");
+            LSM9DS1_mag.print_bare();
             mag_cnt++;
             if (mag_cnt < 100)
                 mag[mag_cnt] = LSM9DS1_mag; 
             if (has_init) {
-                ekf.update_mag(LSM9DS1_mag);
+                //ekf.update_mag(LSM9DS1_mag);
             }
         }
-        if (gyro_cnt > 100 && mag_cnt > 100 && acc_cnt > 100) {
-            ekf.init(gyro, acc, mag);
+        if (gyro_cnt > 100 && mag_cnt > 100 && acc_cnt > 100 && !has_init) {
+            //ekf.init(gyro, acc, mag);
             has_init = 1;
         }
 

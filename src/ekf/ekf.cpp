@@ -1,6 +1,7 @@
 #include "ekf.h"
 #include <cmath>
 
+
 EKF::EKF() {}
 
 void EKF::init(Vec3 *gyro, Vec3 *acc, Vec3 *mag) {
@@ -68,10 +69,12 @@ void EKF::init(Vec3 *gyro, Vec3 *acc, Vec3 *mag) {
     double s_acc = (sqrt(acc_sum[0]/(num_init-1)) + sqrt(acc_sum[1]/(num_init-1)) + sqrt(acc_sum[2]/(num_init-1))) / 3;
     double s_yaw = sqrt(mag_sum/(num_init-1));
 
+
     this->R[0][0] = s_acc * s_acc;
     this->R[1][1] = s_acc * s_acc;
     this->R[2][2] = s_acc * s_acc;
     this->R[3][3] = s_yaw * s_yaw;
+
 
     Mat<10,6> Fu;
     Fu[4][0] = 1;
@@ -107,7 +110,7 @@ void EKF::init(Vec3 *gyro, Vec3 *acc, Vec3 *mag) {
     U[3][3] = v_bias;
     U[4][4] = v_bias;
     U[5][5] = v_bias;
-    this->Q = Fu * (U * Fu.transpose());
+    this->Q = Fu * U * Fu.transpose();
 }
 
 void EKF::update_acc(Vec3 acc) {
@@ -285,7 +288,7 @@ void EKF::predict(Vec3 gyro, double dt) {
     this->Rot_inv = Rot.transpose();
 
     q = Quaternion(this->x[0], this->x[1], this->x[2], this->x[3]);
-    q = q.normalize();
+
 
     Vec3 rev_g;
     rev_g[2] = -1;
@@ -378,7 +381,4 @@ void EKF::update() {
     this->x[3] = q.k;
     this->P = (Mat<10,10>().identity() - (this->K * this->H)) * this->P;
     this->attitude = q;
-    bias[0] = this->x[4];
-    bias[1] = this->x[5];
-    bias[2] = this->x[6];
 }

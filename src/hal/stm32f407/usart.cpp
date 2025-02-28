@@ -130,6 +130,9 @@ void os_printf(const char* format, ... ) {
           num_f = va_arg(args, double);
           i_part = num_f;
           f_part = (num_f - i_part) ;
+          if (i_part < 0) {
+              i_part *= -1;
+          }
           if (f_part < 0) {
               f_part *= -1;
               os_putchar('-');
