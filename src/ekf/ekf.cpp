@@ -1,17 +1,19 @@
 #include "ekf.h"
 #include <cmath>
+#include "../krnl/scheduler.h"
 
 
 EKF::EKF() {}
 
 void EKF::init(Vec3 *gyro, Vec3 *acc, Vec3 *mag) {
+
     int num_init = 100;
     Vec3 mean_gyro;
     Vec3 mean_acc;
     Vec3 mean_mag;
     for (int i = 0; i < num_init; ++i) {
         mean_gyro = mean_gyro + gyro[i] / num_init;
-        mean_acc = mean_acc - acc[i] / num_init;
+        mean_acc = mean_acc + acc[i] / num_init;
         mean_mag = mean_mag + mag[i] / num_init;
     }
 
@@ -37,7 +39,8 @@ void EKF::init(Vec3 *gyro, Vec3 *acc, Vec3 *mag) {
 
     Vec3 mr = this->Rot * mean_mag;
     double yaw_init = atan2(-mr[1], mr[0]);
-
+    mr.print();
+    mean_mag.print();
     Quaternion q_init(roll_init, pitch_init, yaw_init);
     
     this->x[0] = q_init.q;
@@ -58,7 +61,7 @@ void EKF::init(Vec3 *gyro, Vec3 *acc, Vec3 *mag) {
 
     for (int i = 0; i < num_init; ++i) {
         gyro_sum = gyro_sum + (gyro[i] - mean_gyro).mult(gyro[i] - mean_gyro);
-        acc_sum = acc_sum + (acc[i] + mean_acc).mult(acc[i] + mean_acc);
+        acc_sum = acc_sum + (acc[i] * -1 + mean_acc).mult(acc[i] * -1 + mean_acc);
 
         Vec3 mw = this->Rot * mag[i]; 
         double mag_yaw = atan2(-mw[1], mw[0]);
@@ -372,6 +375,7 @@ void EKF::update() {
 
     Mat<4,4> S = this->H * this->P * this->H.transpose() + this->R;
     this->K = this->P * this->H.transpose() * S.inverse();
+    (this->K * v).print_bare();
     this->x = this->x + this->K * v;
     Quaternion q(this->x[0], this->x[1], this->x[2], this->x[3]);
     q = q.normalize();

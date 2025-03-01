@@ -164,6 +164,8 @@ void LSM9DS1_calibrate_sensors() {
     sleep(1 * SECONDS);
     int gyro_cnt = 0;
     int acc_cnt = 0;
+    int mag_cnt = 0;
+    
     for (int i = 0 ; i < NBR_CALIB; ++i) {
         LSM9DS1_read_status();
         if (LSM9DS1_gyro_availiable) {
@@ -176,11 +178,23 @@ void LSM9DS1_calibrate_sensors() {
             temp_acc = temp_acc + LSM9DS1_acc;
             acc_cnt++;
         }
+        if (LSM9DS1_mag_availiable) {
+            LSM9DS1_read_mag();
+            temp_mag = temp_mag + LSM9DS1_mag;
+            mag_cnt++;
+        }
         sleep(3 * MILLISECONDS);
     }
     gyro_bias = temp_gyro / gyro_cnt;
-    acc_bias = temp_acc / acc_cnt;
-    acc_bias[2] += 1;
+    //acc_bias = temp_acc / acc_cnt;
+    //acc_bias[2] += 1;
+    // mag
+    double mag_x_max = 0.83, mag_x_min = -0.101;
+    double mag_y_max = 0.86, mag_y_min = -0.079;
+    double mag_z_max = -0.707, mag_z_min = -1.58;
+    mag_bias[0] = (mag_x_max + mag_x_min) / 2;
+    mag_bias[1] = (mag_x_max + mag_x_min) / 2;
+    mag_bias[2] = (mag_z_max + mag_z_min) / 2;
 }
 
 void LSM9DS1_read_status() {
@@ -229,68 +243,72 @@ void LSM9DS1_read_mag() {
     os_free(data);
 }
 
+EKF ekf;
+
+Vec3 gyro[100];
+Vec3 mag[100];
+Vec3 acc[100];
 void LSM9DS1_thread() {
-    uint8_t tst = now();
-    LSM9DS1_reset();
-    LSM9DS1_configure_gyro();
-    LSM9DS1_configure_accel();
-    LSM9DS1_configure_mag();
-    // calibration
-    LSM9DS1_calibrate_sensors();
-    static EKF ekf;
-
-    static Vec3 gyro[100];
-    static Vec3 mag[100];
-    static Vec3 acc[100];
-    int gyro_cnt = 0;
-    int acc_cnt = 0;
-    int mag_cnt = 0;
-    uint8_t has_init = 0;
-    uint64_t last_time = now();
-    while (1) {
-        LSM9DS1_read_status();
-        if (LSM9DS1_gyro_availiable) {
-            LSM9DS1_read_gyro();
-            os_printf("LSM9DS1_gyro, ");
-            LSM9DS1_gyro.print_bare();
-            gyro_cnt++;
-            if (gyro_cnt < 100)
-                gyro[gyro_cnt] = LSM9DS1_gyro;
-            if (has_init) {
-                uint8_t n = now();
-                ekf.predict(LSM9DS1_gyro, now() - last_time);
-                last_time = now();
-                ekf.update();
-                ekf.attitude.print();
-            }
-        }
-        if (LSM9DS1_acc_availiable) {
-            LSM9DS1_read_accel();
-            os_printf("LSM9DS1_acc, ");
-            LSM9DS1_acc.print_bare();
-            acc_cnt++;
-            if (acc_cnt < 100)
-                acc[acc_cnt] = LSM9DS1_acc; 
-            if (has_init) {
-                //ekf.update_acc(LSM9DS1_acc);
-            }
-        }
-        if (LSM9DS1_mag_availiable) {
-            LSM9DS1_read_mag();
-            os_printf("LSM9DS1_mag, ");
-            LSM9DS1_mag.print_bare();
-            mag_cnt++;
-            if (mag_cnt < 100)
-                mag[mag_cnt] = LSM9DS1_mag; 
-            if (has_init) {
-                //ekf.update_mag(LSM9DS1_mag);
-            }
-        }
-        if (gyro_cnt > 100 && mag_cnt > 100 && acc_cnt > 100 && !has_init) {
-            //ekf.init(gyro, acc, mag);
-            has_init = 1;
-        }
-
-        sleep(3 * MILLISECONDS);
+  uint8_t tst = now();
+  LSM9DS1_reset();
+  LSM9DS1_configure_gyro();
+  LSM9DS1_configure_accel();
+  LSM9DS1_configure_mag();
+  // calibration
+  LSM9DS1_calibrate_sensors();
+  int gyro_cnt = 0;
+  int acc_cnt = 0;
+  int mag_cnt = 0;
+  uint8_t has_init = 0;
+  uint64_t last_time = now();
+  while (1) {
+    LSM9DS1_read_status();
+    if (LSM9DS1_gyro_availiable) {
+      LSM9DS1_read_gyro();
+      //os_printf("LSM9DS1_gyro, ");
+      //LSM9DS1_gyro.print_bare();
+      gyro_cnt++;
+      if (gyro_cnt < 100)
+        gyro[gyro_cnt] = LSM9DS1_gyro;
+      if (has_init) {
+        uint8_t n = now();
+        ekf.predict(LSM9DS1_gyro * M_PI / 180, (now() - last_time)/ 100);
+        last_time = now();
+        ekf.update();
+        //os_printf("Attitude, ");
+        //ekf.attitude.print_bare();
+      }
     }
+    if (LSM9DS1_acc_availiable) {
+      LSM9DS1_read_accel();
+      //os_printf("LSM9DS1_acc, ");
+      //LSM9DS1_acc.print_bare();
+      acc_cnt++;
+      if (acc_cnt < 100) {
+        acc[acc_cnt] = LSM9DS1_acc;
+      }
+      if (has_init) {
+         ekf.update_acc(LSM9DS1_acc);
+      }
+    }
+    if (LSM9DS1_mag_availiable) {
+      LSM9DS1_read_mag();
+      //os_printf("LSM9DS1_mag, ");
+      //LSM9DS1_mag.print_bare();
+      mag_cnt++;
+      if (mag_cnt < 100)
+        mag[mag_cnt] = LSM9DS1_mag;
+      if (has_init) {
+         ekf.update_mag(LSM9DS1_mag);
+      }
+    }
+    if (gyro_cnt > 100 && mag_cnt > 100 && acc_cnt > 100 && !has_init) {
+      ekf.init(gyro, acc, mag);
+      ekf.update_acc(LSM9DS1_acc);
+      ekf.update_mag(LSM9DS1_mag);
+      has_init = 1;
+    }
+
+    sleep(3 * MILLISECONDS);
+  }
 }

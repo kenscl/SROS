@@ -264,6 +264,9 @@ class Mat {
           os_printf("Mat: \n");
           for (int i = 0; i < m; ++i) {
               for (int j = 0; j < n; j++) {
+                if (r[i][j] != r[i][j])
+                  os_printf("NaN \n");
+                else
                   os_printf("%f ", r[i][j]);
               }
               os_printf("\n");

@@ -124,6 +124,9 @@ class Vec {
         void print() {
             os_printf("Vector: \n");
             for (int i = 0; i < size; ++i) {
+              if (r[i] != r[i])
+                os_printf("NaN \n");
+              else
                 os_printf("%f \n", this->r[i]);
             }
         }

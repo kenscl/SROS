@@ -31,30 +31,9 @@ int main (void) {
 
     print_thread_info();
     // start system
-    //scheduler_enable();
+    scheduler_enable();
 
-    static EKF ekf;
-    static Vec3 mag[100], acc[100], gyro[100];
-    
-    for (int i = 0; i < 50; ++i) {
-        gyro[i][0] = 0.0001;
-        mag[i][0] = 1;
-        acc[i][2] = -1.02;
-    }
-    for (int i = 50; i < 100; ++i) {
-        gyro[i][0] = 0.001;
-        mag[i][0] = 0.5;
-        mag[i][1] = 0.5;
-        acc[i][2] = -0.8;
-        acc[i][2] = -0.2;
-    }
-    ekf.init(gyro, acc, mag);
-    acc[0][0] = 0.1;
-    ekf.update_acc(acc[0]);
-    ekf.update_mag(mag[0]);
-    for (int i = 0; i < 1000; ++i) {
-      ekf.predict(gyro[0], 0.0001);
-      ekf.update();
-      ekf.x.print();
+    while(1) {
+        OS_WARN("Scheduler didn't start!");
     }
 }
