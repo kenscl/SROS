@@ -161,34 +161,6 @@ void LSM9DS1_calibrate_sensors() {
     Vec3 temp_acc;
     Vec3 temp_mag;
 
-    sleep(1 * SECONDS);
-    int gyro_cnt = 0;
-    int acc_cnt = 0;
-    int mag_cnt = 0;
-    
-    for (int i = 0 ; i < NBR_CALIB; ++i) {
-        LSM9DS1_read_status();
-        if (LSM9DS1_gyro_availiable) {
-            LSM9DS1_read_gyro();
-            temp_gyro = temp_gyro + LSM9DS1_gyro;
-            gyro_cnt++;
-        }
-        if (LSM9DS1_acc_availiable) {
-            LSM9DS1_read_accel();
-            temp_acc = temp_acc + LSM9DS1_acc;
-            acc_cnt++;
-        }
-        if (LSM9DS1_mag_availiable) {
-            LSM9DS1_read_mag();
-            temp_mag = temp_mag + LSM9DS1_mag;
-            mag_cnt++;
-        }
-        sleep(3 * MILLISECONDS);
-    }
-    gyro_bias = temp_gyro / gyro_cnt;
-    //acc_bias = temp_acc / acc_cnt;
-    //acc_bias[2] += 1;
-    // mag
     double mag_x_max = 0.83, mag_x_min = -0.101;
     double mag_y_max = 0.86, mag_y_min = -0.079;
     double mag_z_max = -0.707, mag_z_min = -1.58;
@@ -227,7 +199,7 @@ void LSM9DS1_read_accel() {
     LSM9DS1_acc[0] = (double) (x * ACC_SENSITIVITY) / 1000 ;
     LSM9DS1_acc[1] = (double) (y * ACC_SENSITIVITY) / 1000 ;
     LSM9DS1_acc[2] = (double) (z * ACC_SENSITIVITY) / 1000 ;
-    LSM9DS1_acc = LSM9DS1_acc - acc_bias;
+    LSM9DS1_acc = (LSM9DS1_acc - acc_bias) * - 1;
     os_free(data);
 }
 
@@ -269,14 +241,14 @@ void LSM9DS1_thread() {
       //LSM9DS1_gyro.print_bare();
       gyro_cnt++;
       if (gyro_cnt < 100)
-        gyro[gyro_cnt] = LSM9DS1_gyro;
+        gyro[gyro_cnt] = LSM9DS1_gyro * M_PI / 180;
       if (has_init) {
         uint8_t n = now();
-        ekf.predict(LSM9DS1_gyro * M_PI / 180, (now() - last_time)/ 100);
+        ekf.predict(LSM9DS1_gyro * M_PI / 180, (double) (now() - last_time) / SECONDS);
         last_time = now();
         ekf.update();
-        //os_printf("Attitude, ");
-        //ekf.attitude.print_bare();
+        os_printf("Attitude, ");
+        (ekf.attitude.to_rpy() * 180 / M_PI).print_bare();
       }
     }
     if (LSM9DS1_acc_availiable) {

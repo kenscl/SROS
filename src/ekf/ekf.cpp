@@ -13,12 +13,12 @@ void EKF::init(Vec3 *gyro, Vec3 *acc, Vec3 *mag) {
     Vec3 mean_mag;
     for (int i = 0; i < num_init; ++i) {
         mean_gyro = mean_gyro + gyro[i] / num_init;
-        mean_acc = mean_acc + acc[i] / num_init;
+        mean_acc = mean_acc - acc[i] / num_init;
         mean_mag = mean_mag + mag[i] / num_init;
     }
 
     double roll_init = atan2(mean_acc[1], mean_acc[2]);
-    double pitch_init = atan2(-mean_acc[0], sqrt(mean_acc[1]*mean_acc[1]+mean_acc[2]*mean_acc[2]));
+    double pitch_init = atan2(mean_acc[0], sqrt(mean_acc[1]*mean_acc[1]+mean_acc[2]*mean_acc[2]));
 
     double cp = cos(pitch_init);
     double sp = sin(pitch_init);
@@ -39,8 +39,6 @@ void EKF::init(Vec3 *gyro, Vec3 *acc, Vec3 *mag) {
 
     Vec3 mr = this->Rot * mean_mag;
     double yaw_init = atan2(-mr[1], mr[0]);
-    mr.print();
-    mean_mag.print();
     Quaternion q_init(roll_init, pitch_init, yaw_init);
     
     this->x[0] = q_init.q;
@@ -61,7 +59,7 @@ void EKF::init(Vec3 *gyro, Vec3 *acc, Vec3 *mag) {
 
     for (int i = 0; i < num_init; ++i) {
         gyro_sum = gyro_sum + (gyro[i] - mean_gyro).mult(gyro[i] - mean_gyro);
-        acc_sum = acc_sum + (acc[i] * -1 + mean_acc).mult(acc[i] * -1 + mean_acc);
+        acc_sum = acc_sum + (acc[i] + mean_acc).mult(acc[i] + mean_acc);
 
         Vec3 mw = this->Rot * mag[i]; 
         double mag_yaw = atan2(-mw[1], mw[0]);
@@ -73,10 +71,10 @@ void EKF::init(Vec3 *gyro, Vec3 *acc, Vec3 *mag) {
     double s_yaw = sqrt(mag_sum/(num_init-1));
 
 
-    this->R[0][0] = s_acc * s_acc;
-    this->R[1][1] = s_acc * s_acc;
-    this->R[2][2] = s_acc * s_acc;
-    this->R[3][3] = s_yaw * s_yaw;
+    this->R[0][0] = 2.12425429e-06;
+    this->R[1][1] = 2.12425429e-06;
+    this->R[2][2] = 2.12425429e-06;
+    this->R[3][3] = 7.98243297e-05;
 
 
     Mat<10,6> Fu;
@@ -107,9 +105,9 @@ void EKF::init(Vec3 *gyro, Vec3 *acc, Vec3 *mag) {
     this->Rot_inv = Rot.transpose();
 
     Mat<6,6> U;
-    U[0][0] = s_gyro * s_gyro;
-    U[1][1] = s_gyro * s_gyro;
-    U[2][2] = s_gyro * s_gyro;
+    U[0][0] = 3.47930986e-04;
+    U[1][1] = 3.47930986e-04;
+    U[2][2] = 3.47930986e-04;
     U[3][3] = v_bias;
     U[4][4] = v_bias;
     U[5][5] = v_bias;
@@ -141,24 +139,22 @@ void EKF::predict(Vec3 gyro, double dt) {
     double xgx = this->x[7];
     double xgy = this->x[8];
     double xgz = this->x[9];
+    Vec<10> x_ = this->x;
 
-    this->x[0] = q0 + 0.5 * dt * ( - q1 * wx - q2 * wy - q3 * wz);
-    this->x[1] = q1 + 0.5 * dt * (q0 * wx - q3 * wy + q2 * wz);
-    this->x[2] = q2 + 0.5 * dt * (q3 * wx + q0 * wy - q1 * wz);
-    this->x[3] = q3 + 0.5 * dt * ( - q2 * wx + q1 * wy + q0 * wz);
+    Quaternion q(this->x[0], this->x[1], this->x[2], this->x[3]);
+    Quaternion w(0, wx, wy, wz);
+    q = q + q * w * 0.5 * dt;
+    q = q.normalize();
+    this->x[0] = q.q;
+    this->x[1] = q.i;
+    this->x[2] = q.j;
+    this->x[3] = q.k;
     this->x[4] = gyro[0] - xgx;
     this->x[5] = gyro[1] - xgy;
     this->x[6] = gyro[2] - xgz;
     this->x[7] = xgx;
     this->x[8] = xgy;
     this->x[9] = xgz;
-
-    Quaternion q(this->x[0], this->x[1], this->x[2], this->x[3]);
-    q = q.normalize();
-    this->x[0] = q.q;
-    this->x[1] = q.i;
-    this->x[2] = q.j;
-    this->x[3] = q.k;
 
     this->F[0][0] = 1;
     this->F[0][1] = -0.5 * dt * wx;
@@ -296,7 +292,7 @@ void EKF::predict(Vec3 gyro, double dt) {
     Vec3 rev_g;
     rev_g[2] = -1;
     Vec3 z_acc = Rot_inv * rev_g;
-    double zyaw = q.to_rpy()[0];
+    double zyaw = q.to_rpy()[2];
     this->z[0] = z_acc [0];
     this->z[1] = z_acc [1];
     this->z[2] = z_acc [2];
@@ -375,7 +371,6 @@ void EKF::update() {
 
     Mat<4,4> S = this->H * this->P * this->H.transpose() + this->R;
     this->K = this->P * this->H.transpose() * S.inverse();
-    (this->K * v).print_bare();
     this->x = this->x + this->K * v;
     Quaternion q(this->x[0], this->x[1], this->x[2], this->x[3]);
     q = q.normalize();
