@@ -8,7 +8,7 @@ typedef struct {
   // if this ordering is changed the compiler will later insert ldrd instructions that cause a hard fault
 		void* sp;
         char* name;
-		time_t last_time;
+		os_time_t last_time;
 		uint8_t priority;
 		uint8_t rdy;
         uint64_t sleep_until;
@@ -24,9 +24,11 @@ void os_stack_init(os_pcb * thread, void * thread_handler, void * stack, uint32_
  * This is the function you want to call if you want to create a thread.
  */
 
-os_pcb *register_thread_auto(void (*thread_handler)());
-os_pcb *register_thread_auto(void (*thread_handler)(), uint32_t stack_size, uint8_t priority, char* name);
+#ifdef __cplusplus
+os_pcb *register_thread_auto(volatile void (*thread_handler)());
+os_pcb *register_thread_auto(volatile void (*thread_handler)(), uint32_t stack_size, uint8_t priority, char* name);
 #define OS_THREAD(handler) register_thread_auto(&handler);
+#endif
 
   
 #endif

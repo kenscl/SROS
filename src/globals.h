@@ -1,7 +1,7 @@
 #pragma once
 #include <stdint.h>
 
-typedef uint64_t time_t;
+typedef uint64_t os_time_t;
 
 // os defines
 #define OS_MAX_THREAD_COUNT   8

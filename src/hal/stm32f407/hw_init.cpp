@@ -48,6 +48,7 @@ void interrupt_init() {
     // set pendsv prio to 0xff and systick to 0x00
     SCB->SHP[10] = 0xff;
     SCB->SHP[11] = 0x00;
+    NVIC_SetPriority(DMA1_Stream6_IRQn, 3);
     // enable systick and pendsv
     SysTick->CTRL |= (1 << 0); // enable  
     // enable global interrupts

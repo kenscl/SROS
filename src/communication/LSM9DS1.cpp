@@ -247,8 +247,12 @@ void LSM9DS1_thread() {
         ekf.predict(LSM9DS1_gyro * M_PI / 180, (double) (now() - last_time) / SECONDS);
         last_time = now();
         ekf.update();
-        os_printf("Attitude, ");
-        (ekf.attitude.to_rpy() * 180 / M_PI).print_bare();
+        if (now() % 3) {
+            os_putstr("Attitude, ", 10);
+          //(ekf.attitude.to_rpy() * 180 / M_PI).print_bare();
+          ekf.attitude.print_bare();
+        }
+        os_putf((double)(now() - last_time) / SECONDS);
       }
     }
     if (LSM9DS1_acc_availiable) {

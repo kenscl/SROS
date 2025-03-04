@@ -4,10 +4,13 @@
 #include "../globals.h"
 
 extern uint64_t ticks;
+
+#ifdef __cplusplus
 extern "C" {
     extern os_pcb * volatile current_thread; 
     void schedule();
 }
+#endif
 extern uint8_t sched_on;
 
 void scheduler_init();

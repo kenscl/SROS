@@ -6,7 +6,7 @@
 void os_interrupt_enable();
 void os_interrupt_disable();
 void miscellaneous_init();
-void idle_thread();
+volatile void idle_thread();
 void print_welcome_msg();
 
 #endif

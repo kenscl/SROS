@@ -7,11 +7,11 @@
 
 
 
-os_pcb *register_thread_auto(void (*thread_handler)()) {
+os_pcb *register_thread_auto(volatile void (*thread_handler)()) {
     return register_thread_auto(thread_handler, OS_STD_STACK_SIZE, STD_THREAD_PRIORITY, STD_THREAD_NAME);
 }
 
-os_pcb *register_thread_auto(void (*thread_handler)(), uint32_t stack_size, uint8_t priority, char* name) {
+os_pcb *register_thread_auto(volatile void (*thread_handler)(), uint32_t stack_size, uint8_t priority, char* name) {
     uint32_t *stack = (uint32_t *) os_alloc(stack_size * sizeof(uint32_t));  
     if (stack == nullptr) {
       return 0;

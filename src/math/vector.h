@@ -122,21 +122,27 @@ class Vec {
         }
 
         void print() {
-            os_printf("Vector: \n");
+            os_putstr("Vector: \n", 9);
             for (int i = 0; i < size; ++i) {
               if (r[i] != r[i])
-                os_printf("NaN \n");
-              else
-                os_printf("%f \n", this->r[i]);
+                  os_putstr("NaN \n",5);
+              else {
+                os_putf(this->r[i]);
+                os_putstr("\n",1);
+              }
             }
         }
 
         void print_bare() {
             for (int i = 0; i < size - 1; ++i) {
-                os_printf("%f ,", this->r[i]);
+                if (r[i] != r[i])
+                    os_putstr("NaN \n",5);
+                else {
+                    os_putf(this->r[i]);
+                }
             }
-            os_printf("%f ", this->r[size-1]);
-            os_printf("\n");
+            os_putf(this->r[size-1]);
+            os_putstr("\n",1);
         }
 };
 typedef Vec<4> Vec4;

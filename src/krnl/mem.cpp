@@ -1,4 +1,5 @@
 #include "mem.h"
+#include <cstdint>
 #include <stdio.h>
 
 struct Chunk{
@@ -65,6 +66,7 @@ void *os_alloc(size_t size) {
 }
 
 void os_free(void * pointer) {
+    if (!os_test_mem(pointer)) return;
     int id = ((uint64_t) pointer - (uint64_t)&heap) / 64;
     struct Chunk * cur = &ledger[id];
     int size = cur->size;
@@ -75,3 +77,10 @@ void os_free(void * pointer) {
     }
 }
 
+
+int os_test_mem(void *pointer) {
+    if ( pointer < heap + OS_ALLOC_HEAP_SIZE && pointer >= heap) {
+        return 1;
+    }
+    return 0;
+}

@@ -38,7 +38,7 @@ includes the header (the implementation may also be done in the header).
 To define the thread simply use a method that never returns, for example:
 
 ``` c
-void template_thread () {
+volatile void template_thread () {
   // variable initialisation
   while (1) {
 	  // your code
