@@ -28,7 +28,7 @@ int main (void) {
 
     // User Threads are defined here
     //register_thread_auto(&test_thread, 200, 10, "test_thread");
-    //register_thread_auto(&LSM9DS1_thread, 1000, 20, "LSM9DS1_thread");
+    register_thread_auto(&LSM9DS1_thread, 1000, 20, "LSM9DS1_thread");
     // End of user thread definitions
 
     print_thread_info();

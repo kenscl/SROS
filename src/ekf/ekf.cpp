@@ -17,13 +17,13 @@ void EKF::init(Vec3 *gyro, Vec3 *acc, Vec3 *mag) {
         mean_mag = mean_mag + mag[i] / num_init;
     }
 
-    double roll_init = atan2(mean_acc[1], mean_acc[2]);
-    double pitch_init = atan2(mean_acc[0], sqrt(mean_acc[1]*mean_acc[1]+mean_acc[2]*mean_acc[2]));
+    float roll_init = atan2(mean_acc[1], mean_acc[2]);
+    float pitch_init = atan2(mean_acc[0], sqrt(mean_acc[1]*mean_acc[1]+mean_acc[2]*mean_acc[2]));
 
-    double cp = cos(pitch_init);
-    double sp = sin(pitch_init);
-    double cr = cos(roll_init);
-    double sr = sin(roll_init);
+    float cp = cos(pitch_init);
+    float sp = sin(pitch_init);
+    float cr = cos(roll_init);
+    float sr = sin(roll_init);
 
     this->Rot[0][0] = cp;
     this->Rot[0][1] = sp * sr;
@@ -38,7 +38,7 @@ void EKF::init(Vec3 *gyro, Vec3 *acc, Vec3 *mag) {
     this->Rot[2][2] = cp * cr;
 
     Vec3 mr = this->Rot * mean_mag;
-    double yaw_init = atan2(-mr[1], mr[0]);
+    float yaw_init = atan2(-mr[1], mr[0]);
     Quaternion q_init(roll_init, pitch_init, yaw_init);
     
     this->x[0] = q_init.q;
@@ -51,24 +51,24 @@ void EKF::init(Vec3 *gyro, Vec3 *acc, Vec3 *mag) {
 
     this->P = Mat<10,10>().identity() * 10;
 
-    double v_bias = 1.0e-11;
+    float v_bias = 1.0e-11;
 
     Vec3 gyro_sum;
     Vec3 acc_sum;
-    double mag_sum;
+    float mag_sum;
 
     for (int i = 0; i < num_init; ++i) {
         gyro_sum = gyro_sum + (gyro[i] - mean_gyro).mult(gyro[i] - mean_gyro);
         acc_sum = acc_sum + (acc[i] + mean_acc).mult(acc[i] + mean_acc);
 
         Vec3 mw = this->Rot * mag[i]; 
-        double mag_yaw = atan2(-mw[1], mw[0]);
+        float mag_yaw = atan2(-mw[1], mw[0]);
         mag_sum = mag_sum + (mag_yaw - yaw_init) * (mag_yaw - yaw_init);
     }
 
-    double s_gyro = (sqrt(gyro_sum[0]/(num_init-1)) + sqrt(gyro_sum[1]/(num_init-1)) + sqrt(gyro_sum[2]/(num_init-1))) / 3;
-    double s_acc = (sqrt(acc_sum[0]/(num_init-1)) + sqrt(acc_sum[1]/(num_init-1)) + sqrt(acc_sum[2]/(num_init-1))) / 3;
-    double s_yaw = sqrt(mag_sum/(num_init-1));
+    float s_gyro = (sqrt(gyro_sum[0]/(num_init-1)) + sqrt(gyro_sum[1]/(num_init-1)) + sqrt(gyro_sum[2]/(num_init-1))) / 3;
+    float s_acc = (sqrt(acc_sum[0]/(num_init-1)) + sqrt(acc_sum[1]/(num_init-1)) + sqrt(acc_sum[2]/(num_init-1))) / 3;
+    float s_yaw = sqrt(mag_sum/(num_init-1));
 
 
     this->R[0][0] = 2.12425429e-06;
@@ -86,10 +86,10 @@ void EKF::init(Vec3 *gyro, Vec3 *acc, Vec3 *mag) {
     Fu[9][5] = 1;
 
 
-    double q0 = this->x[0];
-    double q1 = this->x[1]; 
-    double q2 = this->x[2];
-    double q3 = this->x[3];
+    float q0 = this->x[0];
+    float q1 = this->x[1]; 
+    float q2 = this->x[2];
+    float q3 = this->x[3];
 
     this->Rot[0][0] = q0 * q0 + q1 * q1 - q2 * q2 - q3 * q3;
     this->Rot[0][1] = 2 * (q1 * q2 - q0 * q3);
@@ -124,21 +124,21 @@ void EKF::update_mag(Vec3 mag) {
     Vec3 m = this->Rot * mag;
     m[2] = 0;
     m =  this->Rot_inv * m;
-    double yaw = atan2(- m[1], m[0]);
+    float yaw = atan2(- m[1], m[0]);
     this->y[3] = yaw;
 }
 
-void EKF::predict(Vec3 gyro, double dt) {
-    double q0 = this->x[0];
-    double q1 = this->x[1]; 
-    double q2 = this->x[2];
-    double q3 = this->x[3];
-    double wx = this->x[4];
-    double wy = this->x[5];
-    double wz = this->x[6];
-    double xgx = this->x[7];
-    double xgy = this->x[8];
-    double xgz = this->x[9];
+void EKF::predict(Vec3 gyro, float dt) {
+    float q0 = this->x[0];
+    float q1 = this->x[1]; 
+    float q2 = this->x[2];
+    float q3 = this->x[3];
+    float wx = this->x[4];
+    float wy = this->x[5];
+    float wz = this->x[6];
+    float xgx = this->x[7];
+    float xgy = this->x[8];
+    float xgz = this->x[9];
     Vec<10> x_ = this->x;
 
     Quaternion q(this->x[0], this->x[1], this->x[2], this->x[3]);
@@ -292,26 +292,26 @@ void EKF::predict(Vec3 gyro, double dt) {
     Vec3 rev_g;
     rev_g[2] = -1;
     Vec3 z_acc = Rot_inv * rev_g;
-    double zyaw = q.to_rpy()[2];
+    float zyaw = q.to_rpy()[2];
     this->z[0] = z_acc [0];
     this->z[1] = z_acc [1];
     this->z[2] = z_acc [2];
     this->z[3] = zyaw;
 
-    double dhm_dqw =
+    float dhm_dqw =
         (2 * q3 * (1 - 2 * (q2 * q2 + q3 * q3))) /
         (4 * (q1 * q2 + q0 * q3) * (q1 * q2 + q0 * q3) +
          (1 - 2 * (q2 * q2 + q3 * q3)) * (1 - 2 * (q2 * q2 + q3 * q3)));
-    double dhm_dqi =
+    float dhm_dqi =
         (2 * q2 * (1 - 2 * (q2 * q2 + q3 * q3))) /
         (4 * (q1 * q2 + q0 * q3) * (q1 * q2 + q0 * q3) +
          (1 - 2 * (q2 * q2 + q3 * q3)) * (1 - 2 * (q2 * q2 + q3 * q3)));
-    double dhm_dqj =
+    float dhm_dqj =
         (2 * (q1 + 2 * q1 * q2 * q2 + 4 * q0 * q2 * q3 - 2 * q1 * q3 * q3)) /
         (1 + 4 * q2 * q2 * q2 * q2 + 8 * q0 * q1 * q2 * q3 +
          4 * (-1 + q0 * q0) * q3 * q3 + 4 * q3 * q3 * q3 * q3 +
          4 * q2 * q2 * (-1 + q1 * q1 + 2 * q3 * q3));
-    double dhm_dqk = (8 * q1 * q2 * q3 + q0 * (2 - 4 * q2 * q2 + 4 * q3 * q3)) /
+    float dhm_dqk = (8 * q1 * q2 * q3 + q0 * (2 - 4 * q2 * q2 + 4 * q3 * q3)) /
                      (1 + 4 * q2 * q2 * q2 * q2 + 8 * q0 * q1 * q2 * q3 +
                       4 * (-1 + q0 * q0) * q3 * q3 + 4 * q3 * q3 * q3 * q3 +
                       4 * q2 * q2 * (-1 + q1 * q1 + 2 * q3 * q3));

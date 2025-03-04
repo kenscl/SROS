@@ -100,13 +100,13 @@ uint8_t * LSM9DS1_read_mag_multi(uint8_t reg, uint16_t size) {
 
 // data values
 Vec3 LSM9DS1_gyro;
-double LSM9DS1_gyro_availiable = 0;
+float LSM9DS1_gyro_availiable = 0;
 
 Vec3 LSM9DS1_acc;
-double LSM9DS1_acc_availiable = 0;
+float LSM9DS1_acc_availiable = 0;
 
 Vec3 LSM9DS1_mag;
-double LSM9DS1_mag_availiable = 0;
+float LSM9DS1_mag_availiable = 0;
 
 Vec3 acc_bias;
 Vec3 gyro_bias;
@@ -161,9 +161,9 @@ void LSM9DS1_calibrate_sensors() {
     Vec3 temp_acc;
     Vec3 temp_mag;
 
-    double mag_x_max = 0.83, mag_x_min = -0.101;
-    double mag_y_max = 0.86, mag_y_min = -0.079;
-    double mag_z_max = -0.707, mag_z_min = -1.58;
+    float mag_x_max = 0.83, mag_x_min = -0.101;
+    float mag_y_max = 0.86, mag_y_min = -0.079;
+    float mag_z_max = -0.707, mag_z_min = -1.58;
     mag_bias[0] = (mag_x_max + mag_x_min) / 2;
     mag_bias[1] = (mag_x_max + mag_x_min) / 2;
     mag_bias[2] = (mag_z_max + mag_z_min) / 2;
@@ -184,9 +184,9 @@ void LSM9DS1_read_gyro() {
     int16_t x = (data[1] << 8) | data[0];
     int16_t y = (data[3] << 8) | data[2];
     int16_t z = (data[5] << 8) | data[4];
-    LSM9DS1_gyro[0] = (double) (x * GYRO_SENSITIVITY) / 1000 ;
-    LSM9DS1_gyro[1] = (double) (y * GYRO_SENSITIVITY) / 1000 ;
-    LSM9DS1_gyro[2] = (double) (z * GYRO_SENSITIVITY) / 1000 ;
+    LSM9DS1_gyro[0] = (float) (x * GYRO_SENSITIVITY) / 1000 ;
+    LSM9DS1_gyro[1] = (float) (y * GYRO_SENSITIVITY) / 1000 ;
+    LSM9DS1_gyro[2] = (float) (z * GYRO_SENSITIVITY) / 1000 ;
     LSM9DS1_gyro = LSM9DS1_gyro - gyro_bias;
     os_free(data);
 }
@@ -196,9 +196,9 @@ void LSM9DS1_read_accel() {
     int16_t x = (data[1] << 8) | data[0];
     int16_t y = (data[3] << 8) | data[2];
     int16_t z = (data[5] << 8) | data[4];
-    LSM9DS1_acc[0] = (double) (x * ACC_SENSITIVITY) / 1000 ;
-    LSM9DS1_acc[1] = (double) (y * ACC_SENSITIVITY) / 1000 ;
-    LSM9DS1_acc[2] = (double) (z * ACC_SENSITIVITY) / 1000 ;
+    LSM9DS1_acc[0] = (float) (x * ACC_SENSITIVITY) / 1000 ;
+    LSM9DS1_acc[1] = (float) (y * ACC_SENSITIVITY) / 1000 ;
+    LSM9DS1_acc[2] = (float) (z * ACC_SENSITIVITY) / 1000 ;
     LSM9DS1_acc = (LSM9DS1_acc - acc_bias) * - 1;
     os_free(data);
 }
@@ -208,9 +208,9 @@ void LSM9DS1_read_mag() {
     int16_t x = (data[1] << 8) | data[0];
     int16_t y = (data[3] << 8) | data[2];
     int16_t z = (data[5] << 8) | data[4];
-    LSM9DS1_mag[0] = (double) (x * MAG_SENSITIVITY) / 1000 ;
-    LSM9DS1_mag[1] = (double) (y * MAG_SENSITIVITY) / 1000 ;
-    LSM9DS1_mag[2] = (double) (z * MAG_SENSITIVITY) / 1000 ;
+    LSM9DS1_mag[0] = (float) (x * MAG_SENSITIVITY) / 1000 ;
+    LSM9DS1_mag[1] = (float) (y * MAG_SENSITIVITY) / 1000 ;
+    LSM9DS1_mag[2] = (float) (z * MAG_SENSITIVITY) / 1000 ;
     LSM9DS1_mag = LSM9DS1_mag - mag_bias;
     os_free(data);
 }
@@ -220,7 +220,7 @@ EKF ekf;
 Vec3 gyro[100];
 Vec3 mag[100];
 Vec3 acc[100];
-void LSM9DS1_thread() {
+volatile void LSM9DS1_thread() {
   uint8_t tst = now();
   LSM9DS1_reset();
   LSM9DS1_configure_gyro();
@@ -244,7 +244,7 @@ void LSM9DS1_thread() {
         gyro[gyro_cnt] = LSM9DS1_gyro * M_PI / 180;
       if (has_init) {
         uint8_t n = now();
-        ekf.predict(LSM9DS1_gyro * M_PI / 180, (double) (now() - last_time) / SECONDS);
+        ekf.predict(LSM9DS1_gyro * M_PI / 180, (float) (now() - last_time) / SECONDS);
         last_time = now();
         ekf.update();
         if (now() % 3) {
@@ -252,7 +252,7 @@ void LSM9DS1_thread() {
           //(ekf.attitude.to_rpy() * 180 / M_PI).print_bare();
           ekf.attitude.print_bare();
         }
-        os_putf((double)(now() - last_time) / SECONDS);
+        os_putf((float)(now() - last_time) / SECONDS);
       }
     }
     if (LSM9DS1_acc_availiable) {

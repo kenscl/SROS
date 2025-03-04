@@ -87,11 +87,11 @@ void LSM9DS1_calibrate_sensors();
 
 // data values
 extern Vec3 LSM9DS1_gyro;
-extern double LSM9DS1_gyro_availiable;
+extern float LSM9DS1_gyro_availiable;
 extern Vec3 LSM9DS1_acc;
-extern double LSM9DS1_acc_availiable;
+extern float LSM9DS1_acc_availiable;
 extern Vec3 LSM9DS1_mag;
-extern double LSM9DS1_mag_availiable;
+extern float LSM9DS1_mag_availiable;
 
 // data read
 void LSM9DS1_read_status();
@@ -100,6 +100,6 @@ void LSM9DS1_read_accel();
 void LSM9DS1_read_mag();
 
 // process
-void LSM9DS1_thread();
+volatile void LSM9DS1_thread();
 
 #endif 

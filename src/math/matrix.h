@@ -9,7 +9,7 @@ class Quaternion;
 template <size_t m, size_t n>
 class Mat {
     protected:
-    double r[m][n]{};
+    float r[m][n]{};
 
     public:
         Mat() {}
@@ -21,7 +21,7 @@ class Mat {
             }
         }
         ~Mat() {}
-        const double *operator[](size_t index) const {
+        const float *operator[](size_t index) const {
             if (m < index) {
                 OS_WARN("Out of Bounds in Mat acces, returning 0 element!");
                 return r[0];
@@ -29,7 +29,7 @@ class Mat {
             return r[index];
         }
 
-        double *operator[](size_t index) {
+        float *operator[](size_t index) {
             if (m < index) {
                 OS_WARN("Out of Bounds in Mat acces, returning 0 element!");
                 return r[0];
@@ -81,7 +81,7 @@ class Mat {
             return result;
         }
 
-        Mat operator*(double scalar) const {
+        Mat operator*(float scalar) const {
             Mat result;
             for (size_t i = 0; i < m; ++i) {
                 for (size_t j = 0; j < n; ++j) {
@@ -91,7 +91,7 @@ class Mat {
             return result;
         }
 
-        Mat operator/(double scalar) const {
+        Mat operator/(float scalar) const {
             if (scalar == 0) {
                 OS_WARN("M err div");
                 return *this;
@@ -119,7 +119,7 @@ class Mat {
         Vec<m> operator*(Vec<n> &v) const {
             Vec<m> result;
             for (size_t i = 0; i < m; ++i) {
-                double sum = 0.0;
+                float sum = 0.0;
                 for (size_t j = 0; j < n; ++j) {
                     sum += r[i][j] * v[j];
                 }
@@ -129,17 +129,17 @@ class Mat {
         }
 
 
-        double det() {
+        float det() {
             if (m != n) {
                 OS_WARN("Error: Determinant of non-square matrix!");
                 return 0;
             }
             if (n == 1) return this->r[0][0];
             Mat<m, n> temp = *this; 
-            double det = 1;
+            float det = 1;
 
             for (int i = 0; i < n; ++i) {
-                double max_elem = temp[i][i];
+                float max_elem = temp[i][i];
                 int max_row = i;
                 for (int k = i + 1; k < n; ++k) {
                     if (fabs(temp[k][i]) > fabs(max_elem)) {
@@ -150,7 +150,7 @@ class Mat {
 
                 if (max_row != i) {
                     for (int j = 0; j < n; ++j) {
-                        double temp_val = temp[i][j];
+                        float temp_val = temp[i][j];
                         temp[i][j] = temp[max_row][j];
                         temp[max_row][j] = temp_val;
                     }
@@ -161,7 +161,7 @@ class Mat {
                 }
 
                 for (int k = i + 1; k < n; ++k) {
-                    double factor = temp[k][i] / temp[i][i];
+                    float factor = temp[k][i] / temp[i][i];
                     for (int j = i; j < n; ++j) {
                         temp[k][j] -= factor * temp[i][j];
                     }
@@ -174,10 +174,10 @@ class Mat {
         }
 
         // cofactor for the adjugate since submatrix causes issues.
-        double coaf(size_t i, size_t j) {
+        float coaf(size_t i, size_t j) {
             Mat<m - 1, n - 1> minor;
             int minor_row = 0, minor_col = 0;
-            double sign = ((i + j) % 2 == 0) ? 1 : -1;
+            float sign = ((i + j) % 2 == 0) ? 1 : -1;
 
             for (int row = 0; row < m; ++row) {
                 if (row == i) continue;
@@ -205,7 +205,7 @@ class Mat {
 
                 for (int i = 0; i < n; ++i) {
                         for (int j = 0; j < n; ++j) {
-                            double cofactor = this->coaf(i, j);
+                            float cofactor = this->coaf(i, j);
                             adj[j][i] = cofactor;  
                         }
                     }
@@ -223,7 +223,7 @@ class Mat {
         }
 
         Mat inverse() {
-            double det = this->det();
+            float det = this->det();
             if (n != m || det == 0) {
                 OS_WARN("M err inverse!");
                 return *this;
@@ -240,7 +240,7 @@ class Mat {
           return ret;
         }
 
-        Mat diag(double d) {
+        Mat diag(float d) {
             if (n != m)
                 OS_WARN("M diag!");
             Mat ret(*this);

@@ -1,5 +1,5 @@
 * Stuff still todo
 
-1. I2C and USART should use DMA instead of being blocking
+1. I2C should use interrupts
 2. Scheduler should use the Timer instead of schedule_counter
 3. Calibration should be non static

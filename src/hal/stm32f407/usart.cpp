@@ -135,9 +135,9 @@ void os_putint(int num) {
     os_putstr(ptr, len);
 }
 
-void os_putf(double num) {
+void os_putf(float num) {
           int i_part = num;
-          double f_part = (num - i_part);
+          float f_part = (num - i_part);
           if (f_part < 0) {
               f_part *= -1;
           }

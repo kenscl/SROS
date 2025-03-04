@@ -9,11 +9,11 @@
 template <size_t size>
 class Vec {
     protected:
-    double r[size]{};
+    float r[size]{};
 
     public:
         Vec () {}
-        Vec(double *arr) {
+        Vec(float *arr) {
             for (size_t i = 0; i < size; i++) {
                 r[i] = arr[i];
             }
@@ -27,7 +27,7 @@ class Vec {
 
         ~Vec() {}
 
-        Vec operator*(double d) const {
+        Vec operator*(float d) const {
             Vec result;
             for (size_t i = 0; i < size; i++) {
                 result.r[i] = r[i] * d;
@@ -35,8 +35,8 @@ class Vec {
             return result;
         }
 
-        double operator*(Vec other) const {
-            double dot_product = 0.0;
+        float operator*(Vec other) const {
+            float dot_product = 0.0;
             for (size_t i = 0; i < size; i++) {
                 dot_product += r[i] * other.r[i];
             }
@@ -51,7 +51,7 @@ class Vec {
             return res;
         }
 
-        Vec operator/(double d) const {
+        Vec operator/(float d) const {
             if (d == 0) {
                 OS_WARN("Vector div by 0!");
                 return *this;
@@ -95,18 +95,18 @@ class Vec {
             return 1;
         }
 
-        const double& operator[](size_t index) const {
+        const float& operator[](size_t index) const {
             if (index >= size) OS_WARN("V err Index out of bounds");
             return r[index];
         }
 
-        double& operator[](size_t index) {
+        float& operator[](size_t index) {
             if (index >= size) OS_WARN("V err Index out of bounds");
             return r[index];
         }
 
-        double norm() const {
-            double sum = 0;
+        float norm() const {
+            float sum = 0;
             for (int i = 0; i < size; ++i) {
                 sum += this->r[i] * this->r[i];
             }
@@ -114,7 +114,7 @@ class Vec {
         }
 
         Vec normalize() {
-                double norm = this->norm();
+                float norm = this->norm();
                 if (norm == 0)
                 return Vec(size);
                 Vec ret(*this / norm);

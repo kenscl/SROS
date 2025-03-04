@@ -19,7 +19,7 @@ void enable_usart();
 void os_putstr(char *s);
 void os_putstr(char *s, size_t size);
 void os_putint(int i);
-void os_putf(double num);
+void os_putf(float num);
 #endif
 
 // used for actual printing

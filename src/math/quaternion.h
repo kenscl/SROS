@@ -7,18 +7,18 @@
 
 class Quaternion {
     public:
-        double q, i, j, k;
+        float q, i, j, k;
     public:
         Quaternion() : q(1), i(0), j(0), k(0) {}
-        Quaternion(double w, double i, double j, double k) : q(w), i(i), j(j), k(k) {}
+        Quaternion(float w, float i, float j, float k) : q(w), i(i), j(j), k(k) {}
 
-        Quaternion(double roll, double pitch, double yaw) {
-          double cr = cos(roll * 0.5);
-          double sr = sin(roll * 0.5);
-          double cp = cos(pitch * 0.5);
-          double sp = sin(pitch * 0.5);
-          double cy = cos(yaw * 0.5);
-          double sy = sin(yaw * 0.5);
+        Quaternion(float roll, float pitch, float yaw) {
+          float cr = cos(roll * 0.5);
+          float sr = sin(roll * 0.5);
+          float cp = cos(pitch * 0.5);
+          float sp = sin(pitch * 0.5);
+          float cy = cos(yaw * 0.5);
+          float sy = sin(yaw * 0.5);
 
           this->q = cr * cp * cy + sr * sp * sy;
           this->i = sr * cp * cy - cr * sp * sy;
@@ -42,29 +42,29 @@ class Quaternion {
         Quaternion(const Mat3 & mat) {
             Quaternion ret = Quaternion(1, 0, 0, 0);
 
-            double trace = mat[0][0] + mat[1][1] + mat[2][2];
+            float trace = mat[0][0] + mat[1][1] + mat[2][2];
 
             if (trace > 0) {
-                double s = 0.5 / sqrt(trace + 1);
+                float s = 0.5 / sqrt(trace + 1);
                 this->q = 0.25 / s;
                 this->i = (mat[2][1] - mat[1][2]) * s;
                 this->j = (mat[0][2] - mat[2][0]) * s;
                 this->k = (mat[1][0] - mat[0][1]) * s;
             } else {
                 if (mat[0][0] > mat[1][1] && mat[0][0] > mat[2][2]) {
-                double s = 2 * sqrt(1 + mat[0][0] - mat[1][1] - mat[2][2]);
+                float s = 2 * sqrt(1 + mat[0][0] - mat[1][1] - mat[2][2]);
                 this->q = (mat[2][1] - mat[1][2]) / s;
                 this->i = 0.25 * s;
                 this->j = (mat[0][1] + mat[1][0]) / s;
                 this->k = (mat[0][2] + mat[2][0]) / s;
             } else if (mat[1][1] > mat[2][2]) {
-                double s = 2 * sqrt(1 + mat[1][1] - mat[0][0] - mat[2][2]);
+                float s = 2 * sqrt(1 + mat[1][1] - mat[0][0] - mat[2][2]);
                 this->q = (mat[0][2] - mat[2][0]) / s;
                 this->i = (mat[0][1] + mat[1][0]) / s;
                 this->j = 0.25 * s;
                 this->k = (mat[1][2] + mat[2][1]) / s;
             } else {
-                double s = 2 * sqrt(1 + mat[2][2] - mat[0][0] - mat[1][1]);
+                float s = 2 * sqrt(1 + mat[2][2] - mat[0][0] - mat[1][1]);
                 this->q = (mat[1][0] - mat[0][1]) / s;
                 this->i = (mat[0][2] + mat[2][0]) / s;
                 this->j = (mat[1][2] + mat[2][1]) / s;
@@ -91,7 +91,7 @@ class Quaternion {
             );
         }
 
-        Quaternion operator*(const double& nbr) const{
+        Quaternion operator*(const float& nbr) const{
             return Quaternion(q * nbr, i * nbr, j * nbr, k * nbr);
         }
 
@@ -150,12 +150,12 @@ class Quaternion {
             return result;
         }
 
-        double norm() const {
+        float norm() const {
             return this->to_vector().norm();
         }
 
         Quaternion normalize() const {
-            double norm = this->norm();
+            float norm = this->norm();
             if (norm == 0) norm = 1;
             return Quaternion(q / norm, i / norm, j / norm, k / norm);
         }
