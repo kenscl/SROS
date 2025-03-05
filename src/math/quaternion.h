@@ -174,11 +174,7 @@ class Quaternion {
         }
 
         void print_bare() const {
-            os_putf(q);
-            os_putf(i);
-            os_putf(j);
-            os_putf(k);
-            os_putstr("\n", 1);
+            os_printf("%f, %f, %f, %f \n", q, i, j, k);
         }
 };
 

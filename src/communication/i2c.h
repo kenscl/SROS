@@ -1,6 +1,7 @@
 #ifndef __i2c_imu
 #define __i2c_imu
 #include <stdint.h>
+#include "../hal/hw_specific.h"
 
 // PB11 is SDA
 // PB10 is SCL

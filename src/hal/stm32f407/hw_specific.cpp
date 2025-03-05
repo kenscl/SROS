@@ -3,6 +3,14 @@
 #include "../../communication/usart.h"
 #include <stm32f4xx.h>
 
+void os_interrupt_enable() {
+    __asm volatile ("CPSIE         I \n");
+}
+
+void os_interrupt_disable() {
+    __asm volatile ("CPSID         I \n");
+}
+
 extern "C" {
   __attribute__((naked)) void pendsv_handler(void) {
 
@@ -87,6 +95,17 @@ void dma_init() {
     NVIC_EnableIRQ(DMA1_Stream6_IRQn);
 }
 
+void TIM2_init() {
+    RCC->APB1ENR |=  (1 << 0); // turn on clock form timer
+    TIM2->PSC = (168000000/ 1000000) - 1;
+    TIM2->ARR = 0xFFFFFFFF; // max
+    TIM2->CR1 |= (1 << 0); // enable
+}
+
+uint32_t now_high_accuracy() {
+    return TIM2->CNT;
+}
+
 void miscellaneous_init() {
     FPU->FPCCR |= (1 << 30) | (1 << 31);  // Set ASPEN and LSPEN
     SCB->CPACR |= (0xF << 20); 
@@ -106,7 +125,9 @@ void miscellaneous_init() {
     RCC->AHB1ENR |= (1 << 21); // enable DMA1 clock
     NVIC_EnableIRQ(DMA1_Stream6_IRQn);
     register_thread_auto(&one_second_thread, 128, STD_THREAD_PRIORITY, "1_second_thread");
+    TIM2_init();
 }
+
 
 void print_welcome_msg() {
     os_putstr("\n\n|-----------------------------------------| \n");

@@ -5,6 +5,7 @@
 #include "../krnl/thread.h"
 #include "../krnl/scheduler.h"
 #include "../ekf/ekf.h"
+#include <stm32f4xx.h>
 
 void LSM9DS1_write_acc_and_gyro_register(uint8_t reg, uint8_t data) {
     configure_i2c(); 
@@ -232,7 +233,8 @@ volatile void LSM9DS1_thread() {
   int acc_cnt = 0;
   int mag_cnt = 0;
   uint8_t has_init = 0;
-  uint64_t last_time = now();
+  volatile uint32_t last_time = now();
+  volatile uint32_t end_time = now();
   while (1) {
     LSM9DS1_read_status();
     if (LSM9DS1_gyro_availiable) {
@@ -243,16 +245,15 @@ volatile void LSM9DS1_thread() {
       if (gyro_cnt < 100)
         gyro[gyro_cnt] = LSM9DS1_gyro * M_PI / 180;
       if (has_init) {
-        uint8_t n = now();
         ekf.predict(LSM9DS1_gyro * M_PI / 180, (float) (now() - last_time) / SECONDS);
-        last_time = now();
         ekf.update();
-        if (now() % 3) {
-            os_putstr("Attitude, ", 10);
+        end_time = now();
+
+        os_printf("Attitude, ");
           //(ekf.attitude.to_rpy() * 180 / M_PI).print_bare();
-          ekf.attitude.print_bare();
-        }
-        os_putf((float)(now() - last_time) / SECONDS);
+        ekf.attitude.print_bare();
+        //os_printf("%d \n", (end_time - last_time));
+        last_time = now();
       }
     }
     if (LSM9DS1_acc_availiable) {

@@ -20,6 +20,7 @@ void os_putstr(char *s);
 void os_putstr(char *s, size_t size);
 void os_putint(int i);
 void os_putf(float num);
+void os_printf(char * format, ...);
 #endif
 
 // used for actual printing

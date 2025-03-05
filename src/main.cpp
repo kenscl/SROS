@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <stdint.h>
 #include "globals.h"
 #include "hw_init.h"
@@ -5,11 +6,8 @@
 #include "krnl/thread.h"
 #include "krnl/mem.h"
 #include "communication/usart.h"
-#include "communication/usart.h"
 #include "communication/LSM9DS1.h"
 #include "hal/hw_specific.h"
-#include "ekf/ekf.h"
-
 
 
 int main (void) {
@@ -28,13 +26,16 @@ int main (void) {
 
     // User Threads are defined here
     //register_thread_auto(&test_thread, 200, 10, "test_thread");
-    register_thread_auto(&LSM9DS1_thread, 1000, 20, "LSM9DS1_thread");
+    register_thread_auto(&LSM9DS1_thread, 3000, STD_THREAD_PRIORITY, "LSM9DS1_thread");
     // End of user thread definitions
 
     print_thread_info();
     // start system
     scheduler_enable();
 
+    idle_thread();
+    LSM9DS1_thread();
+    msg_thread();
     while(1) {
         //OS_WARN("Scheduler didn't start!");
     }

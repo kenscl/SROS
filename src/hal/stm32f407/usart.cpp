@@ -70,20 +70,8 @@ void USART_put_dma(char *data, size_t size) {
 #define MSG_BUFFER_SIZE 128
 
 void os_putchar(char c) {
-//  static char msg_buffer[MSG_BUFFER_SIZE * 4]; //  static uint64_t last_time = 0;
-//  static uint16_t msg_pointe = 0;
-//  static uint16_t current_buffer = 0;
-//  if (msg_pointer < MSG_BUFFER_SIZE && last_time + 10 * MILLISECONDS >= now()) {
-//      msg_buffer[msg_pointer] = c;
-//      msg_pointer++;
-//  } else {
-//      USART_put_dma(msg_buffer, msg_pointer);
-//      msg_pointer = 0;
-//      last_time = now();
-//      msg_buffer[msg_pointer] = c;
-//      msg_pointer++;
-//      current_buffer
-//  }
+    USART2->DR = c;
+    while (!(USART2->SR & USART_SR_TC));
 }
 
 void os_putstr(char *s) {
@@ -110,8 +98,9 @@ int get_int_size (int i) {
     return 0;
 }
 
+char  result[16];
 void os_putint(int num) {
-    char * result = (char*) os_alloc(sizeof(char) * 16);
+    //char * result = (char*) os_alloc(sizeof(char) * 16);
     if (num == 0) {
         os_putstr("0", 1);
         return;
@@ -162,19 +151,74 @@ void os_putf(float num) {
           else os_putint(0);
 }
 
+void os_printf(char *format, ...) {
+  GPIOD->ODR |= (1 << 12);
+    __disable_irq();
+    va_list args;
+    va_start(args, format);
+
+    char c;
+    const char *str;
+    double num_f;
+    int i_part;
+    double f_part;
+
+    uint16_t n_of_0 = 0;
+    for (int i = 0; format[i] != '\0'; i++) {
+      if (format[i] == '%') {
+        i++;
+
+        switch (format[i]) {
+        case 'd':
+          int num_i;
+          num_i = va_arg(args, int);
+          os_putint(num_i);
+          break;
+
+        case 'f':
+          num_f = va_arg(args, double);
+          os_putf(num_f);
+          break;
+
+        case 's':
+          str = va_arg(args, const char *);
+          break;
+
+        case 'c':
+          c = (char)va_arg(args, int);
+          os_putchar(c);
+          break;
+
+        default:
+          os_putchar('%');
+          os_putchar(format[i]);
+          break;
+        }
+      } else {
+        os_putchar(format[i]);
+      }
+    }
+    os_putchar('\0');
+    va_end(args);
+    GPIOD->ODR &= ~(1 << 12);
+    __enable_irq();   
+}
 msg_object l = {.next = (msg_object*) nullptr, .msg = (char*) nullptr, .size = 0};
 msg_object * last = &l;
 msg_object * head = &l;
 int msg_put(char *msg, size_t size) {
-    msg_object * new_msg = (msg_object*) os_alloc(sizeof(msg_object));
-    if (new_msg == (msg_object*) nullptr) {
-        return 0;
+    for (int i = 0;i < size; ++i) {
+        os_putchar(msg[i]);
     }
-    head->next = new_msg;
-    new_msg->next = (msg_object*) nullptr;
-    new_msg->msg = msg;
-    new_msg->size = size;
-    head = new_msg;
+    //msg_object * new_msg = (msg_object*) os_alloc(sizeof(msg_object));
+    //if (new_msg == (msg_object*) nullptr) {
+    //    return 0;
+    //}
+    //head->next = new_msg;
+    //new_msg->next = (msg_object*) nullptr;
+    //new_msg->msg = msg;
+    //new_msg->size = size;
+    //head = new_msg;
     return 1;
 }
 
@@ -202,9 +246,9 @@ volatile void msg_thread() {
       if (dma_free()) {
         int ret = msg_send_next();
         if (ret == 0)
-          yield();
+            sleep(1 * MILLISECONDS);
       } else {
-        yield();
+            sleep(1 * MILLISECONDS);
       }
     }
 }

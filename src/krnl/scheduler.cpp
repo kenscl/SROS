@@ -57,7 +57,7 @@ extern "C" {
             return;
         } 
 
-        current_thread->last_time = schedule_counter;
+        current_thread->last_time = now_high_accuracy();
   
         for (uint16_t i = 0; i < OS_MAX_THREAD_COUNT; ++i){
             uint8_t exists = thread_list[i]->sp != 0;
@@ -81,6 +81,7 @@ extern "C" {
 uint64_t now() {
   return ticks;
 }
+
 
 void print_thread_info() {
     os_putstr("Thread overview: \n");

@@ -7,6 +7,7 @@ struct Chunk{
     uint8_t free;
 } Chunk;
 
+int mem_full = 0;
 uint8_t heap[OS_ALLOC_HEAP_SIZE] __attribute__((aligned(8)));
 #define LEDGER_SIZE    (OS_ALLOC_HEAP_SIZE + 63) / 64 + 1
 struct Chunk ledger[LEDGER_SIZE];
@@ -46,6 +47,7 @@ void *os_alloc(size_t size) {
     }
 
     if (best_fit_size == 65535) {
+        mem_full = 1;
         return nullptr;// error return
     }
 
