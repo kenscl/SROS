@@ -241,14 +241,3 @@ int dma_free() {
     return 0;
 }
 
-volatile void msg_thread() {
-    while (1) {
-      if (dma_free()) {
-        int ret = msg_send_next();
-        if (ret == 0)
-            sleep(1 * MILLISECONDS);
-      } else {
-            sleep(1 * MILLISECONDS);
-      }
-    }
-}

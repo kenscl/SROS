@@ -59,51 +59,29 @@ void configure_i2c() {
 }
 
 void start_i2c_communication() {
-    scheduler_disable();
-    os_interrupt_disable();
-    //if (I2C1->SR2 & (1 << 1)) { // Bus is busy, need to reset the i2c device
-    //    i2c_recover(); // this causes more issues that it solves
-    //    configure_i2c();
-    //}
     I2C1->CR1 |= (1 << 8); // generate start condition
     while (!(I2C1->SR1 & (1<<0))) {
     } // wait for start condition generated
-    os_interrupt_enable();
-    scheduler_enable();
 }
 
 void i2c_send_adress(uint8_t adress) {
-    scheduler_disable();
-    os_interrupt_disable();
     I2C1->DR = adress;
     while (!(I2C1->SR1 & (1<<1))); // wait for adress bit to set 
     uint8_t temp = I2C1->SR1 | I2C1->SR2;  // read SR1 and SR2 to clear the ADDR bit
-    os_interrupt_enable();
-    scheduler_enable();
 }
 
 void i2c_stop() {
-    scheduler_disable();
-    os_interrupt_disable();
     I2C1->CR1 |= (1<<9); // stop bit
     while(!( I2C1->CR1 & (1<<9))) ;
-    os_interrupt_enable();
-    scheduler_enable();
 }
 
 void i2c_send_data(uint8_t data) {
-    scheduler_disable();
-    os_interrupt_disable();
     while (!(I2C1->SR1 & (1<<7))); // wait for tx to finish 
     I2C1->DR = data;
     while (!(I2C1->SR1 & (1<<2))); // wait for transfer to finish
-    os_interrupt_enable();
-    scheduler_enable();
 }
 
 void i2c_send_data_multiple(uint8_t * data, uint32_t size) {
-    scheduler_disable();
-    os_interrupt_disable();
     for (int i = 0; i < size; ++i) {
         while (!(I2C1->SR1 & (1<<7))); // wait for tx to finish 
         I2C1->DR = data[i];
@@ -111,18 +89,12 @@ void i2c_send_data_multiple(uint8_t * data, uint32_t size) {
     while (!(I2C1->SR1 & (1<<2))); // wait for transfer to finish
 
     I2C1->CR1 |= (1<<9); // stop bit
-    os_interrupt_enable();
-    scheduler_enable();
 }
 
 uint8_t * i2c_recieve_data(uint8_t adress, uint32_t size) {
-    scheduler_disable();
-    os_interrupt_disable();
     uint8_t * buffer = (uint8_t *)os_alloc(size);
     if (!buffer) {
         OS_WARN("Cannot allocate ");
-        os_interrupt_enable();
-    scheduler_enable();
         return NULL;
     }
 
@@ -146,7 +118,5 @@ uint8_t * i2c_recieve_data(uint8_t adress, uint32_t size) {
         }
     }
 
-    os_interrupt_enable();
-    scheduler_enable();
     return buffer;
 }

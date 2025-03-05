@@ -23,11 +23,10 @@ int main (void) {
     // default run parameters
     print_welcome_msg();
     register_thread_auto(&idle_thread, 200, 0, "idle_thread");
-    register_thread_auto(&msg_thread, 200, STD_THREAD_PRIORITY, "printf_thread");
 
     // User Threads are defined here
-    register_thread_auto(&LSM9DS1_thread, 200, STD_THREAD_PRIORITY, "LSM9DS1_thread");
-    register_thread_auto(&attitude_thread, 3000, STD_THREAD_PRIORITY, "attitude_thread");
+    register_thread_auto(&LSM9DS1_thread, 2000, STD_THREAD_PRIORITY, "LSM9DS1_thread");
+    register_thread_auto(&attitude_thread, 3000, STD_THREAD_PRIORITY + 1, "attitude_thread");
     // End of user thread definitions
 
     print_thread_info();
@@ -36,7 +35,6 @@ int main (void) {
 
     idle_thread();
     LSM9DS1_thread();
-    msg_thread();
     while(1) {
         //OS_WARN("Scheduler didn't start!");
     }

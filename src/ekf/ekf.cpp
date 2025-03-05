@@ -1,5 +1,6 @@
 #include "ekf.h"
 #include <cmath>
+#include <cstdint>
 
 
 EKF::EKF() {}
@@ -406,10 +407,12 @@ volatile void attitude_thread() {
 
         ekf.update_acc(LSM9DS1_acc);
         if (has_init) {
-            ekf.predict(LSM9DS1_gyro, (float) (now_high_accuracy() - last_time) / 1e6);
-            os_printf("dt: %f\n", (float) (now_high_accuracy() - last_time) / 1e6);
+            uint32_t start = now_high_accuracy();
+            ekf.predict(LSM9DS1_gyro, 0.03);//(float) (now_high_accuracy() - last_time) / 1e6);
             last_time = now_high_accuracy();
             ekf.update();
+            ekf.attitude.print_bare();
+            //os_printf("dt: %f [ms]\n", (float) (now_high_accuracy() - start));
         }
 
         if (acc_cnt < 100) {
@@ -420,7 +423,7 @@ volatile void attitude_thread() {
             gyro[gyro_cnt] = LSM9DS1_gyro;
             gyro_cnt++;
         }
-        if (gyro_cnt > 100 && mag_cnt > 100 && acc_cnt > 100 && !has_init) {
+        if (gyro_cnt == 100 && mag_cnt == 100 && acc_cnt == 100 && !has_init) {
             ekf.init(gyro, acc, mag);
             has_init = 1;
         }

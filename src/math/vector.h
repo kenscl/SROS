@@ -139,6 +139,7 @@ class Vec {
                     os_putstr("NaN \n",5);
                 else {
                     os_putf(this->r[i]);
+                    os_putstr(" ",1);
                 }
             }
             os_putf(this->r[size-1]);

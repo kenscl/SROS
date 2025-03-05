@@ -43,6 +43,7 @@ void *os_alloc(size_t size) {
                 best_fit_size = current_size;
                 current_size = 0;
             }
+            i += ledger[i].size;
         }
     }
 
