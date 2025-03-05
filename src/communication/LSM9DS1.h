@@ -66,8 +66,6 @@
 // mag constants
 #define MAG_SENSITIVITY           0.14
 
-
-
 // communication
 void LSM9DS1_write_acc_and_gyro_register(uint8_t reg, uint8_t data);
 uint8_t * LSM9DS1_read_acc_and_gyro_register(uint8_t reg);

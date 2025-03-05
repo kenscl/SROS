@@ -17,6 +17,7 @@ typedef struct {
 
 void yield();
 void sleep(uint64_t time);
+void sleep_until(uint64_t time);
 
 void os_stack_init(os_pcb * thread, void * thread_handler, void * stack, uint32_t size_of_stack);
 

@@ -7,6 +7,7 @@
 #include "krnl/mem.h"
 #include "communication/usart.h"
 #include "communication/LSM9DS1.h"
+#include "ekf/ekf.h"
 #include "hal/hw_specific.h"
 
 
@@ -25,8 +26,8 @@ int main (void) {
     register_thread_auto(&msg_thread, 200, STD_THREAD_PRIORITY, "printf_thread");
 
     // User Threads are defined here
-    //register_thread_auto(&test_thread, 200, 10, "test_thread");
-    register_thread_auto(&LSM9DS1_thread, 3000, STD_THREAD_PRIORITY, "LSM9DS1_thread");
+    register_thread_auto(&LSM9DS1_thread, 200, STD_THREAD_PRIORITY, "LSM9DS1_thread");
+    register_thread_auto(&attitude_thread, 3000, STD_THREAD_PRIORITY, "attitude_thread");
     // End of user thread definitions
 
     print_thread_info();

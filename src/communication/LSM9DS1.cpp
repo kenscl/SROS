@@ -4,7 +4,6 @@
 #include "../communication/usart.h"
 #include "../krnl/thread.h"
 #include "../krnl/scheduler.h"
-#include "../ekf/ekf.h"
 #include <stm32f4xx.h>
 
 void LSM9DS1_write_acc_and_gyro_register(uint8_t reg, uint8_t data) {
@@ -216,11 +215,7 @@ void LSM9DS1_read_mag() {
     os_free(data);
 }
 
-EKF ekf;
 
-Vec3 gyro[100];
-Vec3 mag[100];
-Vec3 acc[100];
 volatile void LSM9DS1_thread() {
   uint8_t tst = now();
   LSM9DS1_reset();
@@ -229,63 +224,18 @@ volatile void LSM9DS1_thread() {
   LSM9DS1_configure_mag();
   // calibration
   LSM9DS1_calibrate_sensors();
-  int gyro_cnt = 0;
-  int acc_cnt = 0;
-  int mag_cnt = 0;
-  uint8_t has_init = 0;
-  volatile uint32_t last_time = now();
-  volatile uint32_t end_time = now();
   while (1) {
-    LSM9DS1_read_status();
-    if (LSM9DS1_gyro_availiable) {
-      LSM9DS1_read_gyro();
-      //os_printf("LSM9DS1_gyro, ");
-      //LSM9DS1_gyro.print_bare();
-      gyro_cnt++;
-      if (gyro_cnt < 100)
-        gyro[gyro_cnt] = LSM9DS1_gyro * M_PI / 180;
-      if (has_init) {
-        ekf.predict(LSM9DS1_gyro * M_PI / 180, (float) (now() - last_time) / SECONDS);
-        ekf.update();
-        end_time = now();
-
-        os_printf("Attitude, ");
-          //(ekf.attitude.to_rpy() * 180 / M_PI).print_bare();
-        ekf.attitude.print_bare();
-        //os_printf("%d \n", (end_time - last_time));
-        last_time = now();
+      volatile uint32_t next_time= now() + 3 * MILLISECONDS;
+      LSM9DS1_read_status();
+      if (LSM9DS1_gyro_availiable) {
+          LSM9DS1_read_gyro();
       }
-    }
-    if (LSM9DS1_acc_availiable) {
-      LSM9DS1_read_accel();
-      //os_printf("LSM9DS1_acc, ");
-      //LSM9DS1_acc.print_bare();
-      acc_cnt++;
-      if (acc_cnt < 100) {
-        acc[acc_cnt] = LSM9DS1_acc;
+      if (LSM9DS1_acc_availiable) {
+          LSM9DS1_read_accel();
       }
-      if (has_init) {
-         ekf.update_acc(LSM9DS1_acc);
+      if (LSM9DS1_mag_availiable) {
+          LSM9DS1_read_mag();
       }
-    }
-    if (LSM9DS1_mag_availiable) {
-      LSM9DS1_read_mag();
-      //os_printf("LSM9DS1_mag, ");
-      //LSM9DS1_mag.print_bare();
-      mag_cnt++;
-      if (mag_cnt < 100)
-        mag[mag_cnt] = LSM9DS1_mag;
-      if (has_init) {
-         ekf.update_mag(LSM9DS1_mag);
-      }
-    }
-    if (gyro_cnt > 100 && mag_cnt > 100 && acc_cnt > 100 && !has_init) {
-      ekf.init(gyro, acc, mag);
-      ekf.update_acc(LSM9DS1_acc);
-      ekf.update_mag(LSM9DS1_mag);
-      has_init = 1;
-    }
-
-    sleep(3 * MILLISECONDS);
+      sleep_until(next_time);
   }
 }

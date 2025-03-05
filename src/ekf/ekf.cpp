@@ -1,6 +1,5 @@
 #include "ekf.h"
 #include <cmath>
-#include "../krnl/scheduler.h"
 
 
 EKF::EKF() {}
@@ -380,4 +379,51 @@ void EKF::update() {
     this->x[3] = q.k;
     this->P = (Mat<10,10>().identity() - (this->K * this->H)) * this->P;
     this->attitude = q;
+}
+
+int gyro_cnt = 0;
+int acc_cnt = 0;
+int mag_cnt = 0;
+EKF ekf;
+Vec3 gyro[100];
+Vec3 mag[100];
+Vec3 acc[100];
+int has_init = 0;
+volatile void attitude_thread() {
+    uint64_t next_mag_time = now();
+    uint32_t last_time = now_high_accuracy();
+    while (1) {
+        volatile uint64_t next_time = now() + 3 * MILLISECONDS;
+        if (next_mag_time < now()) { // we only get this every 50 milliseconds, so setting the value more ofter just wastes computation
+            next_mag_time = now() + 50 * MILLISECONDS;
+            ekf.update_mag(LSM9DS1_mag);
+
+            if (mag_cnt < 100) {
+                mag[mag_cnt] = LSM9DS1_mag;
+                mag_cnt++;
+            }
+        }
+
+        ekf.update_acc(LSM9DS1_acc);
+        if (has_init) {
+            ekf.predict(LSM9DS1_gyro, (float) (now_high_accuracy() - last_time) / 1e6);
+            os_printf("dt: %f\n", (float) (now_high_accuracy() - last_time) / 1e6);
+            last_time = now_high_accuracy();
+            ekf.update();
+        }
+
+        if (acc_cnt < 100) {
+            acc[acc_cnt] = LSM9DS1_acc;
+            acc_cnt++;
+        }
+        if (gyro_cnt < 100) {
+            gyro[gyro_cnt] = LSM9DS1_gyro;
+            gyro_cnt++;
+        }
+        if (gyro_cnt > 100 && mag_cnt > 100 && acc_cnt > 100 && !has_init) {
+            ekf.init(gyro, acc, mag);
+            has_init = 1;
+        }
+        sleep_until(next_time);
+    }
 }

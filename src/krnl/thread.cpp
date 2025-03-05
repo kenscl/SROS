@@ -36,3 +36,8 @@ void sleep(uint64_t time) {
   current_thread->sleep_until = now() + time;
   yield();
 }
+
+void sleep_until(uint64_t time) {
+  current_thread->sleep_until = time;
+  yield();
+}
