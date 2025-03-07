@@ -1,5 +1,6 @@
 * Stuff still todo
 
-1. I2C should use interrupts
+1. Investigate I2C issues
 2. Scheduler should use the Timer instead of schedule_counter
 3. Calibration should be non static
+

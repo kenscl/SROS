@@ -23,24 +23,6 @@ volatile void i2c1_ev_handler(void) {
     //if (btf) return;
       // transmition
     if (current->state == Sending) {
-      // st handled outside
-      // SAD + W
-      if (cnt == 0)
-        i2c_send_adress(current->device_adress_write);
-      // SUB
-      if (cnt == 1)
-        temp = I2C1->SR1 | I2C1->SR2; 
-        i2c_send_data(current->device_subadress);
-      // data
-      if (cnt == 2)
-        i2c_send_data(current->data[0]);
-      // sp
-      if (cnt == 3) {
-        i2c_stop();
-        cnt = 0;
-      }
-      cnt++;
-      return;
     }
     // reception single
     if (current->state == Recieving) {
@@ -66,6 +48,8 @@ volatile void i2c1_ev_handler(void) {
       }
       // SAD + R
       if (tx && (cnt == 3)) {
+        for (volatile int i = 0; i < 500; i++)
+          ; // delay needed for some reason :( will keep it for now, but will have to invastigate in the future
         I2C1->DR = current->device_adress_recieve;
         cnt++;
         return;
