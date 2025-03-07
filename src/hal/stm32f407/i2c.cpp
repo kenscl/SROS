@@ -1,10 +1,93 @@
 #include "../../communication/i2c.h"
-#include <cstdint>
-#include <stm32f4xx.h>
-#include <stdint.h>
+#include "../../communication/usart.h"
 #include "../../krnl/mem.h"
 #include "../../krnl/scheduler.h"
-#include "../../communication/usart.h"
+#include <cstdint>
+#include <stdint.h>
+#include <stm32f4xx.h>
+I2C_state_information dummy;
+I2C_state_information *current = &dummy;
+
+I2C1_state_enum I2C1_state;
+
+extern "C" {
+volatile void i2c1_ev_handler(void) {
+    volatile static uint32_t cnt = 0;
+    volatile uint16_t status = I2C1->SR1;
+    volatile uint8_t temp = 0;
+    volatile uint8_t start = ((I2C1->SR1 & (1 << 0)) != 0);
+    volatile uint8_t addr = ((I2C1->SR1 & (1 << 1)) != 0);
+    volatile uint8_t btf = ((I2C1->SR1 & (1 << 2)) != 0);
+    volatile uint8_t rxne = ((I2C1->SR1 & (1 << 6)) != 0);
+    volatile uint8_t tx = ((I2C1->SR1 & (1 << 7)) != 0);
+    //if (btf) return;
+      // transmition
+    if (current->state == Sending) {
+      // st handled outside
+      // SAD + W
+      if (cnt == 0)
+        i2c_send_adress(current->device_adress_write);
+      // SUB
+      if (cnt == 1)
+        temp = I2C1->SR1 | I2C1->SR2; 
+        i2c_send_data(current->device_subadress);
+      // data
+      if (cnt == 2)
+        i2c_send_data(current->data[0]);
+      // sp
+      if (cnt == 3) {
+        i2c_stop();
+        cnt = 0;
+      }
+      cnt++;
+      return;
+    }
+    // reception single
+    if (current->state == Recieving) {
+      // st handled outside
+      // SAD + W
+      if (start && (cnt == 0)) {
+        i2c_send_data(current->device_adress_write);
+        cnt++;
+        return;
+      }
+      // SUB
+      if (tx && (cnt == 1)) {
+        temp = I2C1->SR1 | I2C1->SR2;
+        i2c_send_data(current->device_subadress);
+        cnt++;
+        return;
+      }
+      // SR
+      if (tx && (cnt == 2)) {
+        start_i2c_communication();
+        cnt++;
+        return;
+      }
+      // SAD + R
+      if (tx && (cnt == 3)) {
+        I2C1->DR = current->device_adress_recieve;
+        cnt++;
+        return;
+      }
+      // rec
+      if (addr && (cnt == 4)) {
+        temp = I2C1->SR1 | I2C1->SR2;
+        i2c_recieve_single();
+        cnt++;
+        return;
+      }
+      // rec 2 
+      if (rxne) {
+        current->data[0] = I2C1->DR;
+        i2c_stop();
+        cnt = 0;
+        return;
+      }
+      return;
+    }
+}
+}
 
 void configure_i2c() {
     I2C1->CR1 &= ~(1 << 0); // disable i2c for config 
@@ -53,21 +136,25 @@ void configure_i2c() {
     speed = 40;
     //I2C1->TRISE = (I2C1->TRISE & ~I2C_TRISE_TRISE_Msk) | (speed & I2C_TRISE_TRISE_Msk);
 
+    //  interrupts
+    I2C1->CR2 |= 1 << 9; // Event interrupt enable
+
     // program the I2C_CR1 register to enable the peripheral
     I2C1->CR1 &= ~(1 << 1); // i2c mode
     I2C1->CR1 |= (1 << 0); // i2c enable 
+    I2C1_state = Idle;
+    NVIC_EnableIRQ(I2C1_EV_IRQn);
 }
+
 
 void start_i2c_communication() {
     I2C1->CR1 |= (1 << 8); // generate start condition
-    while (!(I2C1->SR1 & (1<<0))) {
-    } // wait for start condition generated
+    return;
 }
 
 void i2c_send_adress(uint8_t adress) {
     I2C1->DR = adress;
-    while (!(I2C1->SR1 & (1<<1))); // wait for adress bit to set 
-    uint8_t temp = I2C1->SR1 | I2C1->SR2;  // read SR1 and SR2 to clear the ADDR bit
+    return;
 }
 
 void i2c_stop() {
@@ -76,9 +163,8 @@ void i2c_stop() {
 }
 
 void i2c_send_data(uint8_t data) {
-    while (!(I2C1->SR1 & (1<<7))); // wait for tx to finish 
     I2C1->DR = data;
-    while (!(I2C1->SR1 & (1<<2))); // wait for transfer to finish
+    return;
 }
 
 void i2c_send_data_multiple(uint8_t * data, uint32_t size) {
@@ -89,34 +175,22 @@ void i2c_send_data_multiple(uint8_t * data, uint32_t size) {
     while (!(I2C1->SR1 & (1<<2))); // wait for transfer to finish
 
     I2C1->CR1 |= (1<<9); // stop bit
+    return;
 }
 
-uint8_t * i2c_recieve_data(uint8_t adress, uint32_t size) {
-    uint8_t * buffer = (uint8_t *)os_alloc(size);
-    if (!buffer) {
-        OS_WARN("Cannot allocate ");
-        return NULL;
-    }
-
-    I2C1->DR = adress; // Send address
-    while (!(I2C1->SR1 & (1 << 1))); // Wait for ADDR
-    uint8_t dummy = I2C1->SR1 | I2C1->SR2; // Clear ADDR
-
-    if (size == 1) {
+void i2c_recieve_single() {
         I2C1->CR1 &= ~(1 << 10); // Disable ACK
         I2C1->CR1 |= (1 << 9); // Generate STOP
-        while (!(I2C1->SR1 & (1 << 6))); // Wait for RxNE
-        buffer[0] = I2C1->DR; // Read data
-    } else {
-        I2C1->CR1 |= (1 << 10); // Enable ACK
-        for (uint32_t i = 0; i < size; i++) {
-            while (!(I2C1->SR1 & (1 << 6))); // Wait for RxNE
-            buffer[i] = I2C1->DR; // Read data
+        return;
+}
 
-            if (i == size - 2) I2C1->CR1 &= ~(1 << 10); // Disable ACK before last byte
-            else if (i == size - 1) I2C1->CR1 |= (1 << 9); // Generate STOP
-        }
-    }
 
-    return buffer;
+uint8_t i2c_handle(I2C_state_information *info) {
+    dummy.state = Done;
+    if (current->state == Done) {
+        current = info;
+        configure_i2c();
+        start_i2c_communication();
+        return 1;
+    } else return 0;
 }

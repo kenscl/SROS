@@ -67,37 +67,37 @@
 #define MAG_SENSITIVITY           0.14
 
 // communication
-void LSM9DS1_write_acc_and_gyro_register(uint8_t reg, uint8_t data);
-uint8_t * LSM9DS1_read_acc_and_gyro_register(uint8_t reg);
-uint8_t * LSM9DS1_read_acc_and_gyro_multi(uint8_t reg, uint16_t size);
-
-void LSM9DS1_write_mag_register(uint8_t reg, uint8_t data);
-uint8_t * LSM9DS1_read_mag_register(uint8_t reg);
-uint8_t * LSM9DS1_read_mag_multi(uint8_t reg, uint16_t size);
-
-// configuration
-void LSM9DS1_reset();
-void LSM9DS1_configure_gyro();
-void LSM9DS1_configure_accel();
-void LSM9DS1_configure_mag();
-
-void LSM9DS1_calibrate_sensors();
-
-// data values
-extern Vec3 LSM9DS1_gyro;
-extern float LSM9DS1_gyro_availiable;
-extern Vec3 LSM9DS1_acc;
-extern float LSM9DS1_acc_availiable;
-extern Vec3 LSM9DS1_mag;
-extern float LSM9DS1_mag_availiable;
-
-// data read
-void LSM9DS1_read_status();
-void LSM9DS1_read_gyro();
-void LSM9DS1_read_accel();
-void LSM9DS1_read_mag();
-
-// process
-volatile void LSM9DS1_thread();
+//void LSM9DS1_write_acc_and_gyro_register(uint8_t reg, uint8_t data);
+//uint8_t * LSM9DS1_read_acc_and_gyro_register(uint8_t reg);
+//uint8_t * LSM9DS1_read_acc_and_gyro_multi(uint8_t reg, uint16_t size);
+//
+//void LSM9DS1_write_mag_register(uint8_t reg, uint8_t data);
+//uint8_t * LSM9DS1_read_mag_register(uint8_t reg);
+//uint8_t * LSM9DS1_read_mag_multi(uint8_t reg, uint16_t size);
+//
+//// configuration
+//void LSM9DS1_reset();
+//void LSM9DS1_configure_gyro();
+//void LSM9DS1_configure_accel();
+//void LSM9DS1_configure_mag();
+//
+//void LSM9DS1_calibrate_sensors();
+//
+//// data values
+//extern Vec3 LSM9DS1_gyro;
+//extern float LSM9DS1_gyro_availiable;
+//extern Vec3 LSM9DS1_acc;
+//extern float LSM9DS1_acc_availiable;
+//extern Vec3 LSM9DS1_mag;
+//extern float LSM9DS1_mag_availiable;
+//
+//// data read
+//void LSM9DS1_read_status();
+//void LSM9DS1_read_gyro();
+//void LSM9DS1_read_accel();
+//void LSM9DS1_read_mag();
+//
+//// process
+//volatile void LSM9DS1_thread();
 
 #endif 
