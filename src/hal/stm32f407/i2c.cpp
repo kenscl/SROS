@@ -11,6 +11,8 @@ I2C_state_information *current = &dummy;
 I2C1_state_enum I2C1_state;
 
 extern "C" {
+#pragma GCC push_options
+#pragma GCC optimize ("O0")
 volatile void i2c1_ev_handler(void) {
     volatile static uint32_t cnt = 0;
     volatile uint16_t status = I2C1->SR1;
@@ -23,6 +25,33 @@ volatile void i2c1_ev_handler(void) {
     //if (btf) return;
       // transmition
     if (current->state == Sending) {
+        // st handled outsied
+        // SAD + W
+        if (start && (cnt == 0)) {
+          i2c_send_data(current->device_adress_write);
+          cnt++;
+          return;
+        }
+        // SUB
+        if (tx && (cnt == 1)) {
+          temp = I2C1->SR1 | I2C1->SR2;
+          i2c_send_data(current->device_subadress);
+          cnt++;
+          return;
+        }
+        // DATA
+        if (tx && (cnt == 2)) {
+          i2c_send_data(current->data[0]);
+          cnt++;
+          return;
+        }
+        // SP
+        if (cnt == 3) {
+          current->state = Done;
+          i2c_stop();
+          cnt = 0;
+          return;
+        }
     }
     // reception single
     if (current->state == Recieving) {
@@ -64,6 +93,7 @@ volatile void i2c1_ev_handler(void) {
       // rec 2 
       if (rxne) {
         current->data[0] = I2C1->DR;
+        current->state = Done;
         i2c_stop();
         cnt = 0;
         return;
@@ -71,6 +101,7 @@ volatile void i2c1_ev_handler(void) {
       return;
     }
 }
+#pragma GCC pop_options
 }
 
 void configure_i2c() {

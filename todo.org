@@ -3,4 +3,5 @@
 1. Investigate I2C issues
 2. Scheduler should use the Timer instead of schedule_counter
 3. Calibration should be non static
+4. Speed up i2c (400 MHz) and usart communication (?)
 

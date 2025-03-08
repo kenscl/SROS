@@ -12,16 +12,29 @@
 #include "hal/hw_specific.h"
 
 volatile void t_thred() {
-    static I2C_state_information info_send;
-    uint32_t data[10] = {};
-    info_send.state = Recieving;
-    info_send.device_adress_write = LSM9DS1_ACC_AND_GYRO_WRITE;
-    info_send.device_adress_recieve = LSM9DS1_ACC_AND_GYRO_READ;
-    info_send.device_subadress = LSM9DS1_WHO_AM_I;
-    info_send.recieve_bytes = 1;
-    info_send.data = data;
+    static I2C_state_information info_read;
+    uint32_t data_read[1] = {};
+    info_read.state = Recieving;
+    info_read.device_adress_write = LSM9DS1_ACC_AND_GYRO_WRITE;
+    info_read.device_adress_recieve = LSM9DS1_ACC_AND_GYRO_READ;
+    info_read.device_subadress = CTRL_REG1_G;
+    info_read.recieve_bytes = 1;
+    info_read.data = data_read;
+
+    uint32_t data_write[1];
+    data_write[0] = 10;
+    static I2C_state_information info_write = {
+        .state = Sending,
+        .device_adress_write = LSM9DS1_ACC_AND_GYRO_WRITE,
+        .device_adress_recieve = LSM9DS1_ACC_AND_GYRO_READ,
+        .device_subadress = CTRL_REG1_G,
+        .recieve_bytes = 1,
+        .data = data_write
+    };
+    i2c_handle(&info_write);
+
     while (1) {
-        i2c_handle(&info_send);
+        i2c_handle(&info_read);
     }
 }
 
