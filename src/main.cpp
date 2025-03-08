@@ -13,12 +13,12 @@
 
 volatile void t_thred() {
     static I2C_state_information info_read;
-    uint32_t data_read[1] = {};
+    uint32_t data_read[6] = {};
     info_read.state = Recieving;
     info_read.device_adress_write = LSM9DS1_ACC_AND_GYRO_WRITE;
     info_read.device_adress_recieve = LSM9DS1_ACC_AND_GYRO_READ;
-    info_read.device_subadress = CTRL_REG1_G;
-    info_read.recieve_bytes = 1;
+    info_read.device_subadress = OUT_X_G_L;
+    info_read.recieve_bytes = 6;
     info_read.data = data_read;
 
     uint32_t data_write[1];

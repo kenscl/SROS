@@ -12,94 +12,118 @@ I2C1_state_enum I2C1_state;
 
 extern "C" {
 #pragma GCC push_options
-#pragma GCC optimize ("O0")
+#pragma GCC optimize("O0") // otherwise the compiler will mangle the function
 volatile void i2c1_ev_handler(void) {
-    volatile static uint32_t cnt = 0;
-    volatile uint16_t status = I2C1->SR1;
-    volatile uint8_t temp = 0;
-    volatile uint8_t start = ((I2C1->SR1 & (1 << 0)) != 0);
-    volatile uint8_t addr = ((I2C1->SR1 & (1 << 1)) != 0);
-    volatile uint8_t btf = ((I2C1->SR1 & (1 << 2)) != 0);
-    volatile uint8_t rxne = ((I2C1->SR1 & (1 << 6)) != 0);
-    volatile uint8_t tx = ((I2C1->SR1 & (1 << 7)) != 0);
-    //if (btf) return;
-      // transmition
-    if (current->state == Sending) {
-        // st handled outsied
-        // SAD + W
-        if (start && (cnt == 0)) {
-          i2c_send_data(current->device_adress_write);
-          cnt++;
-          return;
-        }
-        // SUB
-        if (tx && (cnt == 1)) {
-          temp = I2C1->SR1 | I2C1->SR2;
-          i2c_send_data(current->device_subadress);
-          cnt++;
-          return;
-        }
-        // DATA
-        if (tx && (cnt == 2)) {
-          i2c_send_data(current->data[0]);
-          cnt++;
-          return;
-        }
-        // SP
-        if (cnt == 3) {
-          current->state = Done;
-          i2c_stop();
-          cnt = 0;
-          return;
-        }
+  volatile static uint32_t cnt = 0;
+  volatile uint16_t status = I2C1->SR1;
+  volatile uint8_t temp = 0;
+  volatile uint8_t start = ((I2C1->SR1 & (1 << 0)) != 0);
+  volatile uint8_t addr = ((I2C1->SR1 & (1 << 1)) != 0);
+  volatile uint8_t btf = ((I2C1->SR1 & (1 << 2)) != 0);
+  volatile uint8_t rxne = ((I2C1->SR1 & (1 << 6)) != 0);
+  volatile uint8_t tx = ((I2C1->SR1 & (1 << 7)) != 0);
+  // if (btf) return;
+  //  transmition
+  if (current->state == Sending) {
+    // st handled outsied
+    // SAD + W
+    if (start && (cnt == 0)) {
+      i2c_send_data(current->device_adress_write);
+      cnt++;
+      return;
     }
-    // reception single
-    if (current->state == Recieving) {
-      // st handled outside
-      // SAD + W
-      if (start && (cnt == 0)) {
-        i2c_send_data(current->device_adress_write);
-        cnt++;
-        return;
-      }
-      // SUB
-      if (tx && (cnt == 1)) {
-        temp = I2C1->SR1 | I2C1->SR2;
-        i2c_send_data(current->device_subadress);
-        cnt++;
-        return;
-      }
-      // SR
-      if (tx && (cnt == 2)) {
-        start_i2c_communication();
-        cnt++;
-        return;
-      }
-      // SAD + R
-      if (tx && (cnt == 3)) {
-        for (volatile int i = 0; i < 500; i++)
-          ; // delay needed for some reason :( will keep it for now, but will have to invastigate in the future
-        I2C1->DR = current->device_adress_recieve;
-        cnt++;
-        return;
-      }
-      // rec
-      if (addr && (cnt == 4)) {
-        temp = I2C1->SR1 | I2C1->SR2;
+    // SUB
+    if (tx && (cnt == 1)) {
+      temp = I2C1->SR1 | I2C1->SR2;
+      i2c_send_data(current->device_subadress);
+      cnt++;
+      return;
+    }
+    // DATA
+    if (tx && (cnt == 2)) {
+      i2c_send_data(current->data[0]);
+      cnt++;
+      return;
+    }
+    // SP
+    if (cnt == 3) {
+      current->state = Done;
+      i2c_stop();
+      cnt = 0;
+      return;
+    }
+  }
+  // reception single
+  if (current->state == Recieving) {
+    // st handled outside
+    // SAD + W
+    if (start && (cnt == 0)) {
+      i2c_send_data(current->device_adress_write);
+      cnt++;
+      return;
+    }
+    // SUB
+    if (tx && (cnt == 1)) {
+      temp = I2C1->SR1 | I2C1->SR2;
+      i2c_send_data(current->device_subadress);
+      cnt++;
+      return;
+    }
+    // SR
+    if (tx && (cnt == 2)) {
+      start_i2c_communication();
+      cnt++;
+      return;
+    }
+    // SAD + R
+    if (tx && (cnt == 3)) {
+      for (volatile int i = 0; i < 500; i++)
+        ; // delay needed for some reason :( will keep it for now, but will have
+          // to invastigate in the future
+      I2C1->DR = current->device_adress_recieve;
+      cnt++;
+      return;
+    }
+    // rec
+    if (addr && (cnt == 4)) {
+      temp = I2C1->SR1 | I2C1->SR2;
+      cnt++;
+      if (current->recieve_bytes == 1) {
         i2c_recieve_single();
-        cnt++;
+        return;
+      } else {
+        I2C1->CR1 |= (1 << 10); // Enable ACK
         return;
       }
-      // rec 2 
-      if (rxne) {
+    }
+    // rec 2
+    if (rxne) {
+      if (current->recieve_bytes == 1) {
         current->data[0] = I2C1->DR;
         current->state = Done;
         i2c_stop();
         cnt = 0;
         return;
+      } else {
+        static uint32_t i = 0;
+        while (i < current->recieve_bytes) {
+          current->data[i] = I2C1->DR;
+          if (i == current->recieve_bytes - 2)
+            I2C1->CR1 &= ~(1 << 10); // Disable ACK before last byte
+          else if (i == current->recieve_bytes - 1) {
+            current->state = Done;
+            i2c_stop();
+            cnt = 0;
+            i = 0;
+            return;
+          }
+          ++i;
+          return;
+        }
       }
-      return;
     }
+    return;
+  }
 }
 #pragma GCC pop_options
 }
