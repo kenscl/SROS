@@ -19,7 +19,7 @@ void scheduler_disable();
 int register_thread(os_pcb * thread);
 int remove_thread(os_pcb * thread);
 uint64_t now();
-uint32_t now_high_accuracy();
+uint32_t now_high_accuracy(); // µs
 void print_thread_info();
 
 #endif

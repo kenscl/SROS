@@ -97,7 +97,7 @@ void dma_init() {
 
 void TIM2_init() {
     RCC->APB1ENR |=  (1 << 0); // turn on clock form timer
-    TIM2->PSC = (168000000/ 1000000) - 1;
+    TIM2->PSC = 83;
     TIM2->ARR = 0xFFFFFFFF; // max
     TIM2->CR1 |= (1 << 0); // enable
 }
@@ -105,6 +105,8 @@ void TIM2_init() {
 uint32_t now_high_accuracy() {
     return TIM2->CNT;
 }
+
+
 
 void miscellaneous_init() {
     FPU->FPCCR |= (1 << 30) | (1 << 31);  // Set ASPEN and LSPEN

@@ -1,5 +1,6 @@
 #include "scheduler.h"
 #include "../communication/usart.h"
+#include "thread.h"
 #include <cstdio>
 
 
@@ -58,6 +59,7 @@ extern "C" {
         } 
 
         current_thread->last_time = now_high_accuracy();
+        volatile os_pcb * next_thread = current_thread;
   
         for (uint16_t i = 0; i < OS_MAX_THREAD_COUNT; ++i){
             uint8_t exists = thread_list[i]->sp != 0;
@@ -69,13 +71,13 @@ extern "C" {
                 uint8_t last_time_was_earlier = thread_list[i]->last_time < current_thread->last_time;
                 uint8_t current_is_sleeping = (current_thread->sleep_until >= now());
                 if ( (is_larger_priority || current_is_sleeping ) && last_time_was_earlier ) {
-                    current_thread = thread_list[i];
+                    next_thread = thread_list[i];
                 }
             }
         }
         ++schedule_counter;
+        current_thread = (os_pcb *) next_thread;
     }
-
 }
 
 uint64_t now() {

@@ -9,7 +9,7 @@
 
 // ill use usart 2 / pa2 tx, pa3 rx
 void enable_usart(){
-    // enable usart2 clock
+// enable usart2 clock
     RCC->APB1ENR |= (1 << 17);
     // enable gpioa clock
     RCC->AHB1ENR |= (1 << 0);

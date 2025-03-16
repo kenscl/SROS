@@ -24,7 +24,7 @@ struct I2C_state_information {
     uint32_t device_adress_recieve;
     uint32_t device_subadress;
     uint32_t recieve_bytes;
-    uint32_t * data;
+    uint8_t * data;
 };
 
 
@@ -43,5 +43,6 @@ void i2c_recieve_single();
 // void i2c_recieve_multi(uint8_t adress, uint32_t size); // handled explicitly in interrup handler 
 
 uint8_t i2c_handle(I2C_state_information * info);
+volatile void i2c_thread();
 
 #endif

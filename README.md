@@ -14,9 +14,19 @@ For STM32F407G:
 ``` bash
 cmake -DPLATFORM_CONFIG_FILE=platform/stm32f407.cmake ..
 ```
+
 For STM32F103:
 ``` bash
 cmake -DPLATFORM_CONFIG_FILE=platform/stm32f103.cmake ..
+```
+
+You might also want to add the `compile_commands.json` file depending on your ide:
+``` bash
+cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DPLATFORM_CONFIG_FILE=platform/stm32f407.cmake ..
+```
+or 
+``` bash
+cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DPLATFORM_CONFIG_FILE=platform/stm32f103.cmake ..
 ```
 You can then build the project with:
 ``` bash
