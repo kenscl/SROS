@@ -6,6 +6,7 @@
 #include "../krnl/scheduler.h"
 #include "i2c.h"
 #include "stm32f407xx.h"
+
 // SPI
 
 void CS_A_H() {
@@ -14,6 +15,31 @@ void CS_A_H() {
 
 void CS_A_L() {
     GPIOA->BSRR = GPIO_BSRR_BR_4;
+}
+
+void DMA2_init() {
+    RCC->AHB1ENR |= RCC_AHB1ENR_DMA2EN;
+
+    // tx
+    DMA2_Stream3->CR = 0;
+    DMA2_Stream3->PAR = (uint32_t) &SPI1->DR;
+    DMA2_Stream3->CR |= (0b11 << DMA_SxCR_CHSEL_Pos);
+    DMA2_Stream3->CR |= (1 << DMA_SxCR_MINC_Pos);
+    DMA2_Stream3->CR |= (0b01 << DMA_SxCR_DIR_Pos);
+    DMA2_Stream3->CR |= (1 << DMA_SxCR_TCIE_Pos);
+    DMA2_Stream3->CR |= (3 << DMA_SxCR_PL_Pos);
+
+    //rx 
+    DMA2_Stream0->CR = 0;
+    DMA2_Stream0->PAR = (uint32_t) &SPI1->DR;
+    DMA2_Stream0->CR |= (0b11 << DMA_SxCR_CHSEL_Pos);
+    DMA2_Stream0->CR |= (1 << DMA_SxCR_MINC_Pos);
+    DMA2_Stream0->CR &= ~(0b11 << DMA_SxCR_DIR_Pos);
+    DMA2_Stream0->CR |= (1 << DMA_SxCR_TCIE_Pos);
+    DMA2_Stream0->CR |= (3 << DMA_SxCR_PL_Pos);
+
+    NVIC_EnableIRQ(DMA2_Stream3_IRQn);
+    NVIC_EnableIRQ(DMA2_Stream0_IRQn);
 }
 
 void SPI_init() {
@@ -34,6 +60,8 @@ void SPI_init() {
               | (3 << 3);    // fPCLK/8 
 
     SPI1->CR1 |= SPI_CR1_SPE;  
+    SPI1->CR2 = SPI_CR2_TXDMAEN | SPI_CR2_RXDMAEN; 
+    DMA2_init();
 }
 
 uint8_t SPI_A_transmit(uint8_t byte) {
@@ -56,6 +84,42 @@ uint8_t LSM9DS1_A_read_register(uint8_t reg) {
     uint8_t ret = SPI_A_transmit(0x00); // dummy
     CS_A_H();
     return ret;
+}
+
+uint8_t dma_transfere_complete = 1;
+uint8_t LSM9DS1_A_read_register_dma(uint8_t reg, uint8_t * dma_rx_buffer, uint8_t * dma_tx_buffer) {
+    dma_transfere_complete = 0;
+    dma_tx_buffer[0] = reg | 0x80;
+    dma_tx_buffer[1] = 0x00;
+
+    DMA2_Stream3->M0AR |= (uint32_t) dma_tx_buffer;
+    DMA2_Stream3->NDTR |= 2;
+    
+    DMA2_Stream0->M0AR |= (uint32_t) dma_rx_buffer;
+    DMA2_Stream0->NDTR |= 2;
+
+    CS_A_L();
+    DMA2_Stream3->CR |= DMA_SxCR_EN;
+    DMA2_Stream0->CR |= DMA_SxCR_EN;
+    return 0;
+}
+
+extern "C" {
+    void dma2_stream3_handler(){
+	if (DMA2->LISR & DMA_LISR_TCIF3) {
+	    DMA2->LIFCR |= DMA_LIFCR_CTCIF3;
+	}
+    }
+
+    void dma2_stream0_handler() {
+	if (DMA2->LISR & DMA_LISR_TCIF0) {
+	    DMA2->LIFCR |= DMA_LIFCR_CTCIF0;
+	    DMA2_Stream3->CR &= ~DMA_SxCR_EN;
+	    DMA2_Stream0->CR &= ~DMA_SxCR_EN;
+	    CS_A_H();
+	    dma_transfere_complete = 1;
+	}
+    }
 }
 
 uint8_t * LSM9DS1_A_read_register_multi(uint8_t reg, uint8_t * data, size_t size) {

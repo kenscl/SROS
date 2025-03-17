@@ -25,15 +25,6 @@ void os_printf(char * format, ...);
 
 // used for actual printing
 int msg_put(char *msg, size_t size);
-/*
- * msg_send_next frees the last msg and msg_object and puts the new message into the dma buffer (i know, thats not how it works :))
- * returns 0 if the next message is invalid, otherwise returns 1
- */
-int msg_send_next();
-
-int dma_free();
-
-volatile void msg_thread();
 
 
 #endif

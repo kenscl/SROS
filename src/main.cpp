@@ -31,16 +31,20 @@ int main (void) {
     // End of user thread definitions
     SPI_init();
     uint32_t start = now_high_accuracy();
-    LSM9DS1_A_write(CTRL_REG1_G, 10);
-    uint8_t data[6];
-    uint8_t * who_am_i_value = LSM9DS1_A_read_register_multi(OUT_X_G_L, data, 6);
-    uint32_t end = now_high_accuracy();
-    os_printf("res! %f\n", (float)(end - start) * 0.001);
+    uint8_t rx[2] = {};
+    uint8_t tx[2] = {};
+    uint8_t who_am_i_value = LSM9DS1_A_read_register_dma(LSM9DS1_WHO_AM_I, rx, tx);
+    uint32_t end =0;
+    while (rx[1] != 104){
+      end = now_high_accuracy();
+    };
+    os_printf("res! %d %f\n",rx[1], (float)(end - start) * 0.001);
+
     print_thread_info();
     // start system
     //scheduler_enable();
 
-    idle_thread();
+    //idle_thread();
     while(1) {
         //OS_WARN("Scheduler didn't start!");
     }

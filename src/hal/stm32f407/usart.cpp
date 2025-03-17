@@ -40,32 +40,11 @@ void enable_usart(){
     USART2->BRR |= 13;
     USART2->CR1 |= (1 << 13);
     USART2->CR1 |= (1 << 2) | (1 << 3);
-    USART2->CR3 |= (1 << 7); // enable dma
-    USART2->CR3 |= (1 << 6); // enable dma
-    USART2->CR3 |= USART_CR3_DMAT;
 }
 
 
 
 
-void USART_put_dma(char *data, size_t size) {
-    while (DMA1_Stream6->CR & (1 << 0) == 0); // wait till usart is free
-    DMA1_Stream6->CR = 0; // clear dma register
-    while(DMA1_Stream6->CR & (1 << 0));
-
-    DMA1_Stream6->CR |= (0b100 << 25); // channel4
-    DMA1_Stream6->CR |= (1 << 4); // transfer complete interrupt
-    DMA1_Stream6->CR |= DMA_SxCR_MINC;  // memory increment mode
-    DMA1_Stream6->CR |= (0b10 << 16); // priority high
-    DMA1_Stream6->CR |= (0x1 << 6);
-
-    DMA1_Stream6->M0AR = (uint32_t)data;
-    DMA1_Stream6->PAR = (uint32_t)&USART2->DR;
-    DMA1_Stream6->NDTR = size;
-
-
-    DMA1_Stream6->CR |= (1 << 0);
-}
 
 #define MSG_BUFFER_SIZE 128
 
@@ -210,34 +189,5 @@ int msg_put(char *msg, size_t size) {
     for (int i = 0;i < size; ++i) {
         os_putchar(msg[i]);
     }
-    //msg_object * new_msg = (msg_object*) os_alloc(sizeof(msg_object));
-    //if (new_msg == (msg_object*) nullptr) {
-    //    return 0;
-    //}
-    //head->next = new_msg;
-    //new_msg->next = (msg_object*) nullptr;
-    //new_msg->msg = msg;
-    //new_msg->size = size;
-    //head = new_msg;
     return 1;
 }
-
-int msg_send_next() {
-    msg_object * current = last->next;
-    if (current == (msg_object *) nullptr) return 0;
-    if (current->msg != (char *)nullptr && current->size != 0) {
-        USART_put_dma(current->msg, current->size);
-    }
-    if (last->msg != (char *)nullptr & os_test_mem(last->msg)) os_free(last->msg);
-    if (last != (msg_object *)nullptr) os_free(last);
-    last = current;
-    return 1;
-}
-
-int dma_free() {
-    if ((DMA1_Stream6->CR & (1 << 0)) == 0) { // Check for free 
-        return 1;
-    }
-    return 0;
-}
-

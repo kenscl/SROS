@@ -5,14 +5,29 @@
 #include <stdint.h> 
 #include "../math/vector.h"
 
+enum SPI_state{
+  Sending,
+  Recieving,
+  Done
+};
+
+struct SPI_information {
+  SPI_state state;
+  size_t size;
+  uint8_t * rx_buffer;
+  uint8_t * tx_buffer;
+};
 // use spi for communication
 void SPI_init();
 void CS_A_L();
 void CS_A_H();
 uint8_t SPI_A_transmit(uint8_t byte);
 void LSM9DS1_A_write(uint8_t reg, uint8_t byte);
+void LSM9DS1_A_write_dma(uint8_t reg, uint8_t byte, uint8_t * dma_rx_buffer, uint8_t * dma_tx_buffer);
 uint8_t LSM9DS1_A_read_register(uint8_t reg);
+uint8_t LSM9DS1_A_read_register_dma(uint8_t reg, uint8_t * dma_rx_buffer, uint8_t * dma_tx_buffer);
 uint8_t * LSM9DS1_A_read_register_multi(uint8_t reg, uint8_t * data, size_t size);
+uint8_t LSM9DS1_A_read_register_multi_dma(uint8_t reg, uint8_t * dma_rx_buffer, uint8_t * dma_tx_buffer, size_t size);
 
 // devices
 #define LSM9DS1_ACC_AND_GYRO_READ  0xD7
