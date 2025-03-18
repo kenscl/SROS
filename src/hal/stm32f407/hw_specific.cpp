@@ -106,8 +106,6 @@ uint32_t now_high_accuracy() {
     return TIM2->CNT;
 }
 
-
-
 void miscellaneous_init() {
     FPU->FPCCR |= (1 << 30) | (1 << 31);  // Set ASPEN and LSPEN
     SCB->CPACR |= (0xF << 20); 

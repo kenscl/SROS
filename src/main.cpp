@@ -9,7 +9,11 @@
 #include "communication/usart.h"
 #include "hal/hw_specific.h"
 #include "communication/spi.h"
+#include "stm32f407xx.h"
 
+uint8_t rx[2] = {};
+uint8_t tx[2] = {1, 10};
+uint8_t rx2[2] = {};
 int main (void) {
     // system config
     clock_init();
@@ -21,7 +25,7 @@ int main (void) {
 
     // default run parameters
     print_welcome_msg();
-    //register_thread_auto(&idle_thread, 200, 0, "idle_thread");
+    register_thread_auto(&idle_thread, 200, 0, "idle_thread");
     //register_thread_auto(&i2c_thread, 2000, STD_THREAD_PRIORITY, "i2c_thread");
 
     // User Threads are defined here
@@ -31,18 +35,30 @@ int main (void) {
     // End of user thread definitions
     SPI_init();
     uint32_t start = now_high_accuracy();
-    uint8_t rx[2] = {};
-    uint8_t tx[2] = {};
-    uint8_t who_am_i_value = LSM9DS1_A_read_register_dma(LSM9DS1_WHO_AM_I, rx, tx);
-    uint32_t end =0;
-    while (rx[1] != 104){
-      end = now_high_accuracy();
+    static SPI_information info = {
+      .state = Write,
+      .size = 2,
+      .rx_buffer = rx,
+      .tx_buffer = tx,
+      .target = Accelerometer,
+      .adress = CTRL_REG1_G 
     };
-    os_printf("res! %d %f\n",rx[1], (float)(end - start) * 0.001);
+    uint8_t tx2[2] = {};
+    static SPI_information info2 = {
+      .state = Read,
+      .size = 2,
+      .rx_buffer = rx2,
+      .tx_buffer = tx2,
+      .target = Accelerometer,
+      .adress = CTRL_REG1_G 
+    };
+    uint32_t end = 0;
 
     print_thread_info();
     // start system
-    //scheduler_enable();
+    SPI_handle(&info);
+    SPI_handle(&info2);
+    scheduler_enable();
 
     //idle_thread();
     while(1) {
