@@ -6,6 +6,7 @@
 #include "../krnl/scheduler.h"
 #include "i2c.h"
 #include "stm32f407xx.h"
+#include "../hal/hw_specific.h"
 
 #define SPI_QUEUE_LENGTH 20
 SPI_information * queue[SPI_QUEUE_LENGTH] = {};
@@ -60,10 +61,12 @@ void SPI_send_next() {
 
 volatile void SPI_thread() {
     while (1) {
+      os_interrupt_disable();
       volatile uint32_t state = DMA2->LISR;
       volatile uint32_t state2 = DMA2->HISR;
       if (dma_done)
 	SPI_send_next();
+      os_interrupt_enable();
       yield();
     }
 }
@@ -91,7 +94,7 @@ void DMA2_init() {
     DMA2_Stream3->CR |= (1 << DMA_SxCR_MINC_Pos);
     DMA2_Stream3->CR |= (0b01 << DMA_SxCR_DIR_Pos);
     DMA2_Stream3->CR |= (1 << DMA_SxCR_TCIE_Pos);
-    DMA2_Stream3->CR |= (3 << DMA_SxCR_PL_Pos);
+    DMA2_Stream3->CR |= (1 << DMA_SxCR_PL_Pos);
 
     //rx 
     DMA2_Stream0->CR = 0;
@@ -100,12 +103,13 @@ void DMA2_init() {
     DMA2_Stream0->CR |= (1 << DMA_SxCR_MINC_Pos);
     DMA2_Stream0->CR &= ~(0b011 << DMA_SxCR_DIR_Pos);
     DMA2_Stream0->CR |= (1 << DMA_SxCR_TCIE_Pos);
-    DMA2_Stream0->CR |= (3 << DMA_SxCR_PL_Pos);
+    DMA2_Stream0->CR |= (1 << DMA_SxCR_PL_Pos);
+    DMA2_Stream0->FCR |= DMA_SxFCR_DMDIS;
 
     NVIC_EnableIRQ(DMA2_Stream3_IRQn);
     NVIC_EnableIRQ(DMA2_Stream0_IRQn);
-    NVIC_SetPriority(DMA2_Stream3_IRQn, 3);
-    NVIC_SetPriority(DMA2_Stream0_IRQn, 3);
+    NVIC_SetPriority(DMA2_Stream3_IRQn, 11);
+    NVIC_SetPriority(DMA2_Stream0_IRQn, 10);
 }
 
 static SPI_information dmy = {
@@ -199,9 +203,9 @@ extern "C" {
     }
 
     void dma2_stream0_handler() {
-      volatile uint32_t state = DMA2->LISR;
-      volatile uint32_t state2 = DMA2->HISR;
 	if (DMA2->LISR & DMA_LISR_TCIF0) {
+	    DMA2->LIFCR |= DMA_LIFCR_CTCIF3;
+	    DMA2->LIFCR |= DMA_LIFCR_CHTIF3;
 	    DMA2->LIFCR |= DMA_LIFCR_CTCIF0;
 	    DMA2->LIFCR |= DMA_LIFCR_CHTIF0;
 	    DMA2_Stream3->CR &= ~DMA_SxCR_EN;
@@ -210,8 +214,8 @@ extern "C" {
 	    current->state = Done;
 	    os_printf("res: %d \n", current->rx_buffer[1]);
 	    dma_done = 1;
-	    SPI_send_next();
-	}
+            SPI_send_next();
+            }
     }
 }
 

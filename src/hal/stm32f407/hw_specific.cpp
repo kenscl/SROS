@@ -49,16 +49,6 @@ extern "C" {
     if (!sched_on) return;
     SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;
   }
-
-  void dma1_stream6_handler(void) {
-      volatile uint32_t status = DMA1->HISR;
-      if (DMA1->HISR & DMA_HISR_TCIF6) { // Check transfer complete flag
-        DMA1->HIFCR |= DMA_HIFCR_CTCIF6; // Clear flag
-      }
-      if (DMA1->HISR & DMA_HISR_TEIF6) { // Check transfer complete flag
-        DMA1->HIFCR |= DMA_HIFCR_CTEIF6; // Clear flag
-      }
-  }
 }
 
 volatile void idle_thread () {
@@ -76,23 +66,6 @@ volatile void one_second_thread () {
       GPIOD->ODR ^= (1 << 15); // Toggle Blue LED
       sleep (1 * SECONDS);
   }
-}
-
-void dma_init() {
-    RCC->AHB1ENR |= (1 << 21); // enable DMA1 clock
-    DMA1_Stream6->CR &= ~(1 << 0); // disable
-    while (DMA1_Stream6->CR & (1 << 0));
-    DMA1_Stream6->PAR  = (uint32_t) &USART2->DR; // set adress of send register
-    DMA1_Stream6->CR |= (1 << 10); // memory increment mode
-    DMA1_Stream6->CR |= (1 << 4); // transfer interrupt enable
-    DMA1_Stream6->CR |= (1 << 2); // transfer interrupt error enable
-    
-    DMA1_Stream6->CR |= (0b10 << 16); // high priority
-    DMA1_Stream6->CR &= ~(0b11 << 13); // 8 bit
-    DMA1_Stream6->CR &= ~(0b11 << 6);
-    DMA1_Stream6->CR |= (0b01 << 6); // direction
-
-    NVIC_EnableIRQ(DMA1_Stream6_IRQn);
 }
 
 void TIM2_init() {
