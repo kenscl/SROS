@@ -51,9 +51,10 @@ void SPI_send_next() {
 	    current = dequeue();
 	    if (current->state == Read) {
 	      if (current->target == Accelerometer) LSM9DS1_A_read_register_dma(current->adress, current->rx_buffer, current->tx_buffer, current->size);
-	    if (current->target == Magnetometer) {}
+	      if (current->target == Magnetometer) LSM9DS1_M_read_register_dma(current->adress, current->rx_buffer, current->tx_buffer, current->size);
 	    } else {
 	      if (current->target == Accelerometer) LSM9DS1_A_write_register_dma(current->adress, current->rx_buffer, current->tx_buffer);
+	      if (current->target == Magnetometer) LSM9DS1_M_write_register_dma(current->adress, current->rx_buffer, current->tx_buffer);
 	    }
 	}
     }
@@ -82,6 +83,15 @@ void CS_A_H() {
 
 void CS_A_L() {
     GPIOA->BSRR = GPIO_BSRR_BR_4;
+}
+
+
+void CS_M_H() {
+    GPIOA->BSRR = GPIO_BSRR_BS_1;
+}
+
+void CS_M_L() {
+    GPIOA->BSRR = GPIO_BSRR_BR_1;
 }
 
 void DMA2_init() {
@@ -126,7 +136,9 @@ void SPI_init() {
     RCC->APB2ENR |= RCC_APB2ENR_SPI1EN; 
 
     GPIOA->MODER |= 0b01 << (4 * 2); // general purpose output 
+    GPIOA->MODER |= 0b01 << (1 * 2); // general purpose output 
     CS_A_H();
+    CS_M_H();
     
     GPIOA->MODER |= (2 << (5 * 2)) | (2 << (6 * 2)) | (2 << (7 * 2)); // af mode
     GPIOA->OSPEEDR |= (3 << (5 * 2)) | (3 << (6 * 2)) | (3 << (7 * 2)); // High speed
@@ -192,6 +204,47 @@ uint8_t LSM9DS1_A_read_register_dma(uint8_t reg, uint8_t * dma_rx_buffer, uint8_
     return 0;
 }
 
+uint8_t LSM9DS1_M_read_register_dma(uint8_t reg, uint8_t *dma_rx_buffer,
+                                    uint8_t *dma_tx_buffer, size_t size) {
+    DMA2_Stream3->CR &= ~DMA_SxCR_EN;
+    DMA2_Stream0->CR &= ~DMA_SxCR_EN;
+    uint8_t dma_done = 0;
+
+    dma_tx_buffer[0] = reg | 0x80;
+    if (size > 2)
+      dma_tx_buffer[1] |= (1 << 7);
+    for (int i = 1; i < size; ++i)
+      dma_tx_buffer[i] = 0x00;
+    DMA2_Stream3->M0AR = (uint32_t)dma_tx_buffer;
+    DMA2_Stream3->NDTR = size;
+
+    DMA2_Stream0->M0AR = (uint32_t) dma_rx_buffer;
+    DMA2_Stream0->NDTR = size;
+
+    CS_M_L();
+    DMA2_Stream3->CR |= DMA_SxCR_EN;
+    DMA2_Stream0->CR |= DMA_SxCR_EN;
+    return 0;
+}
+
+uint8_t LSM9DS1_M_write_register_dma(uint8_t reg, uint8_t * dma_rx_buffer, uint8_t * dma_tx_buffer) {
+    DMA2_Stream3->CR &= ~DMA_SxCR_EN;
+    DMA2_Stream0->CR &= ~DMA_SxCR_EN;
+    uint8_t dma_done = 0;
+
+    dma_tx_buffer[0] = reg & 0x7F;
+    DMA2_Stream3->M0AR = (uint32_t)dma_tx_buffer;
+    DMA2_Stream3->NDTR = 2;
+
+    DMA2_Stream0->M0AR = (uint32_t) dma_rx_buffer;
+    DMA2_Stream0->NDTR = 2;
+
+    CS_M_L();
+    DMA2_Stream3->CR |= DMA_SxCR_EN;
+    DMA2_Stream0->CR |= DMA_SxCR_EN;
+    return 0;
+}
+
 extern "C" {
     void dma2_stream3_handler(){
 	if (DMA2->LISR & DMA_LISR_TCIF3) {
@@ -211,6 +264,7 @@ extern "C" {
 	    DMA2_Stream3->CR &= ~DMA_SxCR_EN;
 	    DMA2_Stream0->CR &= ~DMA_SxCR_EN;
 	    CS_A_H();
+	    CS_M_H();
 	    current->state = Done;
 	    os_printf("res: %d \n", current->rx_buffer[1]);
 	    dma_done = 1;
@@ -219,44 +273,36 @@ extern "C" {
     }
 }
 
-uint8_t * LSM9DS1_A_read_register_multi(uint8_t reg, uint8_t * data, size_t size) {
-    CS_A_L();
-    SPI_A_transmit(reg | 0x80);
-    for (int i = 0; i < size; ++i) {
-        data[i] = SPI_A_transmit(0x00); // dummy
-    }
-    CS_A_H();
-    return data;
-}
 
 // data values
-//Vec3 LSM9DS1_gyro;
-//float LSM9DS1_gyro_availiable = 0;
-//
-//Vec3 LSM9DS1_acc;
-//float LSM9DS1_acc_availiable = 0;
-//
-//Vec3 LSM9DS1_mag;
-//float LSM9DS1_mag_availiable = 0;
-//
-//Vec3 acc_bias;
-//Vec3 gyro_bias;
-//Vec3 mag_bias;
-//
-//void LSM9DS1_reset() {
-//    uint8_t data[1];
-//    data[0] = 0b0000001;
-//    static I2C_state_information info = {
-//        .state = Sending,
-//        .device_adress_write = LSM9DS1_ACC_AND_GYRO_WRITE,
-//        .device_adress_recieve = LSM9DS1_ACC_AND_GYRO_READ,
-//        .device_subadress = CTRL_REG8,
-//        .recieve_bytes = 1,
-//        .data = data
-//    };
-//
-//    while (!i2c_handle(&info));
-//}
+Vec3 LSM9DS1_gyro;
+float LSM9DS1_gyro_availiable = 0;
+
+Vec3 LSM9DS1_acc;
+float LSM9DS1_acc_availiable = 0;
+
+Vec3 LSM9DS1_mag;
+float LSM9DS1_mag_availiable = 0;
+
+Vec3 acc_bias;
+Vec3 gyro_bias;
+Vec3 mag_bias;
+
+uint8_t dummy_rx[2] = {};
+void LSM9DS1_reset() {
+    uint8_t data[2];
+    data[1] = 0b0000001;
+    static SPI_information info = {
+        .state = Write,
+	.size = 2,
+	.rx_buffer = dummy_rx,
+	.tx_buffer = data,
+	.target = Accelerometer,
+	.adress = CTRL_REG8
+    };
+
+    while (!SPI_handle(&info));
+}
 //
 //void LSM9DS1_configure_gyro() {
 //    // general config

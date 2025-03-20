@@ -31,12 +31,12 @@ void SPI_send_next();
 void SPI_init();
 void CS_A_L();
 void CS_A_H();
-uint8_t SPI_A_transmit(uint8_t byte);
-void LSM9DS1_A_write(uint8_t reg, uint8_t byte);
-uint8_t LSM9DS1_A_write_register_dma(uint8_t reg, uint8_t * dma_rx_buffer, uint8_t * dma_tx_buffer);
-uint8_t LSM9DS1_A_read_register(uint8_t reg);
-uint8_t * LSM9DS1_A_read_register_multi(uint8_t reg, uint8_t * data, size_t size);
+void CS_M_L();
+void CS_M_H();
 uint8_t LSM9DS1_A_read_register_dma(uint8_t reg, uint8_t * dma_rx_buffer, uint8_t * dma_tx_buffer, size_t size);
+uint8_t LSM9DS1_A_write_register_dma(uint8_t reg, uint8_t * dma_rx_buffer, uint8_t * dma_tx_buffer);
+uint8_t LSM9DS1_M_read_register_dma(uint8_t reg, uint8_t * dma_rx_buffer, uint8_t * dma_tx_buffer, size_t size);
+uint8_t LSM9DS1_M_write_register_dma(uint8_t reg, uint8_t * dma_rx_buffer, uint8_t * dma_tx_buffer);
 
 // devices
 #define LSM9DS1_ACC_AND_GYRO_READ  0xD7
