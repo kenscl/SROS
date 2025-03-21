@@ -121,23 +121,27 @@ void LSM9DS1_read_status();
 void LSM9DS1_read_gyro();
 void LSM9DS1_read_accel();
 void LSM9DS1_read_mag();
+void LSM9DS1_read_WHO_AM_I();
 
 // check i2c status
 uint8_t LSM9DS1_check_status();
 uint8_t LSM9DS1_check_gyro();
 uint8_t LSM9DS1_check_accel();
 uint8_t LSM9DS1_check_mag();
+uint8_t LSM9DS1_check_WHO_AM_I();
 
 // enable send
 void LSM9DS1_enable_status();
 void LSM9DS1_enable_gyro();
 void LSM9DS1_enable_accel();
 void LSM9DS1_enable_mag();
+void LSM9DS1_enable_WHO_AM_I();
 
 // process
 void  LSM9DS1_process_status();
 void  LSM9DS1_process_gyro();
 void  LSM9DS1_process_accel();
+void LSM9DS1_process_WHO_AM_I();
 volatile void LSM9DS1_thread();
 
 #endif 

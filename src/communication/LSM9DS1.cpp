@@ -45,20 +45,41 @@ SPI_information *dequeue() {
     return nullptr;
 }
 
+#pragma GCC push_options
+#pragma GCC optimize ("O0")
 void SPI_send_next() {
     if (queue[queue_head]->size != 0) {
+      if (current->state == Done) {
+	   current = dequeue();
+
+	   if (current->state == Done) {
+	     current = empty;
+	     return;
+	   }
+	   if (current->state == Read) {
+	     if (current->target == Accelerometer)
+	       LSM9DS1_A_read_register_dma(current->adress, current->rx_buffer,
+					   current->tx_buffer, current->size);
+	     if (current->target == Magnetometer)
+	       LSM9DS1_M_read_register_dma(current->adress, current->rx_buffer,
+					   current->tx_buffer, current->size);
+	   } else {
+	     if (current->target == Accelerometer)
+	       LSM9DS1_A_write_register_dma(current->adress, current->rx_buffer,
+					    current->tx_buffer);
+	     if (current->target == Magnetometer)
+	       LSM9DS1_M_write_register_dma(current->adress, current->rx_buffer,
+					    current->tx_buffer);
+	   }
+      }
+    } else {
 	if (current->state == Done) {
-	    current = dequeue();
-	    if (current->state == Read) {
-	      if (current->target == Accelerometer) LSM9DS1_A_read_register_dma(current->adress, current->rx_buffer, current->tx_buffer, current->size);
-	      if (current->target == Magnetometer) LSM9DS1_M_read_register_dma(current->adress, current->rx_buffer, current->tx_buffer, current->size);
-	    } else {
-	      if (current->target == Accelerometer) LSM9DS1_A_write_register_dma(current->adress, current->rx_buffer, current->tx_buffer);
-	      if (current->target == Magnetometer) LSM9DS1_M_write_register_dma(current->adress, current->rx_buffer, current->tx_buffer);
-	    }
+	    current = empty;
+	    return;
 	}
     }
 }
+#pragma GCC pop_options
 
 volatile void SPI_thread() {
     while (1) {
@@ -116,9 +137,9 @@ void DMA2_init() {
     DMA2_Stream0->CR |= (1 << DMA_SxCR_PL_Pos);
     DMA2_Stream0->FCR |= DMA_SxFCR_DMDIS;
 
-    NVIC_EnableIRQ(DMA2_Stream3_IRQn);
+    //NVIC_EnableIRQ(DMA2_Stream3_IRQn);
     NVIC_EnableIRQ(DMA2_Stream0_IRQn);
-    NVIC_SetPriority(DMA2_Stream3_IRQn, 11);
+    //NVIC_SetPriority(DMA2_Stream3_IRQn, 11);
     NVIC_SetPriority(DMA2_Stream0_IRQn, 10);
 }
 
@@ -191,8 +212,8 @@ uint8_t LSM9DS1_A_read_register_dma(uint8_t reg, uint8_t * dma_rx_buffer, uint8_
 
     dma_tx_buffer[0] = reg | 0x80;
     for (int i = 1; i < size; ++i)
-    dma_tx_buffer[i] = 0x00;
-    DMA2_Stream3->M0AR = (uint32_t)dma_tx_buffer;
+      dma_tx_buffer[i] = 0x00;
+    DMA2_Stream3->M0AR = (uint32_t) dma_tx_buffer;
     DMA2_Stream3->NDTR = size;
 
     DMA2_Stream0->M0AR = (uint32_t) dma_rx_buffer;
@@ -256,6 +277,7 @@ extern "C" {
     }
 
     void dma2_stream0_handler() {
+      volatile uint32_t state = DMA2->LISR;
 	if (DMA2->LISR & DMA_LISR_TCIF0) {
 	    DMA2->LIFCR |= DMA_LIFCR_CTCIF3;
 	    DMA2->LIFCR |= DMA_LIFCR_CHTIF3;
@@ -266,7 +288,8 @@ extern "C" {
 	    CS_A_H();
 	    CS_M_H();
 	    current->state = Done;
-	    os_printf("res: %d \n", current->rx_buffer[1]);
+	    current = empty;
+	    //os_printf("res: %d \n", current->rx_buffer[1]);
 	    dma_done = 1;
             SPI_send_next();
             }
@@ -275,6 +298,7 @@ extern "C" {
 
 
 // data values
+
 Vec3 LSM9DS1_gyro;
 float LSM9DS1_gyro_availiable = 0;
 
@@ -289,9 +313,9 @@ Vec3 gyro_bias;
 Vec3 mag_bias;
 
 uint8_t dummy_rx[2] = {};
+uint8_t data[2];
 void LSM9DS1_reset() {
-    uint8_t data[2];
-    data[1] = 0b0000001;
+    data[1] = 0b10000101;
     static SPI_information info = {
         .state = Write,
 	.size = 2,
@@ -303,318 +327,366 @@ void LSM9DS1_reset() {
 
     while (!SPI_handle(&info));
 }
-//
-//void LSM9DS1_configure_gyro() {
-//    // general config
-//    uint8_t odr = (0b110 << 5); // 476 Hz
-//    uint8_t fs = (0b01 << 3); // 500 dps
-//    uint8_t bw = (0b00 << 0); // default bw
-//    
-//    uint8_t data1_g[1], data3_g[1];
-//    data1_g[0] = odr | fs | bw;
-//    static I2C_state_information info1_g = {
-//        .state = Sending,
-//        .device_adress_write = LSM9DS1_ACC_AND_GYRO_WRITE,
-//        .device_adress_recieve = LSM9DS1_ACC_AND_GYRO_READ,
-//        .device_subadress = CTRL_REG1_G,
-//        .recieve_bytes = 1,
-//        .data = data1_g
-//    };
-//
-//    while (!i2c_handle(&info1_g));
-//
-//    // enable highpass filter
-//    uint8_t hp = (0b1 << 6);
-//    uint8_t hpcf = (0b1001<< 0); // Frequenzy 1 
-//    data3_g[0] = hp | hpcf ;
-//    static I2C_state_information info3_g = {
-//        .state = Sending,
-//        .device_adress_write = LSM9DS1_ACC_AND_GYRO_WRITE,
-//        .device_adress_recieve = LSM9DS1_ACC_AND_GYRO_READ,
-//        .device_subadress = CTRL_REG3_G,
-//        .recieve_bytes = 1,
-//        .data = data1_g
-//    };
-//    while (!i2c_handle(&info3_g));
-//}
-//
-//void LSM9DS1_configure_accel() {
-//    // general config
-//    uint8_t odr = (0b100 << 5); // 952 Hz
-//    uint8_t fs = (0b00 << 3); // 2 g
-//    uint8_t bw_scale = (0b0 << 2); // bw according to odr
-//    uint8_t bw = (0b01 << 0); // default bw, dosnt matter
-//    uint8_t data6_xl[1];
-//    data6_xl[0] = odr | fs | bw;
-//    static I2C_state_information info6_xl = {
-//        .state = Sending,
-//        .device_adress_write = LSM9DS1_ACC_AND_GYRO_WRITE,
-//        .device_adress_recieve = LSM9DS1_ACC_AND_GYRO_READ,
-//        .device_subadress = CTRL_REG6_XL,
-//        .recieve_bytes = 1,
-//        .data = data6_xl
-//    };
-//
-//    while (!i2c_handle(&info6_xl));
-//}
-//
-//void LSM9DS1_configure_mag() {
-//    uint8_t ctrl_reg1_m = 0b11111100;
-//    uint8_t ctrl_reg2_m = 0b00000000;
-//    uint8_t ctrl_reg3_m = 0b00000000;
-//    uint8_t ctrl_reg4_m = 0b00001100;
-//    uint8_t data1_m[1], data2_m[1], data3_m[1], data4_m[1];
-//    data1_m[0] = ctrl_reg1_m;
-//    data2_m[0] = ctrl_reg2_m;
-//    data3_m[0] = ctrl_reg3_m;
-//    data4_m[0] = ctrl_reg4_m;
-//    static I2C_state_information info1_m = {
-//        .state = Sending,
-//        .device_adress_write = LSM9DS1_MAG_SENSOE_WRITE,
-//        .device_adress_recieve = LSM9DS1_MAG_SENSOE_READ,
-//        .device_subadress = CTRL_REG1_M,
-//        .recieve_bytes = 1,
-//        .data = data1_m 
-//    };
-//    static I2C_state_information info2_m = {
-//        .state = Sending,
-//        .device_adress_write = LSM9DS1_MAG_SENSOE_WRITE,
-//        .device_adress_recieve = LSM9DS1_MAG_SENSOE_READ,
-//        .device_subadress = CTRL_REG2_M,
-//        .recieve_bytes = 1,
-//        .data = data2_m 
-//    };
-//    static I2C_state_information info3_m = {
-//        .state = Sending,
-//        .device_adress_write = LSM9DS1_MAG_SENSOE_WRITE,
-//        .device_adress_recieve = LSM9DS1_MAG_SENSOE_READ,
-//        .device_subadress = CTRL_REG3_M,
-//        .recieve_bytes = 1,
-//        .data = data3_m 
-//    };
-//    static I2C_state_information info4_m = {
-//        .state = Sending,
-//        .device_adress_write = LSM9DS1_MAG_SENSOE_WRITE,
-//        .device_adress_recieve = LSM9DS1_MAG_SENSOE_READ,
-//        .device_subadress = CTRL_REG4_M,
-//        .recieve_bytes = 1,
-//        .data = data4_m 
-//    };
-//
-//    while (!i2c_handle(&info1_m));
-//    while (!i2c_handle(&info2_m));
-//    while (!i2c_handle(&info3_m));
-//    while (!i2c_handle(&info4_m));
-//}
-//
-//void LSM9DS1_calibrate_sensors() {
-//    gyro_bias = gyro_bias * 0;
-//    acc_bias = acc_bias * 0;
-//    mag_bias = mag_bias * 0;
-//
-//    Vec3 temp_gyro;
-//    Vec3 temp_acc;
-//    Vec3 temp_mag;
-//
-//    float mag_x_max = 0.83, mag_x_min = -0.101;
-//    float mag_y_max = 0.86, mag_y_min = -0.079;
-//    float mag_z_max = -0.707, mag_z_min = -1.58;
-//    mag_bias[0] = (mag_x_max + mag_x_min) / 2;
-//    mag_bias[1] = (mag_x_max + mag_x_min) / 2;
-//    mag_bias[2] = (mag_z_max + mag_z_min) / 2;
-//}
-//
-//uint8_t status_reg[1] = {};
-//static I2C_state_information acc_and_gyro_status_reg = {
-//    .state = Recieving,
-//    .device_adress_write = LSM9DS1_ACC_AND_GYRO_WRITE,
-//    .device_adress_recieve = LSM9DS1_ACC_AND_GYRO_READ,
-//    .device_subadress = LSM9DS1_STATUS_REG,
-//    .recieve_bytes = 1,
-//    .data = status_reg 
-//};
-//
-//uint8_t status_reg_m[1] = {};
-//static I2C_state_information mag_status_reg = {
-//    .state = Recieving,
-//    .device_adress_write = LSM9DS1_MAG_SENSOE_WRITE,
-//    .device_adress_recieve = LSM9DS1_MAG_SENSOE_READ,
-//    .device_subadress = LSM9DS1_STATUS_REG_M,
-//    .recieve_bytes = 1,
-//    .data = status_reg_m 
-//};
-//
-//void LSM9DS1_read_status() {
-//    //if (LSM9DS1_check_status()) return; // return if message is already pending
-//    i2c_handle(&acc_and_gyro_status_reg);
-//    //i2c_handle(&mag_status_reg);
-//}
-//
-//uint8_t LSM9DS1_check_status() {
-//    if (acc_and_gyro_status_reg.state == Done && mag_status_reg.state == Done) return true;
-//    else return 0;
-//}
-//
-//void LSM9DS1_enable_status() {
-//    acc_and_gyro_status_reg.state = Recieving;
-//    mag_status_reg.state = Recieving;
-//}
-//
-//void LSM9DS1_process_status() {
-//    if (!LSM9DS1_check_status()) return;
-//    LSM9DS1_gyro_availiable = (status_reg[0] & 0b10);
-//    LSM9DS1_acc_availiable = (status_reg[0] & 0b1);
-//    LSM9DS1_mag_availiable = (status_reg_m[0] & 0b1000);
-//    LSM9DS1_enable_status();
-//}
-//
-//uint8_t gyro_data[6] = {};
-//static I2C_state_information gyro_data_reg = {
-//    .state = Recieving,
-//    .device_adress_write = LSM9DS1_ACC_AND_GYRO_WRITE,
-//    .device_adress_recieve = LSM9DS1_ACC_AND_GYRO_READ,
-//    .device_subadress = OUT_X_G_L,
-//    .recieve_bytes = 0,
-//    .data = gyro_data 
-//};
-//
-//void LSM9DS1_read_gyro() {
-//    if (LSM9DS1_check_gyro()) return;
-//    i2c_handle(&gyro_data_reg);
-//}
-//
-//uint8_t LSM9DS1_check_gyro() {
-//    if (gyro_data_reg.state == Done) return true;
-//    else return false;
-//}
-//
-//void LSM9DS1_enable_gyro() {
-//    gyro_data_reg.state = Recieving;
-//}
-//
-//void LSM9DS1_process_gyro() {
-//    if (!LSM9DS1_check_gyro()) return;
-//    int16_t x = (gyro_data[1] << 8) | gyro_data[0];
-//    int16_t y = (gyro_data[3] << 8) | gyro_data[2];
-//    int16_t z = (gyro_data[5] << 8) | gyro_data[4];
-//    LSM9DS1_gyro[0] = (float) (x * GYRO_SENSITIVITY) / 1000 ;
-//    LSM9DS1_gyro[1] = (float) (y * GYRO_SENSITIVITY) / 1000 ;
-//    LSM9DS1_gyro[2] = (float) (z * GYRO_SENSITIVITY) / 1000 ;
-//    LSM9DS1_gyro = LSM9DS1_gyro - gyro_bias;
-//    LSM9DS1_enable_gyro();
-//}
-//
-//uint8_t acc_data[6] = {};
-//static I2C_state_information acc_data_reg = {
-//    .state = Recieving,
-//    .device_adress_write = LSM9DS1_ACC_AND_GYRO_WRITE,
-//    .device_adress_recieve = LSM9DS1_ACC_AND_GYRO_READ,
-//    .device_subadress = OUT_X_XL_L,
-//    .recieve_bytes = 6,
-//    .data = acc_data 
-//};
-//
-//void LSM9DS1_read_accel() {
-//    if (LSM9DS1_check_accel()) return; 
-//    i2c_handle(&acc_data_reg);
-//}
-//
-//uint8_t LSM9DS1_check_accel() {
-//    if (acc_data_reg.state == Done) return true;
-//    else return false;
-//}
-//
-//void LSM9DS1_enable_accel() {
-//    acc_data_reg.state = Recieving;
-//}
-//
-//void LSM9DS1_process_accel() {
-//    if (!LSM9DS1_check_accel()) return; 
-//    int16_t x = (acc_data[1] << 8) | acc_data[0];
-//    int16_t y = (acc_data[3] << 8) | acc_data[2];
-//    int16_t z = (acc_data[5] << 8) | acc_data[4];
-//    LSM9DS1_acc[0] = (float) (x * ACC_SENSITIVITY) / 1000 ;
-//    LSM9DS1_acc[1] = (float) (y * ACC_SENSITIVITY) / 1000 ;
-//    LSM9DS1_acc[2] = (float) (z * ACC_SENSITIVITY) / 1000 ;
-//    LSM9DS1_acc = (LSM9DS1_acc - acc_bias) * - 1;
-//    LSM9DS1_enable_gyro();
-//}
-//
-//uint8_t mag_data[6] = {};
-//static I2C_state_information mag_data_reg = {
-//    .state = Recieving,
-//    .device_adress_write = LSM9DS1_MAG_SENSOE_WRITE,
-//    .device_adress_recieve = LSM9DS1_MAG_SENSOE_READ,
-//    .device_subadress = OUT_X_L_M,
-//    .recieve_bytes = 6,
-//    .data = mag_data 
-//};
-//
-//void LSM9DS1_read_mag() {
-//    i2c_handle(&mag_data_reg);
-//}
-//
-//uint8_t LSM9DS1_check_mag() {
-//    if (mag_data_reg.state == Done) return true;
-//    else return false;
-//}
-//
-//void LSM9DS1_enable_mag() {
-//    acc_data_reg.state = Recieving;
-//}
-//
-//void LSM9DS1_process_mag() {
-//    if (!LSM9DS1_check_mag()) return;
-//    int16_t x = (mag_data[1] << 8) | mag_data[0];
-//    int16_t y = (mag_data[3] << 8) | mag_data[2];
-//    int16_t z = (mag_data[5] << 8) | mag_data[4];
-//    LSM9DS1_mag[0] = (float) (x * MAG_SENSITIVITY) / 1000 ;
-//    LSM9DS1_mag[1] = (float) (y * MAG_SENSITIVITY) / 1000 ;
-//    LSM9DS1_mag[2] = (float) (z * MAG_SENSITIVITY) / 1000 ;
-//    LSM9DS1_mag = LSM9DS1_mag - mag_bias;
-//    LSM9DS1_enable_mag();
-//}
-//
-//uint8_t _data[1] = {};
-//volatile void LSM9DS1_thread() {
-//  uint8_t tst = now();
-//  //LSM9DS1_reset();
-//  //LSM9DS1_configure_gyro();
-//  //LSM9DS1_configure_accel();
-//  LSM9DS1_configure_mag();
-//  // calibration
-//  //LSM9DS1_read_gyro();
-//  LSM9DS1_calibrate_sensors();
-//  sleep(10 * MILLISECONDS);
-//  //LSM9DS1_read_status();
-//
-//  static I2C_state_information _data_reg = {
-//      .state = Recieving,
-//      .device_adress_write = LSM9DS1_MAG_SENSOE_WRITE,
-//      .device_adress_recieve = LSM9DS1_MAG_SENSOE_READ,
-//      .device_subadress = CTRL_REG1_M,
-//      .recieve_bytes = 1,
-//      .data = _data};
-//  i2c_handle(&_data_reg);
-//  // LSM9DS1_read_gyro();
-//  while (1) {
-//      volatile uint32_t next_time = now() + 3 * MILLISECONDS;
-//      //LSM9DS1_read_status();
-//      sleep(1 * MILLISECONDS);
-//      //LSM9DS1_process_mag();
-//      //LSM9DS1_process_accel();
-//      //LSM9DS1_process_gyro();
-//      //LSM9DS1_process_status();
-//      //LSM9DS1_gyro.print();
-//      //if (LSM9DS1_gyro_availiable) {
-//      //    LSM9DS1_read_gyro();
-//      //}
-//      //if (LSM9DS1_acc_availiable) {
-//      //    LSM9DS1_read_accel();
-//      //}
-//      //if (LSM9DS1_mag_availiable) {
-//      //    LSM9DS1_read_mag();
-//      //}
-//      sleep_until(next_time);
-//  }
-//}
+
+uint8_t data1_g[2], data3_g[2];
+void LSM9DS1_configure_gyro() {
+    // general config
+    uint8_t odr = (0b110 << 5); // 476 Hz
+    uint8_t fs = (0b01 << 3); // 500 dps
+    uint8_t bw = (0b00 << 0); // default bw
+    data1_g[1] = odr | fs | bw;
+    static SPI_information info1_g = {
+        .state = Write,
+	.size = 2,
+	.rx_buffer = dummy_rx,
+	.tx_buffer = data1_g,
+	.target = Accelerometer,
+	.adress = CTRL_REG1_G
+    };
+
+    while (!SPI_handle(&info1_g));
+
+    // enable highpass filter
+    uint8_t hp = (0b1 << 6);
+    uint8_t hpcf = (0b1001<< 0); // Frequenzy 1 
+    data3_g[1] = hp | hpcf ;
+    static SPI_information info3_g = {
+        .state = Write,
+	.size = 2,
+	.rx_buffer = dummy_rx,
+	.tx_buffer = data3_g,
+	.target = Accelerometer,
+	.adress = CTRL_REG3_G
+    };
+    while (!SPI_handle(&info3_g));
+}
+
+uint8_t data6_xl[2];
+void LSM9DS1_configure_accel() {
+    // general config
+    uint8_t odr = (0b100 << 5); // 952 Hz
+    uint8_t fs = (0b00 << 3); // 2 g
+    uint8_t bw_scale = (0b0 << 2); // bw according to odr
+    uint8_t bw = (0b01 << 0); // default bw, dosnt matter
+    data6_xl[1] = odr | fs | bw;
+    static SPI_information info6_xl = {
+        .state = Write,
+	.size = 2,
+	.rx_buffer = dummy_rx,
+	.tx_buffer = data6_xl,
+	.target = Accelerometer,
+	.adress = CTRL_REG6_XL
+    };
+
+    while (!SPI_handle(&info6_xl));
+}
+
+uint8_t data1_m[2], data2_m[2], data3_m[2], data4_m[2];
+void LSM9DS1_configure_mag() {
+    uint8_t ctrl_reg1_m = 0b11111100;
+    uint8_t ctrl_reg2_m = 0b00000000;
+    uint8_t ctrl_reg3_m = 0b00000100;
+    uint8_t ctrl_reg4_m = 0b00001100;
+    data1_m[1] = ctrl_reg1_m;
+    data2_m[1] = ctrl_reg2_m;
+    data3_m[1] = ctrl_reg3_m;
+    data4_m[1] = ctrl_reg4_m;
+    static SPI_information info1_m = {
+        .state = Write,
+	.size = 2,
+	.rx_buffer = dummy_rx,
+	.tx_buffer = data1_m,
+	.target = Magnetometer,
+	.adress = CTRL_REG1_M
+    };
+    static SPI_information info2_m = {
+        .state = Write,
+	.size = 2,
+	.rx_buffer = dummy_rx,
+	.tx_buffer = data2_m,
+	.target = Magnetometer,
+	.adress = CTRL_REG2_M
+    };
+    static SPI_information info3_m = {
+        .state = Write,
+	.size = 2,
+	.rx_buffer = dummy_rx,
+	.tx_buffer = data3_m,
+	.target = Magnetometer,
+	.adress = CTRL_REG3_M
+    };
+    static SPI_information info4_m = {
+        .state = Write,
+	.size = 2,
+	.rx_buffer = dummy_rx,
+	.tx_buffer = data4_m,
+	.target = Magnetometer,
+	.adress = CTRL_REG4_M
+    };
+
+    while (!SPI_handle(&info1_m));
+    while (!SPI_handle(&info2_m));
+    while (!SPI_handle(&info3_m));
+    while (!SPI_handle(&info4_m));
+}
+
+void LSM9DS1_calibrate_sensors() {
+    gyro_bias = gyro_bias * 0;
+    acc_bias = acc_bias * 0;
+    mag_bias = mag_bias * 0;
+
+    Vec3 temp_gyro;
+    Vec3 temp_acc;
+    Vec3 temp_mag;
+
+    float mag_x_max = 0.83, mag_x_min = -0.101;
+    float mag_y_max = 0.86, mag_y_min = -0.079;
+    float mag_z_max = -0.707, mag_z_min = -1.58;
+    mag_bias[0] = (mag_x_max + mag_x_min) / 2;
+    mag_bias[1] = (mag_x_max + mag_x_min) / 2;
+    mag_bias[2] = (mag_z_max + mag_z_min) / 2;
+}
+
+uint8_t status_reg[2] = {};
+uint8_t status_reg_tx[2] = {};
+uint8_t status_reg_m[2] = {};
+uint8_t status_reg_m_tx[2] = {};
+static SPI_information acc_and_gyro_status = {
+    .state = Read,
+    .size = 2,
+    .rx_buffer = status_reg,
+    .tx_buffer = status_reg_tx,
+    .target = Accelerometer,
+    .adress = LSM9DS1_STATUS_REG 
+};
+
+static SPI_information mag_status = {
+    .state = Read,
+    .size = 2,
+    .rx_buffer = status_reg_m,
+    .tx_buffer = status_reg_m_tx,
+    .target = Accelerometer,
+    .adress = LSM9DS1_STATUS_REG 
+};
+
+void LSM9DS1_read_status() {
+    if (LSM9DS1_check_status()) return; // return if message is already pending
+    SPI_handle(&acc_and_gyro_status);
+    SPI_handle(&mag_status);
+}
+
+uint8_t LSM9DS1_check_status() {
+    if (acc_and_gyro_status.state == Done && mag_status.state == Done) return true;
+    else return 0;
+}
+
+void LSM9DS1_enable_status() {
+    acc_and_gyro_status.state = Read;
+    mag_status.state = Read;
+}
+
+void LSM9DS1_process_status() {
+    if (!LSM9DS1_check_status()) return;
+    LSM9DS1_gyro_availiable = (status_reg[1] & 0b10);
+    LSM9DS1_acc_availiable = (status_reg[1] & 0b1);
+    LSM9DS1_mag_availiable = (status_reg_m[1] & 0b1000);
+    LSM9DS1_enable_status();
+}
+
+uint8_t gyro_data[7] = {};
+uint8_t gyro_data_tx[7] = {};
+static SPI_information gyro_data_reg = {
+    .state = Read,
+    .size = 7,
+    .rx_buffer = gyro_data,
+    .tx_buffer = gyro_data_tx,
+    .target = Accelerometer,
+    .adress = OUT_X_G_L 
+};
+
+void LSM9DS1_read_gyro() {
+    if (LSM9DS1_check_gyro()) return;
+    SPI_handle(&gyro_data_reg);
+}
+
+uint8_t LSM9DS1_check_gyro() {
+    if (gyro_data_reg.state == Done) return true;
+    else return false;
+}
+
+void LSM9DS1_enable_gyro() {
+    gyro_data_reg.state = Read;
+}
+
+void LSM9DS1_process_gyro() {
+    if (!LSM9DS1_check_gyro()) return;
+    volatile int16_t x = (gyro_data[1+1] << 8) | gyro_data[0+1];
+    volatile int16_t y = (gyro_data[3+1] << 8) | gyro_data[2+1];
+    volatile int16_t z = (gyro_data[5+1] << 8) | gyro_data[4+1];
+    LSM9DS1_gyro[0] = (float) (x * GYRO_SENSITIVITY) / 1000 ;
+    LSM9DS1_gyro[1] = (float) (y * GYRO_SENSITIVITY) / 1000 ;
+    LSM9DS1_gyro[2] = (float) (z * GYRO_SENSITIVITY) / 1000 ;
+    LSM9DS1_gyro = LSM9DS1_gyro - gyro_bias;
+    LSM9DS1_enable_gyro();
+}
+
+uint8_t acc_data[7] = {};
+uint8_t acc_data_tx[7] = {};
+static SPI_information acc_data_reg = {
+    .state = Read,
+    .size = 7,
+    .rx_buffer = acc_data,
+    .tx_buffer = acc_data_tx,
+    .target = Accelerometer,
+    .adress = OUT_X_XL_L 
+};
+
+void LSM9DS1_read_accel() {
+    if (LSM9DS1_check_accel()) return; 
+    SPI_handle(&acc_data_reg);
+}
+
+uint8_t LSM9DS1_check_accel() {
+    if (acc_data_reg.state == Done) return true;
+    else return false;
+}
+
+void LSM9DS1_enable_accel() {
+    acc_data_reg.state = Read;
+}
+
+void LSM9DS1_process_accel() {
+    if (!LSM9DS1_check_accel()) return; 
+    int16_t x = (acc_data[1+1] << 8) | acc_data[0+1];
+    int16_t y = (acc_data[3+1] << 8) | acc_data[2+1];
+    int16_t z = (acc_data[5+1] << 8) | acc_data[4+1];
+    LSM9DS1_acc[0] = (float) (x * ACC_SENSITIVITY) / 1000 ;
+    LSM9DS1_acc[1] = (float) (y * ACC_SENSITIVITY) / 1000 ;
+    LSM9DS1_acc[2] = (float) (z * ACC_SENSITIVITY) / 1000 ;
+    LSM9DS1_acc = (LSM9DS1_acc - acc_bias) * - 1;
+    LSM9DS1_enable_accel();
+}
+
+uint8_t mag_data[7] = {};
+uint8_t mag_data_tx[7] = {};
+static SPI_information mag_data_reg = {
+    .state = Read,
+    .size = 7,
+    .rx_buffer = acc_data,
+    .tx_buffer = acc_data_tx,
+    .target = Magnetometer,
+    .adress = OUT_X_L_M
+};
+
+void LSM9DS1_read_mag() {
+    SPI_handle(&mag_data_reg);
+}
+
+uint8_t LSM9DS1_check_mag() {
+    if (mag_data_reg.state == Done) return true;
+    else return false;
+}
+
+void LSM9DS1_enable_mag() {
+    mag_data_reg.state = Read;
+}
+
+void LSM9DS1_process_mag() {
+    if (!LSM9DS1_check_mag()) return;
+    int16_t x = (mag_data[1+1] << 8) | mag_data[0+1];
+    int16_t y = (mag_data[3+1] << 8) | mag_data[2+1];
+    int16_t z = (mag_data[5+1] << 8) | mag_data[4+1];
+    LSM9DS1_mag[0] = (float) (x * MAG_SENSITIVITY) / 1000 ;
+    LSM9DS1_mag[1] = (float) (y * MAG_SENSITIVITY) / 1000 ;
+    LSM9DS1_mag[2] = (float) (z * MAG_SENSITIVITY) / 1000 ;
+    LSM9DS1_mag = LSM9DS1_mag - mag_bias;
+    LSM9DS1_enable_mag();
+}
+
+uint8_t who_data[2], who_data_m[2] = {};
+uint8_t who_data_tx[2],  who_data_tx_m[2] = {};
+static SPI_information who_data_reg = {
+    .state = Read,
+    .size = 2,
+    .rx_buffer = who_data,
+    .tx_buffer = who_data_tx,
+    .target = Accelerometer,
+    .adress = LSM9DS1_WHO_AM_I 
+};
+
+static SPI_information who_data_reg_m = {
+    .state = Read,
+    .size = 2,
+    .rx_buffer = who_data_m,
+    .tx_buffer = who_data_tx_m,
+    .target = Magnetometer,
+    .adress = LSM9DS1_WHO_AM_I 
+};
+
+void LSM9DS1_read_WHO_AM_I() {
+  if (who_data_reg.state == Done) return;
+  if (who_data_reg_m.state == Done) return;
+  SPI_handle(&who_data_reg);
+  SPI_handle(&who_data_reg_m);
+}
+
+uint8_t LSM9DS1_check_WHO_AM_I() {
+    if (who_data_reg.state == Done && who_data_reg_m.state == Done) return true;
+    else return false;
+}
+
+void LSM9DS1_enable_WHO_AM_I() {
+    who_data_reg.state = Read;
+    who_data_reg_m.state = Read;
+}
+
+void LSM9DS1_process_WHO_AM_I() {
+    if (!LSM9DS1_check_WHO_AM_I()) return;
+    if (who_data[1] == 104) {}
+    else {
+      os_printf("SPI error gyro! \n");
+    }
+    if (who_data_m[1] == 61) {}
+    else {
+      os_printf("SPI error mag! \n");
+    }
+    LSM9DS1_enable_WHO_AM_I();
+}
+
+volatile void LSM9DS1_thread() {
+  uint8_t tst = now();
+  LSM9DS1_reset();
+  sleep(10 * MILLISECONDS);
+  LSM9DS1_configure_gyro();
+  LSM9DS1_configure_accel();
+  LSM9DS1_configure_mag();
+  LSM9DS1_read_WHO_AM_I();
+  // calibration
+  LSM9DS1_calibrate_sensors();
+  sleep(10 * MILLISECONDS);
+  LSM9DS1_process_WHO_AM_I();
+  while (1) {
+    LSM9DS1_read_status();
+    volatile uint32_t next_time = now() + 3 * MILLISECONDS;
+    yield();
+    LSM9DS1_process_status();
+    if (LSM9DS1_gyro_availiable) {
+      //LSM9DS1_gyro.print_bare();
+      LSM9DS1_read_gyro();
+    }
+    if (LSM9DS1_mag_availiable) {
+      LSM9DS1_mag.print_bare();
+      LSM9DS1_read_mag();
+    }
+    if (LSM9DS1_acc_availiable) {
+      //LSM9DS1_acc.print_bare();
+      LSM9DS1_read_accel();
+    }
+    SPI_send_next();
+    sleep(2 * MILLISECONDS);
+    LSM9DS1_process_gyro();
+    LSM9DS1_process_accel();
+    LSM9DS1_process_mag();
+    //sleep_until(next_time);
+  }
+}
