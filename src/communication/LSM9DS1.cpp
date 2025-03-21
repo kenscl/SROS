@@ -233,7 +233,7 @@ uint8_t LSM9DS1_M_read_register_dma(uint8_t reg, uint8_t *dma_rx_buffer,
 
     dma_tx_buffer[0] = reg | 0x80;
     if (size > 2)
-      dma_tx_buffer[1] |= (1 << 7);
+      dma_tx_buffer[0] |= (1 << 6);
     for (int i = 1; i < size; ++i)
       dma_tx_buffer[i] = 0x00;
     DMA2_Stream3->M0AR = (uint32_t)dma_tx_buffer;
@@ -382,11 +382,11 @@ void LSM9DS1_configure_accel() {
 }
 
 uint8_t data1_m[2], data2_m[2], data3_m[2], data4_m[2];
+uint8_t ctrl_reg1_m = 0b11111100;
+uint8_t ctrl_reg2_m = 0b00000000;
+uint8_t ctrl_reg3_m = 0b00000000; // sim needs to be 0, this is an error in the datasheet!
+uint8_t ctrl_reg4_m = 0b00001100;
 void LSM9DS1_configure_mag() {
-    uint8_t ctrl_reg1_m = 0b11111100;
-    uint8_t ctrl_reg2_m = 0b00000000;
-    uint8_t ctrl_reg3_m = 0b00000100;
-    uint8_t ctrl_reg4_m = 0b00001100;
     data1_m[1] = ctrl_reg1_m;
     data2_m[1] = ctrl_reg2_m;
     data3_m[1] = ctrl_reg3_m;
@@ -465,8 +465,8 @@ static SPI_information mag_status = {
     .size = 2,
     .rx_buffer = status_reg_m,
     .tx_buffer = status_reg_m_tx,
-    .target = Accelerometer,
-    .adress = LSM9DS1_STATUS_REG 
+    .target = Magnetometer,
+    .adress = LSM9DS1_STATUS_REG_M
 };
 
 void LSM9DS1_read_status() {
@@ -572,8 +572,8 @@ uint8_t mag_data_tx[7] = {};
 static SPI_information mag_data_reg = {
     .state = Read,
     .size = 7,
-    .rx_buffer = acc_data,
-    .tx_buffer = acc_data_tx,
+    .rx_buffer = mag_data,
+    .tx_buffer = mag_data_tx,
     .target = Magnetometer,
     .adress = OUT_X_L_M
 };
@@ -648,11 +648,19 @@ void LSM9DS1_process_WHO_AM_I() {
     }
     if (who_data_m[1] == 61) {}
     else {
-      os_printf("SPI error mag! \n");
+      os_printf("SPI error mag! %d \n", who_data_m[1]);
     }
     LSM9DS1_enable_WHO_AM_I();
 }
 
+static SPI_information mag_data_tst= {
+    .state = Read,
+    .size = 1,
+    .rx_buffer = acc_data,
+    .tx_buffer = acc_data_tx,
+    .target = Magnetometer,
+    .adress = OUT_X_L_M
+};
 volatile void LSM9DS1_thread() {
   uint8_t tst = now();
   LSM9DS1_reset();
@@ -671,15 +679,18 @@ volatile void LSM9DS1_thread() {
     yield();
     LSM9DS1_process_status();
     if (LSM9DS1_gyro_availiable) {
-      //LSM9DS1_gyro.print_bare();
+      os_printf("LSM9DS1_gyro, ");
+      LSM9DS1_gyro.print_bare();
       LSM9DS1_read_gyro();
     }
     if (LSM9DS1_mag_availiable) {
+      os_printf("LSM9DS1_mag, ");
       LSM9DS1_mag.print_bare();
       LSM9DS1_read_mag();
-    }
+      }
     if (LSM9DS1_acc_availiable) {
-      //LSM9DS1_acc.print_bare();
+      os_printf("LSM9DS1_acc, ");
+      LSM9DS1_acc.print_bare();
       LSM9DS1_read_accel();
     }
     SPI_send_next();
@@ -687,6 +698,6 @@ volatile void LSM9DS1_thread() {
     LSM9DS1_process_gyro();
     LSM9DS1_process_accel();
     LSM9DS1_process_mag();
-    //sleep_until(next_time);
+    sleep_until(next_time);
   }
 }
