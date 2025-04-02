@@ -9,6 +9,7 @@
 #include "communication/usart.h"
 #include "hal/hw_specific.h"
 #include "communication/LSM9DS1.h"
+#include "communication/SPI.h"
 #include "stm32f407xx.h"
 
 uint8_t rx[7] = {};
