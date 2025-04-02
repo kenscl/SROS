@@ -160,6 +160,7 @@ void SPI_init() {
     GPIOA->MODER |= 0b01 << (1 * 2); // general purpose output 
     CS_A_H();
     CS_M_H();
+    SPI1->CR1 &= ~SPI_CR1_SPE;  
     
     GPIOA->MODER |= (2 << (5 * 2)) | (2 << (6 * 2)) | (2 << (7 * 2)); // af mode
     GPIOA->OSPEEDR |= (3 << (5 * 2)) | (3 << (6 * 2)) | (3 << (7 * 2)); // High speed
@@ -177,13 +178,12 @@ void SPI_init() {
     // dummy
     empty = &dmy;
     current = &dmy;
+    queue_head = 0;
     for (int i = 0; i < SPI_QUEUE_LENGTH; ++i) {
       queue[i] = &dmy;
     }
     
     DMA2_init();
-
-    register_thread_auto(&SPI_thread, 500, 10, "SPI_thread");
 }
 
 
@@ -485,6 +485,8 @@ void LSM9DS1_enable_status() {
     mag_status.state = Read;
 }
 
+#pragma GCC push_options
+#pragma GCC optimize ("O0")
 void LSM9DS1_process_status() {
     if (!LSM9DS1_check_status()) return;
     LSM9DS1_gyro_availiable = (status_reg[1] & 0b10);
@@ -492,6 +494,7 @@ void LSM9DS1_process_status() {
     LSM9DS1_mag_availiable = (status_reg_m[1] & 0b1000);
     LSM9DS1_enable_status();
 }
+#pragma GCC pop_options
 
 uint8_t gyro_data[7] = {};
 uint8_t gyro_data_tx[7] = {};
@@ -661,8 +664,9 @@ static SPI_information mag_data_tst= {
     .target = Magnetometer,
     .adress = OUT_X_L_M
 };
+uint32_t last_time = 0;
 volatile void LSM9DS1_thread() {
-  uint8_t tst = now();
+  SPI_init();
   LSM9DS1_reset();
   sleep(10 * MILLISECONDS);
   LSM9DS1_configure_gyro();
@@ -675,10 +679,13 @@ volatile void LSM9DS1_thread() {
   LSM9DS1_process_WHO_AM_I();
   while (1) {
     LSM9DS1_read_status();
-    volatile uint32_t next_time = now() + 3 * MILLISECONDS;
-    yield();
+    SPI_send_next();
+    volatile uint32_t next_time = now() + 333 * MILLISECONDS;
+    //yield();
+    sleep(10);
     LSM9DS1_process_status();
     if (LSM9DS1_gyro_availiable) {
+      last_time = now();
       os_printf("LSM9DS1_gyro, ");
       LSM9DS1_gyro.print_bare();
       LSM9DS1_read_gyro();
@@ -693,11 +700,37 @@ volatile void LSM9DS1_thread() {
       LSM9DS1_acc.print_bare();
       LSM9DS1_read_accel();
     }
+
     SPI_send_next();
     sleep(2 * MILLISECONDS);
     LSM9DS1_process_gyro();
     LSM9DS1_process_accel();
     LSM9DS1_process_mag();
     sleep_until(next_time);
+    if(now() - last_time > 1000 * MILLISECONDS) {
+        os_printf("\n\n\nconnection error! \n\n\n");
+        SPI_init();
+	sleep(1 * MILLISECONDS);
+	LSM9DS1_reset();
+	SPI_send_next();
+	sleep(1 * MILLISECONDS);
+
+	LSM9DS1_configure_gyro();
+	LSM9DS1_configure_accel();
+	LSM9DS1_configure_mag();
+	LSM9DS1_read_WHO_AM_I();
+	SPI_send_next();
+	sleep(20 * MILLISECONDS);
+
+	LSM9DS1_process_WHO_AM_I();
+
+	LSM9DS1_enable_status();
+	LSM9DS1_enable_gyro();
+	LSM9DS1_enable_mag();
+	LSM9DS1_enable_accel();
+
+	next_time = now() + 3 * MILLISECONDS;
+	last_time = now();
+    }
   }
 }

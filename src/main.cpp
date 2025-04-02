@@ -8,7 +8,7 @@
 #include "krnl/mem.h"
 #include "communication/usart.h"
 #include "hal/hw_specific.h"
-#include "communication/spi.h"
+#include "communication/LSM9DS1.h"
 #include "stm32f407xx.h"
 
 uint8_t rx[7] = {};
@@ -30,6 +30,7 @@ int main (void) {
 
     // User Threads are defined here
     register_thread_auto(&LSM9DS1_thread, 2000, STD_THREAD_PRIORITY, "LSM9DS1_thread");
+    register_thread_auto(&SPI_thread, 500, 10, "SPI_thread");
     //register_thread_auto(&attitude_thread, 3000, STD_THREAD_PRIORITY + 1, "attitude_thread");
     // End of user thread definitions
     SPI_init();
