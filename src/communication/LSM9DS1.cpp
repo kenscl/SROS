@@ -3,7 +3,6 @@
 #include "../communication/usart.h"
 #include "../krnl/thread.h"
 #include "../krnl/scheduler.h"
-#include "i2c.h"
 #include "SPI.h"
 
 // data values
@@ -383,15 +382,13 @@ volatile void LSM9DS1_thread() {
   LSM9DS1_configure_mag();
   LSM9DS1_read_WHO_AM_I();
   // calibration
-  LSM9DS1_calibrate_sensors();
   sleep(10 * MILLISECONDS);
   LSM9DS1_process_WHO_AM_I();
   while (1) {
     LSM9DS1_read_status();
     SPI_send_next();
-    volatile uint32_t next_time = now() + 333 * MILLISECONDS;
-    //yield();
-    sleep(10);
+    volatile uint32_t next_time = now() + 3 * MILLISECONDS;
+    yield();
     LSM9DS1_process_status();
     if (LSM9DS1_gyro_availiable) {
       last_time = now();
