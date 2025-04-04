@@ -90,7 +90,7 @@ void LSM9DS1_configure_accel() {
 }
 
 uint8_t data1_m[2], data2_m[2], data3_m[2], data4_m[2];
-uint8_t ctrl_reg1_m = 0b11111100;
+uint8_t ctrl_reg1_m = 0b11111110;
 uint8_t ctrl_reg2_m = 0b00000000;
 uint8_t ctrl_reg3_m = 0b00000000; // sim needs to be 0, this is an error in the datasheet!
 uint8_t ctrl_reg4_m = 0b00001100;
@@ -372,6 +372,7 @@ static SPI_information mag_data_tst= {
     .target = Magnetometer,
     .adress = OUT_X_L_M
 };
+
 uint32_t last_time = 0;
 volatile void LSM9DS1_thread() {
   SPI_init();
@@ -382,30 +383,21 @@ volatile void LSM9DS1_thread() {
   LSM9DS1_configure_mag();
   LSM9DS1_read_WHO_AM_I();
   // calibration
+  LSM9DS1_calibrate_sensors();
   sleep(10 * MILLISECONDS);
   LSM9DS1_process_WHO_AM_I();
   while (1) {
-    LSM9DS1_read_status();
-    SPI_send_next();
     volatile uint32_t next_time = now() + 3 * MILLISECONDS;
-    yield();
-    LSM9DS1_process_status();
-    if (LSM9DS1_gyro_availiable) {
-      last_time = now();
-      os_printf("LSM9DS1_gyro, ");
-      LSM9DS1_gyro.print_bare();
-      LSM9DS1_read_gyro();
-    }
-    if (LSM9DS1_mag_availiable) {
-      os_printf("LSM9DS1_mag, ");
-      LSM9DS1_mag.print_bare();
-      LSM9DS1_read_mag();
-      }
-    if (LSM9DS1_acc_availiable) {
-      os_printf("LSM9DS1_acc, ");
-      LSM9DS1_acc.print_bare();
-      LSM9DS1_read_accel();
-    }
+    last_time = now();
+    os_printf("LSM9DS1_gyro, ");
+    LSM9DS1_gyro.print_bare();
+    LSM9DS1_read_gyro();
+    os_printf("LSM9DS1_mag, ");
+    LSM9DS1_mag.print_bare();
+    LSM9DS1_read_mag();
+    os_printf("LSM9DS1_acc, ");
+    LSM9DS1_acc.print_bare();
+    LSM9DS1_read_accel();
 
     SPI_send_next();
     sleep(2 * MILLISECONDS);
@@ -413,30 +405,30 @@ volatile void LSM9DS1_thread() {
     LSM9DS1_process_accel();
     LSM9DS1_process_mag();
     sleep_until(next_time);
-    if(now() - last_time > 1000 * MILLISECONDS) {
-        os_printf("\n\n\nconnection error! \n\n\n");
-        SPI_init();
-	sleep(1 * MILLISECONDS);
-	LSM9DS1_reset();
-	SPI_send_next();
-	sleep(1 * MILLISECONDS);
+    //if(now() - last_time > 1000 * MILLISECONDS) {
+    //    os_printf("\n\n\nconnection error! \n\n\n");
+    //    SPI_init();
+    //	sleep(1 * MILLISECONDS);
+    //	LSM9DS1_reset();
+    //	SPI_send_next();
+    //	sleep(1 * MILLISECONDS);
 
-	LSM9DS1_configure_gyro();
-	LSM9DS1_configure_accel();
-	LSM9DS1_configure_mag();
-	LSM9DS1_read_WHO_AM_I();
-	SPI_send_next();
-	sleep(20 * MILLISECONDS);
+    //	LSM9DS1_configure_gyro();
+    //	LSM9DS1_configure_accel();
+    //	LSM9DS1_configure_mag();
+    //	LSM9DS1_read_WHO_AM_I();
+    //	SPI_send_next();
+    //	sleep(20 * MILLISECONDS);
 
-	LSM9DS1_process_WHO_AM_I();
+    //	LSM9DS1_process_WHO_AM_I();
 
-	LSM9DS1_enable_status();
-	LSM9DS1_enable_gyro();
-	LSM9DS1_enable_mag();
-	LSM9DS1_enable_accel();
+    //	LSM9DS1_enable_status();
+    //	LSM9DS1_enable_gyro();
+    //	LSM9DS1_enable_mag();
+    //	LSM9DS1_enable_accel();
 
-	next_time = now() + 3 * MILLISECONDS;
-	last_time = now();
-    }
+    //	next_time = now() + 3 * MILLISECONDS;
+    //	last_time = now();
+    //}
   }
 }

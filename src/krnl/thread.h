@@ -6,14 +6,14 @@
 
 typedef struct {
   // if this ordering is changed the compiler will later insert ldrd instructions that cause a hard fault
-		void* sp;
-        char* name;
-		os_time_t last_time;
-		uint8_t priority;
-		uint8_t rdy;
-        uint64_t sleep_until;
+  void *sp;
+  char *name;
+  os_time_t last_time;
+  uint8_t priority;
+  uint8_t rdy;
+  uint64_t sleep_until;
+  void * stack_begin;
 } os_pcb;
-
 
 void yield();
 void sleep(uint64_t time);

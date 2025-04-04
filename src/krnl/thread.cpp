@@ -25,6 +25,7 @@ os_pcb *register_thread_auto(volatile void (*thread_handler)(), uint32_t stack_s
     thrd->name = name;
     thrd->last_time = 0;
     thrd->sleep_until = 0;
+    thrd->stack_begin = stack - stack_size;
     os_stack_init(thrd, (void *) thread_handler, stack, stack_size);
     
     register_thread(thrd);
