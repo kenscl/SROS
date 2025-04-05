@@ -372,12 +372,12 @@ volatile void LSM9DS1_thread() {
   while (1) {
     volatile uint32_t next_time = now() + 3 * MILLISECONDS;
     last_time = now();
-    // os_printf("LSM9DS1_gyro, ");
-    // LSM9DS1_gyro.print_bare();
+    os_printf("LSM9DS1_gyro, ");
+    LSM9DS1_gyro.print_bare();
      LSM9DS1_read_gyro();
-    // os_printf("LSM9DS1_mag, ");
-    // LSM9DS1_mag.print_bare();
-    // LSM9DS1_read_mag();
+    os_printf("LSM9DS1_mag, ");
+    LSM9DS1_mag.print_bare();
+    LSM9DS1_read_mag();
     os_printf("LSM9DS1_acc, ");
     LSM9DS1_acc.print_bare();
     LSM9DS1_read_accel();
