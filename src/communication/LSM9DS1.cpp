@@ -47,7 +47,7 @@ void LSM9DS1_reset() {
 uint8_t data1_g[2], data3_g[2];
 void LSM9DS1_configure_gyro() {
   // general config
-  uint8_t odr = (0b110 << 5); // 476 Hz
+  uint8_t odr = (0b110 << 5); // 952 Hz
   uint8_t fs = (0b01 << 3);   // 500 dps
   uint8_t bw = (0b00 << 0);   // default bw
   data1_g[1] = odr | fs | bw;
@@ -87,7 +87,7 @@ uint8_t data7_xl[2];
 void LSM9DS1_configure_accel() {
   // general config
   uint8_t odr = (0b110 << 5);    // 952 Hz
-  uint8_t fs = (0b00 << 3);      // 2 g
+  uint8_t fs = (0b01 << 3);      // 4 g
   uint8_t bw_scale = (0b0 << 2); // bw according to odr
   uint8_t bw = (0b01 << 0);      // default bw, dosnt matter
   data6_xl[1] = odr | fs | bw;

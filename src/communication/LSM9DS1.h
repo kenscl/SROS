@@ -47,7 +47,7 @@
 #define CTRL_REG7_XL               0x21
 
 // acc constants
-#define ACC_SENSITIVITY            0.061 // convert to g
+#define ACC_SENSITIVITY            0.122 // convert to g
 
 // mag registers
 #define LSM9DS1_STATUS_REG_M         0x27
