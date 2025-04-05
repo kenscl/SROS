@@ -105,6 +105,11 @@ void os_putint(int num) {
 
 void os_putf(float num) {
           int i_part = num;
+	  if (num < 0) {
+	    i_part = -i_part;
+	    os_putchar('-');
+	  }
+
           float f_part = (num - i_part);
           if (f_part < 0) {
               f_part *= -1;
