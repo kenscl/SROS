@@ -114,11 +114,13 @@ class Vec {
         }
 
         Vec normalize() {
-                float norm = this->norm();
-                if (norm == 0)
-                return Vec(size);
-                Vec ret(*this / norm);
-                return ret;
+	  float norm = this->norm();
+	  Vec<size> ret;
+	  if (norm == 0) {
+	    return ret;
+	  }
+	  ret = *this / norm;
+          return ret;
         }
 
         void print() {

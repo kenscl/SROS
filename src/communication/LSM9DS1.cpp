@@ -6,14 +6,46 @@
 #include <cstdint>
 
 Vec3 gyro_bias;
+Mat3 soft_iron;
+Vec3 hard_iron;
+Mat3 acc_scale;
+Vec3 acc_bias;
+
 /*
  * Calibration values here
  */
 
 void LSM9DS1_calibrate_sensors() {
-  gyro_bias[0] = 0.520428;
-  gyro_bias[1] = 2.100893;
-  gyro_bias[2] = 2.018018;
+    // Gyroscope
+    gyro_bias[0] = -0.587730;
+    gyro_bias[1] = 2.083498;
+    gyro_bias[2] = 2.001096;
+    // Magnetometer
+    soft_iron[0][0] = -0.787519;
+    soft_iron[0][1] = -0.026173;
+    soft_iron[0][2] = 0.003945;
+    soft_iron[1][0] = -0.017060;
+    soft_iron[1][1] = -0.708131;
+    soft_iron[1][2] = -0.003661;
+    soft_iron[2][0] = 0.003310;
+    soft_iron[2][1] = -0.004699;
+    soft_iron[2][2] = -0.752682;
+    hard_iron[0] = 0.225061;
+    hard_iron[1] = 0.185023;
+    hard_iron[2] = -0.014002;
+    // Accelerometer
+    acc_bias[0] = -0.005429;
+    acc_bias[1] = -0.002501;
+    acc_bias[2] = 0.002562;
+    acc_scale[0][0] = 5.963422;
+    acc_scale[0][1] = 0.000000;
+    acc_scale[0][2] = 0.000000;
+    acc_scale[1][0] = 0.000000;
+    acc_scale[1][1] = 5.976465;
+    acc_scale[1][2] = 0.000000;
+    acc_scale[2][0] = 0.000000;
+    acc_scale[2][1] = 0.000000;
+    acc_scale[2][2] = 6.018153;
 }
 
 // data values
@@ -25,9 +57,6 @@ float LSM9DS1_acc_availiable = 0;
 
 Vec3 LSM9DS1_mag;
 float LSM9DS1_mag_availiable = 0;
-
-Vec3 acc_bias;
-Vec3 mag_bias;
 
 uint8_t dummy_rx[2] = {};
 uint8_t data[2];
@@ -260,7 +289,7 @@ void LSM9DS1_process_accel() {
   LSM9DS1_acc[0] = (float)(x * ACC_SENSITIVITY) / 1000;
   LSM9DS1_acc[1] = (float)(y * ACC_SENSITIVITY) / 1000;
   LSM9DS1_acc[2] = (float)(z * ACC_SENSITIVITY) / 1000;
-  LSM9DS1_acc = (LSM9DS1_acc - acc_bias);
+  LSM9DS1_acc = acc_scale * (LSM9DS1_acc + acc_bias);
   LSM9DS1_enable_accel();
 }
 
@@ -293,7 +322,7 @@ void LSM9DS1_process_mag() {
   LSM9DS1_mag[0] = (float)(x * MAG_SENSITIVITY) / 1000;
   LSM9DS1_mag[1] = (float)(y * MAG_SENSITIVITY) / 1000;
   LSM9DS1_mag[2] = (float)(z * MAG_SENSITIVITY) / 1000;
-  LSM9DS1_mag = LSM9DS1_mag - mag_bias;
+  LSM9DS1_mag = soft_iron * (LSM9DS1_mag - hard_iron);
   LSM9DS1_enable_mag();
 }
 
@@ -357,6 +386,7 @@ static SPI_information mag_data_tst = {.state = Read,
 
 uint8_t eq_cnt = 0;
 uint32_t last_time = 0;
+uint32_t next_mag = 0;
 volatile void LSM9DS1_thread() {
   SPI_init();
   LSM9DS1_reset();
@@ -366,21 +396,24 @@ volatile void LSM9DS1_thread() {
   LSM9DS1_configure_mag();
   LSM9DS1_read_WHO_AM_I();
   // calibration
-  //LSM9DS1_calibrate_sensors();
+  LSM9DS1_calibrate_sensors();
   sleep(10 * MILLISECONDS);
   LSM9DS1_process_WHO_AM_I();
   while (1) {
     volatile uint32_t next_time = now() + 3 * MILLISECONDS;
     last_time = now();
-    os_printf("LSM9DS1_gyro, ");
-    LSM9DS1_gyro.print_bare();
-     LSM9DS1_read_gyro();
-    os_printf("LSM9DS1_mag, ");
-    LSM9DS1_mag.print_bare();
-    LSM9DS1_read_mag();
-    os_printf("LSM9DS1_acc, ");
-    LSM9DS1_acc.print_bare();
+    //os_printf("LSM9DS1_gyro, ");
+    //LSM9DS1_gyro.print_bare();
+    LSM9DS1_read_gyro();
+    //os_printf("LSM9DS1_acc, ");
+    //LSM9DS1_acc.print_bare();
     LSM9DS1_read_accel();
+    if (next_mag < now()) {
+      //os_printf("LSM9DS1_mag, ");
+      //LSM9DS1_mag.print_bare();
+      LSM9DS1_read_mag();
+      next_mag = now() + 15 * MILLISECONDS;
+    }
 
     SPI_send_next();
     sleep(2 * MILLISECONDS);

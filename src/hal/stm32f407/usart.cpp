@@ -108,6 +108,7 @@ void os_putf(float num) {
 	  if (num < 0) {
 	    i_part = -i_part;
 	    os_putchar('-');
+	    num *= -1;
 	  }
 
           float f_part = (num - i_part);

@@ -8,6 +8,7 @@ set(CMAKE_CXX_FLAGS "-mcpu=${MCU_SPEC} -DSTM32F407xx -mthumb -mfloat-abi=hard -m
 set(CMAKE_EXE_LINKER_FLAGS "-T${LINKER_SCRIPT} -mcpu=${MCU_SPEC} --specs=nano.specs -Wl,--gc-sections -Os")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fmessage-length=0 -fno-common -ffunction-sections -fdata-sections")
 
+
 include_directories(
     cmsis/Device/ST/STM32F4/Include
     cmsis/CMSIS/Core/Include

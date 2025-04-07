@@ -116,7 +116,7 @@ class Mat {
             return *this;
         }
 
-        Vec<m> operator*(Vec<n> &v) const {
+        Vec<m> operator*(const Vec<n> &v) const {
             Vec<m> result;
             for (size_t i = 0; i < m; ++i) {
                 float sum = 0.0;
@@ -226,6 +226,8 @@ class Mat {
             float det = this->det();
             if (n != m || det == 0) {
                 OS_WARN("M err inverse!");
+		scheduler_disable();
+		while(1) {}
                 return *this;
             }
             Mat adj = this->adjugate();
@@ -268,6 +270,7 @@ class Mat {
                     os_putstr("NaN \n", 5);
                 else
                   os_putf(r[i][j]);
+		os_putstr(" ", 1);
               }
               os_putstr("\n", 1);
           }

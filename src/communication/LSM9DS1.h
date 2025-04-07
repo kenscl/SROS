@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <stdint.h> 
 #include "../math/vector.h"
+#include "../math/matrix.h"
 
 
 // devices
