@@ -398,9 +398,9 @@ volatile void attitude_thread() {
 	    mag_mean = lp_filter(a_mag, mag_mean, LSM9DS1_mag.normalize());
             ekf.update_mag(mag_mean);
 
-	    //os_printf("Attitude, ");
+	    os_printf("Attitude, ");
             //(ekf.attitude.to_rpy() * 180 / M_PI).print_bare();
-            //ekf.attitude.print_bare();
+            ekf.attitude.print_bare();
 
             if (mag_cnt < 100) {
 	      mag[mag_cnt] = LSM9DS1_mag.normalize() * -1;
