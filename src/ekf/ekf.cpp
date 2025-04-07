@@ -347,7 +347,14 @@ void EKF::update() {
     }
 
     Mat<4,4> S = this->H * this->P * this->H.transpose() + this->R;
+    if (S[0][0] != S[0][0]) os_printf("NaN S! \n");
     this->K = this->P * this->H.transpose() * S.inverse();
+    if (this->K[0][0] != this->K[0][0]) {
+      os_printf("NaN K! \n");
+      S.print();
+      scheduler_disable();
+      while(1){};
+    }
     this->x = this->x + this->K * v;
     Quaternion q(this->x[0], this->x[1], this->x[2], this->x[3]);
     q = q.normalize();
@@ -377,7 +384,8 @@ float a_mag = 0.95;
 int has_init = 0;
 
 Vec3 lp_filter(float alpha, Vec3 mean, Vec3 new_measurement) {
-  return  mean * alpha + new_measurement * (1-alpha);
+  Vec3 ret = mean * alpha + new_measurement * (1-alpha);
+  return ret;
 }
 
 volatile void attitude_thread() {
@@ -390,9 +398,9 @@ volatile void attitude_thread() {
 	    mag_mean = lp_filter(a_mag, mag_mean, LSM9DS1_mag.normalize());
             ekf.update_mag(mag_mean);
 
-	    os_printf("Attitude, ");
+	    //os_printf("Attitude, ");
             //(ekf.attitude.to_rpy() * 180 / M_PI).print_bare();
-            ekf.attitude.print_bare();
+            //ekf.attitude.print_bare();
 
             if (mag_cnt < 100) {
 	      mag[mag_cnt] = LSM9DS1_mag.normalize() * -1;
@@ -413,6 +421,7 @@ volatile void attitude_thread() {
 	  acc[acc_cnt] = LSM9DS1_acc.normalize() * -1;
 	  acc_cnt++;
         }
+
         if (gyro_cnt < 100) {
             gyro[gyro_cnt] = LSM9DS1_gyro;
             gyro_cnt++;

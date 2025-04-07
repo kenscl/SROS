@@ -33,7 +33,7 @@ int main (void) {
     // User Threads are defined here
     register_thread_auto(&LSM9DS1_thread, 2000, STD_THREAD_PRIORITY, "LSM9DS1_thread");
     register_thread_auto(&SPI_thread, 500, 10, "SPI_thread");
-    register_thread_auto(&attitude_thread, 3000, STD_THREAD_PRIORITY + 1, "attitude_thread");
+    register_thread_auto(&attitude_thread, 3000, STD_THREAD_PRIORITY, "attitude_thread");
     // End of user thread definitions
     SPI_init();
 

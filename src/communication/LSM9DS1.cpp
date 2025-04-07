@@ -403,10 +403,10 @@ volatile void LSM9DS1_thread() {
     volatile uint32_t next_time = now() + 3 * MILLISECONDS;
     last_time = now();
     //os_printf("LSM9DS1_gyro, ");
-    //LSM9DS1_gyro.print_bare();
+      //LSM9DS1_gyro.print_bare();
     LSM9DS1_read_gyro();
     //os_printf("LSM9DS1_acc, ");
-    //LSM9DS1_acc.print_bare();
+      //LSM9DS1_acc.print_bare();
     LSM9DS1_read_accel();
     if (next_mag < now()) {
       //os_printf("LSM9DS1_mag, ");

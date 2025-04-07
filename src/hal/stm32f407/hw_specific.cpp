@@ -1,6 +1,7 @@
 #include "../hw_specific.h"
 #include "../../globals.h"
 #include "../../communication/usart.h"
+#include "stm32f407xx.h"
 #include <stm32f4xx.h>
 
 void os_interrupt_enable() {
@@ -49,6 +50,15 @@ extern "C" {
     if (!sched_on) return;
     SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;
   }
+
+  volatile uint32_t tim2_overflow = 0;
+
+  void tim2_handler(void) {
+    if (TIM2->SR & TIM_SR_UIF) {
+      TIM2->SR &= ~TIM_SR_UIF;
+      tim2_overflow++;
+    }
+  }
 }
 
 volatile void idle_thread () {
@@ -72,11 +82,20 @@ void TIM2_init() {
     RCC->APB1ENR |=  (1 << 0); // turn on clock form timer
     TIM2->PSC = 83;
     TIM2->ARR = 0xFFFFFFFF; // max
+    TIM2->DIER |= TIM_DIER_UIE;
     TIM2->CR1 |= (1 << 0); // enable
 }
 
-uint32_t now_high_accuracy() {
-    return TIM2->CNT;
+uint64_t now_high_accuracy() {
+    uint64_t high, low;
+
+    // Double-read for atomicity
+    do {
+        high = tim2_overflow;
+        low = TIM2->CNT;
+    } while (high != tim2_overflow);
+
+    return high * 4294967295 + low;
 }
 
 void miscellaneous_init() {
@@ -97,6 +116,7 @@ void miscellaneous_init() {
    
     RCC->AHB1ENR |= (1 << 21); // enable DMA1 clock
     NVIC_EnableIRQ(DMA1_Stream6_IRQn);
+    NVIC_EnableIRQ(TIM2_IRQn);
     register_thread_auto(&one_second_thread, 128, STD_THREAD_PRIORITY, "1_second_thread");
     TIM2_init();
 }
