@@ -68,7 +68,7 @@ void EKF::init(Vec3 *gyro, Vec3 *acc, Vec3 *mag) {
 
     float s_gyro = (sqrt(gyro_sum[0]/(num_init-1)) + sqrt(gyro_sum[1]/(num_init-1)) + sqrt(gyro_sum[2]/(num_init-1))) / 3;
     float s_acc = (sqrt(acc_sum[0]/(num_init-1)) + sqrt(acc_sum[1]/(num_init-1)) + sqrt(acc_sum[2]/(num_init-1))) / 3;
-    float s_yaw = 10 * sqrt(mag_sum/(num_init-1));
+    float s_yaw = sqrt(mag_sum/(num_init-1));
 
 
     this->R[0][0] = s_acc * s_acc;
@@ -120,13 +120,20 @@ void EKF::update_acc(Vec3 acc) {
     this->y[2] = acc[2];
 }
 
-void EKF::update_mag(Vec3 mag) {
-    Vec3 m = this->Rot * mag;
-    m[2] = 0;
-    m =  this->Rot_inv * m;
-    float yaw = atan2(- m[1], m[0]);
-    //os_printf("yaw: %f \n", yaw * 57.2);
-    this->y[3] = yaw;
+void EKF::update_mag(Vec3 mag, Vec3 acc) {
+  float roll = atan2(acc[1], -acc[2]);
+  float pitch = atan(-acc[0] / sqrt(acc[1] * acc[1] + acc[2] * acc[2]));
+
+  float mag_x_comp = mag[0] * cos(pitch) + mag[2] * sin(pitch);
+  float mag_y_comp = mag[0] * sin(roll) * sin(pitch) + mag[1] * cos(roll) -
+		     mag[2] * sin(roll) * cos(pitch);
+  float yaw = atan2(-mag_y_comp, mag_x_comp);
+  //os_printf("yaw: %f \n", yaw * 57.2);
+  if (yaw > M_PI)
+    yaw -= 2.0 * M_PI;
+  else if (yaw < -M_PI)
+    yaw += 2.0 * M_PI;
+  this->y[3] = yaw;
 }
 
 void EKF::predict(Vec3 gyro, float dt) {
@@ -290,11 +297,16 @@ void EKF::predict(Vec3 gyro, float dt) {
 
     q = Quaternion(this->x[0], this->x[1], this->x[2], this->x[3]);
 
-
     Vec3 rev_g;
-   rev_g[2] = -1;
+    rev_g[2] = -1;
     Vec3 z_acc = Rot_inv * rev_g;
+
     float zyaw = q.to_rpy()[2];
+    if (zyaw > M_PI)
+      zyaw -= 2.0 * M_PI;
+    else if (zyaw < -M_PI)
+      zyaw += 2.0 * M_PI;
+
     this->z[0] = z_acc [0];
     this->z[1] = z_acc [1];
     this->z[2] = z_acc [2];
@@ -363,8 +375,8 @@ void EKF::update() {
     this->x[1] = q.i;
     this->x[2] = q.j;
     this->x[3] = q.k;
-    //this->P = (Mat<10,10>().identity() - (this->K * this->H)) * this->P * (Mat<10,10>().identity() - (this->K * this->H)).transpose() + this->K * this->R * this->K.transpose();
-    this->P = (Mat<10,10>().identity() - (this->K * this->H)) * this->P;
+    this->P = (Mat<10,10>().identity() - (this->K * this->H)) * this->P * (Mat<10,10>().identity() - (this->K * this->H)).transpose() + this->K * this->R * this->K.transpose();
+    //this->P = (Mat<10,10>().identity() - (this->K * this->H)) * this->P;
     this->attitude = q;
 }
 
@@ -399,10 +411,21 @@ volatile void attitude_thread() {
     uint32_t last_time = now();
     while (1) {
         volatile uint64_t next_time = now() + 3 * MILLISECONDS;
+
+	acc_mean = lp_filter(a_acc, acc_mean, sensor_to_NED * LSM9DS1_acc.normalize());
+
+        ekf.update_acc(acc_mean);
+        if (has_init) {
+	  float dt = (float) (now() - last_time) / SECONDS;
+	  gyro_mean = lp_filter(a_gyro, gyro_mean, sensor_to_NED * LSM9DS1_gyro);
+	  ekf.predict(gyro_mean / 180 * M_PI, dt);
+	  last_time = now();
+        }
+
         if (next_mag_time < now()) { // we only get this every n milliseconds, so setting the value more ofter just wastes computation
             next_mag_time = now() + 15 * MILLISECONDS;
 	    mag_mean = lp_filter(a_mag, mag_mean, sensor_to_NED * LSM9DS1_mag.normalize());
-            ekf.update_mag(mag_mean);
+            ekf.update_mag(mag_mean, acc_mean);
 
 	    os_printf("Attitude, ");
             //(ekf.attitude.to_rpy() * 180 / M_PI).print_bare();
@@ -412,15 +435,6 @@ volatile void attitude_thread() {
 	      mag[mag_cnt] = sensor_to_NED * LSM9DS1_mag.normalize();
                 mag_cnt++;
             }
-        }
-
-	acc_mean = lp_filter(a_acc, acc_mean, sensor_to_NED * LSM9DS1_acc.normalize());
-        ekf.update_acc(acc_mean);
-        if (has_init) {
-	  float dt = (float) (now() - last_time) / SECONDS;
-	  gyro_mean = lp_filter(a_gyro, gyro_mean, sensor_to_NED * LSM9DS1_gyro);
-	  ekf.predict(gyro_mean / 180 * M_PI, dt);
-	  last_time = now();
         }
 
         if (acc_cnt < 100) {

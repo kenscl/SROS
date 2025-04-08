@@ -20,7 +20,7 @@ public:
     Mat3 Rot_inv;
     void init(Vec3 * gyro, Vec3 * acc, Vec3 * mag);
     void update_acc(Vec3 acc);
-    void update_mag(Vec3 mag);
+    void update_mag(Vec3 mag, Vec3 acc);
     void predict(Vec3 gyro, float dt);
     void update();
 };

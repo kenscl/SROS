@@ -321,7 +321,7 @@ void LSM9DS1_process_mag() {
   int16_t z = (mag_data[5 + 1] << 8) | mag_data[4 + 1];
   LSM9DS1_mag[0] = (float)(x * MAG_SENSITIVITY) / 1000;
   LSM9DS1_mag[1] = (float)(y * MAG_SENSITIVITY) / 1000;
-  LSM9DS1_mag[2] = - (float)(z * MAG_SENSITIVITY) / 1000;
+  LSM9DS1_mag[2] = (float)(z * MAG_SENSITIVITY) / 1000;
   LSM9DS1_mag = soft_iron * (LSM9DS1_mag - hard_iron);
   LSM9DS1_enable_mag();
 }
@@ -403,7 +403,7 @@ volatile void LSM9DS1_thread() {
     volatile uint32_t next_time = now() + 3 * MILLISECONDS;
     last_time = now();
     //os_printf("LSM9DS1_gyro, ");
-      //LSM9DS1_gyro.print_bare();
+    //LSM9DS1_gyro.print_bare();
     LSM9DS1_read_gyro();
     //os_printf("LSM9DS1_acc, ");
     //  LSM9DS1_acc.print_bare();
