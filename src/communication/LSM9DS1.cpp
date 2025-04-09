@@ -16,36 +16,36 @@ Vec3 acc_bias;
  */
 
 void LSM9DS1_calibrate_sensors() {
-    // Gyroscope
-    gyro_bias[0] = -0.587730;
-    gyro_bias[1] = 2.083498;
-    gyro_bias[2] = 2.001096;
-    // Magnetometer
-    soft_iron[0][0] = -0.787519;
-    soft_iron[0][1] = -0.026173;
-    soft_iron[0][2] = 0.003945;
-    soft_iron[1][0] = -0.017060;
-    soft_iron[1][1] = -0.708131;
-    soft_iron[1][2] = -0.003661;
-    soft_iron[2][0] = 0.003310;
-    soft_iron[2][1] = -0.004699;
-    soft_iron[2][2] = -0.752682;
-    hard_iron[0] = 0.225061;
-    hard_iron[1] = 0.185023;
-    hard_iron[2] = -0.014002;
-    // Accelerometer
-    acc_bias[0] = -0.005429;
-    acc_bias[1] = -0.002501;
-    acc_bias[2] = 0.002562;
-    acc_scale[0][0] = 5.963422;
-    acc_scale[0][1] = 0.000000;
-    acc_scale[0][2] = 0.000000;
-    acc_scale[1][0] = 0.000000;
-    acc_scale[1][1] = 5.976465;
-    acc_scale[1][2] = 0.000000;
-    acc_scale[2][0] = 0.000000;
-    acc_scale[2][1] = 0.000000;
-    acc_scale[2][2] = 6.018153;
+  // Gyroscope
+  gyro_bias[0] = -0.587730;
+  gyro_bias[1] = 2.083498;
+  gyro_bias[2] = 2.001096;
+  // Magnetometer
+  soft_iron[0][0] = -0.787519;
+  soft_iron[0][1] = -0.026173;
+  soft_iron[0][2] = 0.003945;
+  soft_iron[1][0] = -0.017060;
+  soft_iron[1][1] = -0.708131;
+  soft_iron[1][2] = -0.003661;
+  soft_iron[2][0] = 0.003310;
+  soft_iron[2][1] = -0.004699;
+  soft_iron[2][2] = -0.752682;
+  hard_iron[0] = 0.225061;
+  hard_iron[1] = 0.185023;
+  hard_iron[2] = -0.014002;
+  // Accelerometer
+  acc_bias[0] = -0.005429;
+  acc_bias[1] = -0.002501;
+  acc_bias[2] = 0.002562;
+  acc_scale[0][0] = 5.963422;
+  acc_scale[0][1] = 0.000000;
+  acc_scale[0][2] = 0.000000;
+  acc_scale[1][0] = 0.000000;
+  acc_scale[1][1] = 5.976465;
+  acc_scale[1][2] = 0.000000;
+  acc_scale[2][0] = 0.000000;
+  acc_scale[2][1] = 0.000000;
+  acc_scale[2][2] = 6.018153;
 }
 
 // data values
@@ -106,12 +106,12 @@ void LSM9DS1_configure_gyro() {
 
 uint8_t data6_xl[2];
 uint8_t data7_xl[2];
-  static SPI_information info6_xl = {.state = Write,
-                                     .size = 2,
-                                     .rx_buffer = dummy_rx,
-                                     .tx_buffer = data6_xl,
-                                     .target = Accelerometer,
-                                     .adress = CTRL_REG6_XL};
+static SPI_information info6_xl = {.state = Write,
+                                   .size = 2,
+                                   .rx_buffer = dummy_rx,
+                                   .tx_buffer = data6_xl,
+                                   .target = Accelerometer,
+                                   .adress = CTRL_REG6_XL};
 
 void LSM9DS1_configure_accel() {
   // general config
@@ -250,8 +250,8 @@ void LSM9DS1_process_gyro() {
   volatile int16_t y = (gyro_data[3 + 1] << 8) | gyro_data[2 + 1];
   volatile int16_t z = (gyro_data[5 + 1] << 8) | gyro_data[4 + 1];
   LSM9DS1_gyro[0] = (float)(x * GYRO_SENSITIVITY) / 1000;
-  LSM9DS1_gyro[1] = - (float)(y * GYRO_SENSITIVITY) / 1000;
-  LSM9DS1_gyro[2] = - (float)(z * GYRO_SENSITIVITY) / 1000;
+  LSM9DS1_gyro[1] = -(float)(y * GYRO_SENSITIVITY) / 1000;
+  LSM9DS1_gyro[2] = -(float)(z * GYRO_SENSITIVITY) / 1000;
   LSM9DS1_gyro = LSM9DS1_gyro - gyro_bias;
   LSM9DS1_enable_gyro();
 }
@@ -287,8 +287,8 @@ void LSM9DS1_process_accel() {
   int16_t y = (acc_data[3 + 1] << 8) | acc_data[2 + 1];
   int16_t z = (acc_data[5 + 1] << 8) | acc_data[4 + 1];
   LSM9DS1_acc[0] = (float)(x * ACC_SENSITIVITY) / 1000;
-  LSM9DS1_acc[1] = - (float)(y * ACC_SENSITIVITY) / 1000;
-  LSM9DS1_acc[2] = - (float)(z * ACC_SENSITIVITY) / 1000;
+  LSM9DS1_acc[1] = -(float)(y * ACC_SENSITIVITY) / 1000;
+  LSM9DS1_acc[2] = -(float)(z * ACC_SENSITIVITY) / 1000;
   LSM9DS1_acc = acc_scale * (LSM9DS1_acc + acc_bias);
   LSM9DS1_enable_accel();
 }
@@ -321,7 +321,7 @@ void LSM9DS1_process_mag() {
   int16_t z = (mag_data[5 + 1] << 8) | mag_data[4 + 1];
   LSM9DS1_mag[0] = (float)(x * MAG_SENSITIVITY) / 1000;
   LSM9DS1_mag[1] = (float)(y * MAG_SENSITIVITY) / 1000;
-  LSM9DS1_mag[2] = - (float)(z * MAG_SENSITIVITY) / 1000;
+  LSM9DS1_mag[2] = -(float)(z * MAG_SENSITIVITY) / 1000;
   LSM9DS1_mag = soft_iron * (LSM9DS1_mag - hard_iron);
   LSM9DS1_enable_mag();
 }
@@ -402,25 +402,24 @@ volatile void LSM9DS1_thread() {
   while (1) {
     volatile uint32_t next_time = now() + 3 * MILLISECONDS;
     last_time = now();
-    //os_printf("LSM9DS1_gyro, ");
-    //LSM9DS1_gyro.print_bare();
+
     LSM9DS1_read_gyro();
-    //os_printf("LSM9DS1_acc, ");
-    //  LSM9DS1_acc.print_bare();
     LSM9DS1_read_accel();
     if (next_mag < now()) {
-      //os_printf("LSM9DS1_mag, ");
-      //LSM9DS1_mag.print_bare();
       LSM9DS1_read_mag();
       next_mag = now() + 15 * MILLISECONDS;
     }
 
     SPI_send_next();
+
     sleep(2 * MILLISECONDS);
+
     Vec3 last_gyro = LSM9DS1_gyro;
+
     LSM9DS1_process_gyro();
     LSM9DS1_process_accel();
     LSM9DS1_process_mag();
+
     if (last_gyro == LSM9DS1_gyro) {
       eq_cnt++;
     } else {

@@ -5,6 +5,7 @@
 #include "../communication/LSM9DS1.h"
 #include <cstdint>
 #define M_PI 3.14159265358979323846264338327950288419716939937510 
+
 class EKF {
 public:
     Quaternion attitude;
@@ -24,7 +25,6 @@ public:
     void predict(Vec3 gyro, float dt);
     void update();
 };
-
 
 volatile void attitude_thread();
 
