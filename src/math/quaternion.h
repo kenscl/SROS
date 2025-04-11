@@ -26,6 +26,23 @@ class Quaternion {
           this->k = cr * cp * sy - sr * sp * cy;
         }
 
+        Quaternion(Vec3 rpy) {
+	  float roll = rpy[0];
+	  float pitch = rpy[1];
+	  float yaw = rpy[2];
+          float cr = cos(roll * 0.5);
+          float sr = sin(roll * 0.5);
+          float cp = cos(pitch * 0.5);
+          float sp = sin(pitch * 0.5);
+          float cy = cos(yaw * 0.5);
+          float sy = sin(yaw * 0.5);
+
+          this->q = cr * cp * cy + sr * sp * sy;
+          this->i = sr * cp * cy - cr * sp * sy;
+          this->j = cr * sp * cy + sr * cp * sy;
+          this->k = cr * cp * sy - sr * sp * cy;
+        }
+
         Quaternion(const Quaternion &other) {
           this->q = other.q;
           this->i = other.i;

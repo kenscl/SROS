@@ -79,11 +79,15 @@ void LSM9DS1_calibrate_sensors();
 
 // data values
 extern Vec3 LSM9DS1_gyro;
+extern Vec3 LSM9DS1_gyro_filtered;
 extern float LSM9DS1_gyro_availiable;
 extern Vec3 LSM9DS1_acc;
+extern Vec3 LSM9DS1_acc_filtered;
 extern float LSM9DS1_acc_availiable;
 extern Vec3 LSM9DS1_mag;
+extern Vec3 LSM9DS1_mag_filtered;
 extern float LSM9DS1_mag_availiable;
+
 
 // data read
 void LSM9DS1_read_status();
@@ -107,9 +111,10 @@ void LSM9DS1_enable_mag();
 void LSM9DS1_enable_WHO_AM_I();
 
 // process
-void  LSM9DS1_process_status();
-void  LSM9DS1_process_gyro();
-void  LSM9DS1_process_accel();
+Vec3 low_pass_filter(float alpha, Vec3 mean, Vec3 new_measurement);
+void LSM9DS1_process_status();
+void LSM9DS1_process_gyro();
+void LSM9DS1_process_accel();
 void LSM9DS1_process_WHO_AM_I();
 volatile void LSM9DS1_thread();
 
