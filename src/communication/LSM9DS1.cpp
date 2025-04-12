@@ -67,8 +67,8 @@ uint8_t data[2];
 
 // filter constants
 
-float a_acc = 0.05;
-float a_gyro = 0.1;
+float a_acc = 0.95;
+float a_gyro = 0.95;
 float a_mag = 0.05;
 
 float adaptive_a(Vec3 gyro) {
@@ -315,7 +315,7 @@ void LSM9DS1_process_accel() {
   res = res * res;
   if (res < 0.1) {
     LSM9DS1_acc_filtered =
-	low_pass_filter(adaptive_a(LSM9DS1_gyro_filtered), LSM9DS1_acc_filtered, LSM9DS1_acc.normalize());
+	low_pass_filter(a_acc, LSM9DS1_acc_filtered, LSM9DS1_acc.normalize());
     }
   LSM9DS1_enable_accel();
 }
@@ -352,10 +352,7 @@ void LSM9DS1_process_mag() {
   LSM9DS1_mag = soft_iron * (LSM9DS1_mag - hard_iron);
   LSM9DS1_mag[2] = -LSM9DS1_mag[2]; // the data sheet is WRONG
   float res = 1 - LSM9DS1_acc.norm();
-  res = res * res;
-  if (res < 0.1) {
-  LSM9DS1_mag_filtered = low_pass_filter(adaptive_a(LSM9DS1_gyro_filtered), LSM9DS1_mag_filtered, LSM9DS1_mag.normalize());
-  }
+  LSM9DS1_mag_filtered = low_pass_filter(a_mag, LSM9DS1_mag_filtered, LSM9DS1_mag.normalize());
   LSM9DS1_enable_mag();
 }
 
