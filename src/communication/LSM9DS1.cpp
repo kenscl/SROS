@@ -267,8 +267,8 @@ void LSM9DS1_process_gyro() {
   volatile int16_t y = (gyro_data[3 + 1] << 8) | gyro_data[2 + 1];
   volatile int16_t z = (gyro_data[5 + 1] << 8) | gyro_data[4 + 1];
   LSM9DS1_gyro[0] = (float)(x * GYRO_SENSITIVITY) / 1000;
-  LSM9DS1_gyro[1] = (float)(y * GYRO_SENSITIVITY) / 1000;
-  LSM9DS1_gyro[2] = (float)(z * GYRO_SENSITIVITY) / 1000;
+  LSM9DS1_gyro[1] = - (float)(y * GYRO_SENSITIVITY) / 1000;
+  LSM9DS1_gyro[2] = - (float)(z * GYRO_SENSITIVITY) / 1000;
   LSM9DS1_gyro = LSM9DS1_gyro - gyro_bias;
   LSM9DS1_gyro[1] = - LSM9DS1_gyro[1];
   LSM9DS1_gyro_filtered = low_pass_filter(a_gyro, LSM9DS1_gyro_filtered, LSM9DS1_gyro);
@@ -305,7 +305,7 @@ void LSM9DS1_process_accel() {
   int16_t x = (acc_data[1 + 1] << 8) | acc_data[0 + 1];
   int16_t y = (acc_data[3 + 1] << 8) | acc_data[2 + 1];
   int16_t z = (acc_data[5 + 1] << 8) | acc_data[4 + 1];
-  LSM9DS1_acc[0] = (float)(x * ACC_SENSITIVITY) / 1000;
+  LSM9DS1_acc[0] = - (float)(x * ACC_SENSITIVITY) / 1000;
   LSM9DS1_acc[1] = (float)(y * ACC_SENSITIVITY) / 1000;
   LSM9DS1_acc[2] = (float)(z * ACC_SENSITIVITY) / 1000;
   LSM9DS1_acc = acc_scale * (LSM9DS1_acc + acc_bias);
@@ -346,12 +346,10 @@ void LSM9DS1_process_mag() {
   int16_t x = (mag_data[1 + 1] << 8) | mag_data[0 + 1];
   int16_t y = (mag_data[3 + 1] << 8) | mag_data[2 + 1];
   int16_t z = (mag_data[5 + 1] << 8) | mag_data[4 + 1];
-  LSM9DS1_mag[0] = (float)(x * MAG_SENSITIVITY) / 1000;
+  LSM9DS1_mag[0] = -(float)(x * MAG_SENSITIVITY) / 1000;
   LSM9DS1_mag[1] = (float)(y * MAG_SENSITIVITY) / 1000;
-  LSM9DS1_mag[2] = (float)(z * MAG_SENSITIVITY) / 1000;
+  LSM9DS1_mag[2] = -(float)(z * MAG_SENSITIVITY) / 1000;
   LSM9DS1_mag = soft_iron * (LSM9DS1_mag - hard_iron);
-  LSM9DS1_mag[2] = -LSM9DS1_mag[2]; // the data sheet is WRONG
-  float res = 1 - LSM9DS1_acc.norm();
   LSM9DS1_mag_filtered = low_pass_filter(a_mag, LSM9DS1_mag_filtered, LSM9DS1_mag.normalize());
   LSM9DS1_enable_mag();
 }
@@ -447,6 +445,8 @@ volatile void LSM9DS1_thread() {
     LSM9DS1_process_gyro();
     LSM9DS1_process_accel();
     LSM9DS1_process_mag();
+    //os_printf("LSM9DS1_mag, ");
+    //LSM9DS1_mag.print_bare();
 
     if (last_gyro == LSM9DS1_gyro) {
       eq_cnt++;
