@@ -67,9 +67,9 @@ uint8_t data[2];
 
 // filter constants
 
-float a_acc = 0.95;
-float a_gyro = 0.95;
-float a_mag = 0.05;
+float a_acc = 0.15;
+float a_gyro = 0.2;
+float a_mag = 0.15;
 
 float adaptive_a(Vec3 gyro) {
   float norm = gyro.norm();
