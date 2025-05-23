@@ -430,10 +430,10 @@ volatile void LSM9DS1_thread() {
     last_time = now();
 
     LSM9DS1_read_gyro();
-    LSM9DS1_read_accel();
     if (next_mag < now()) {
       LSM9DS1_read_mag();
-      next_mag = now() + 15 * MILLISECONDS;
+      LSM9DS1_read_accel();
+      next_mag = now() + 50 * MILLISECONDS;
     }
 
     SPI_send_next();
