@@ -1,5 +1,6 @@
 #include "scheduler.h"
 #include "../communication/usart.h"
+#include "thread.h"
 #include <cstdio>
 
 
@@ -57,7 +58,8 @@ extern "C" {
             return;
         } 
 
-        current_thread->last_time = schedule_counter;
+        current_thread->last_time = now_high_accuracy();
+        volatile os_pcb * next_thread = current_thread;
   
         for (uint16_t i = 0; i < OS_MAX_THREAD_COUNT; ++i){
             uint8_t exists = thread_list[i]->sp != 0;
@@ -69,33 +71,46 @@ extern "C" {
                 uint8_t last_time_was_earlier = thread_list[i]->last_time < current_thread->last_time;
                 uint8_t current_is_sleeping = (current_thread->sleep_until >= now());
                 if ( (is_larger_priority || current_is_sleeping ) && last_time_was_earlier ) {
-                    current_thread = thread_list[i];
+                    next_thread = thread_list[i];
                 }
             }
         }
         ++schedule_counter;
+        current_thread = (os_pcb *) next_thread;
     }
-
 }
 
 uint64_t now() {
   return ticks;
 }
 
+
 void print_thread_info() {
-    os_printf("Thread overview: \n");
+    os_putstr("Thread overview: \n");
     uint8_t cnt = 0;
     for (int i = 0; i < OS_MAX_THREAD_COUNT; ++i) {
         if (thread_list[i]->sp != 0) {
             cnt++;
             os_pcb * cur = thread_list[i];
-            os_printf("Thread:      %s\n", cur->name);
-            os_printf("Priority:    %d\n", (int) cur->priority);
-            os_printf("Last time:   %d\n", (int) cur->last_time);
-            os_printf("Ready:       %d\n", (int) cur->rdy);
-            os_printf("Sleep until: %d\n", (int) cur->sleep_until);
-            os_printf("\n");
+            os_putstr("Thread:      ");
+            os_putstr(cur->name);
+            os_putstr("\n", 1);
+            os_putstr("Priority:    ");
+            os_putint((int) cur->priority);
+            os_putstr("\n", 1);
+            os_putstr("Last time:   ");
+            os_putint((int) cur->last_time);
+            os_putstr("\n", 1);
+            os_putstr("Ready:       ");
+            os_putint((int) cur->rdy);
+            os_putstr("\n");
+            os_putstr("Sleep until: ");
+            os_putint((int) cur->sleep_until);
+            os_putstr("\n");
+            os_putstr("\n");
         }
     }
-    os_printf("In total there are %d threads.\n", cnt);
+    os_putstr("In total there are ");
+    os_putint(cnt);
+    os_putstr(" threads.\n");
 }

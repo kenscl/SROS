@@ -1,13 +1,15 @@
+#include <cstddef>
 #include <cstdint>
 #include <stdint.h>
 #include <stm32f4xx.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include "../../communication/usart.h"
 #include "../../krnl/mem.h"
 
 // ill use usart 2 / pa2 tx, pa3 rx
 void enable_usart(){
-    // enable usart2 clock
+// enable usart2 clock
     RCC->APB1ENR |= (1 << 17);
     // enable gpioa clock
     RCC->AHB1ENR |= (1 << 0);
@@ -32,24 +34,35 @@ void enable_usart(){
     USART2->CR1 &= ~(1 << 10);
     //115200 Baud
     // sysclk is 168, apb1 prescaler is 4, so usart clock should be 42mhz, so BRR = usart_clk / 115200 = 364,6
+
     USART2->BRR = 364; 
+    USART2->BRR |= (22 << 4);
+    USART2->BRR |= 13;
     USART2->CR1 |= (1 << 13);
     USART2->CR1 |= (1 << 2) | (1 << 3);
-    
-
 }
 
+
+
+
+
+#define MSG_BUFFER_SIZE 128
 
 void os_putchar(char c) {
     USART2->DR = c;
     while (!(USART2->SR & USART_SR_TC));
 }
 
-void os_putstr(const char *s) {
-	while (*s != '\000') {
-		os_putchar(*s);
-		s++;
+void os_putstr(char *s) {
+    size_t size = 0;
+	while (s[size] != '\000') {
+		size++;
 	}
+    msg_put(s, size);
+}
+
+void os_putstr(char *s, size_t size) {
+    msg_put(s, size);
 }
 
 int get_int_size (int i) {
@@ -64,46 +77,67 @@ int get_int_size (int i) {
     return 0;
 }
 
+char  result[16];
 void os_putint(int num) {
+    //char * result = (char*) os_alloc(sizeof(char) * 16);
     if (num == 0) {
-        os_putchar('0');
+        os_putstr("0", 1);
         return;
     }
-    int is_negative = 0;
-    int i = 0;
-    int size = get_int_size(num);
-    if (num < 0) {
-        is_negative = 1;
-        num = - num;
+    char *ptr = result + 15; 
+    char *start = ptr;
+
+    int is_negative = (num < 0);
+    if (is_negative) {
+        num = -num;
     }
-    
-    char* result = (char *) os_alloc(size + is_negative + 1);
-    int it = 0;
-    while (num > 0 && it < 1000) {
-        it++;
-        result[i++] = (num % 10) + '0';
+
+    while (num > 0) {
+        *--ptr = (num % 10) + '0';
         num /= 10;
     }
-
-    if (is_negative == 1) {
-        result[i++] = '-';
-        size++;
+    if (is_negative) {
+        *--ptr = '-';
     }
-
-    for (int j = 0; j < i / 2; j++) {
-        char temp = result[j];
-        result[j] = result[i - j - 1];
-        result[i - j - 1] = temp;
-    }
-    for (int i = 0; i < size; ++i) {
-        os_putchar(result[i]);
-    }
-
-    os_free(result);
+    uint32_t len = start - ptr;
+    os_putstr(ptr, len);
 }
 
-void os_printf(const char* format, ... ) {
-    GPIOD->ODR |= (1 << 12);
+void os_putf(float num) {
+          int i_part = num;
+	  if (num < 0) {
+	    i_part = -i_part;
+	    os_putchar('-');
+	    num *= -1;
+	  }
+
+          float f_part = (num - i_part);
+          if (f_part < 0) {
+              f_part *= -1;
+          }
+          os_putint(i_part);
+
+          //f part
+          os_putstr(".", 1);
+
+          int n_of_0 = 0;
+          for (int i = 0; i < 7; ++i) {
+              f_part = f_part * 10;
+              if (f_part > 1) {}
+              else n_of_0++;
+          }
+
+          if (n_of_0 < 7) {
+              for (int i = 0; i < n_of_0; ++i) {
+                  os_putint(0);
+              }
+              os_putint( (int) f_part);
+          }
+          else os_putint(0);
+}
+
+void os_printf(char *format, ...) {
+  GPIOD->ODR |= (1 << 12);
     __disable_irq();
     va_list args;
     va_start(args, format);
@@ -128,36 +162,11 @@ void os_printf(const char* format, ... ) {
 
         case 'f':
           num_f = va_arg(args, double);
-          i_part = num_f;
-          f_part = (num_f - i_part) ;
-          if (f_part < 0) {
-              f_part *= -1;
-              os_putchar('-');
-          }
-          os_putint(i_part);
-
-          //f part
-          os_putchar('.');
-
-          n_of_0 = 0;
-          for (int i = 0; i < 7; ++i) {
-              f_part = f_part * 10;
-              if (f_part > 1) {}
-              else n_of_0++;
-          }
-
-          if (n_of_0 < 7) {
-              for (int i = 0; i < n_of_0; ++i) {
-                  os_putint(0);
-              }
-              os_putint( (int) f_part);
-          }
-          else os_putint(0);
+          os_putf(num_f);
           break;
 
         case 's':
           str = va_arg(args, const char *);
-          os_putstr(str);
           break;
 
         case 'c':
@@ -177,5 +186,14 @@ void os_printf(const char* format, ... ) {
     os_putchar('\0');
     va_end(args);
     GPIOD->ODR &= ~(1 << 12);
-    __enable_irq();
+    __enable_irq();   
+}
+msg_object l = {.next = (msg_object*) nullptr, .msg = (char*) nullptr, .size = 0};
+msg_object * last = &l;
+msg_object * head = &l;
+int msg_put(char *msg, size_t size) {
+    for (int i = 0;i < size; ++i) {
+        os_putchar(msg[i]);
+    }
+    return 1;
 }

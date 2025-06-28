@@ -14,9 +14,19 @@ For STM32F407G:
 ``` bash
 cmake -DPLATFORM_CONFIG_FILE=platform/stm32f407.cmake ..
 ```
+
 For STM32F103:
 ``` bash
 cmake -DPLATFORM_CONFIG_FILE=platform/stm32f103.cmake ..
+```
+
+You might also want to add the `compile_commands.json` file depending on your ide:
+``` bash
+cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DPLATFORM_CONFIG_FILE=platform/stm32f407.cmake ..
+```
+or 
+``` bash
+cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DPLATFORM_CONFIG_FILE=platform/stm32f103.cmake ..
 ```
 You can then build the project with:
 ``` bash
@@ -38,7 +48,7 @@ includes the header (the implementation may also be done in the header).
 To define the thread simply use a method that never returns, for example:
 
 ``` c
-void template_thread () {
+volatile void template_thread () {
   // variable initialisation
   while (1) {
 	  // your code

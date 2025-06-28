@@ -9,11 +9,11 @@
 template <size_t size>
 class Vec {
     protected:
-    double r[size]{};
+    float r[size]{};
 
     public:
         Vec () {}
-        Vec(double *arr) {
+        Vec(float *arr) {
             for (size_t i = 0; i < size; i++) {
                 r[i] = arr[i];
             }
@@ -27,7 +27,7 @@ class Vec {
 
         ~Vec() {}
 
-        Vec operator*(double d) const {
+        Vec operator*(float d) const {
             Vec result;
             for (size_t i = 0; i < size; i++) {
                 result.r[i] = r[i] * d;
@@ -35,15 +35,23 @@ class Vec {
             return result;
         }
 
-        double operator*(Vec other) const {
-            double dot_product = 0.0;
+        float operator*(Vec other) const {
+            float dot_product = 0.0;
             for (size_t i = 0; i < size; i++) {
                 dot_product += r[i] * other.r[i];
             }
             return dot_product;
         }
 
-        Vec operator/(double d) const {
+        Vec mult(Vec other) const {
+            Vec res;
+            for (size_t i = 0; i < size; i++) {
+                res[i] = this->r[i] * other.r[i];
+            }
+            return res;
+        }
+
+        Vec operator/(float d) const {
             if (d == 0) {
                 OS_WARN("Vector div by 0!");
                 return *this;
@@ -87,18 +95,18 @@ class Vec {
             return 1;
         }
 
-        const double& operator[](size_t index) const {
+        const float& operator[](size_t index) const {
             if (index >= size) OS_WARN("V err Index out of bounds");
             return r[index];
         }
 
-        double& operator[](size_t index) {
+        float& operator[](size_t index) {
             if (index >= size) OS_WARN("V err Index out of bounds");
             return r[index];
         }
 
-        double norm() const {
-            double sum = 0;
+        float norm() const {
+            float sum = 0;
             for (int i = 0; i < size; ++i) {
                 sum += this->r[i] * this->r[i];
             }
@@ -106,26 +114,38 @@ class Vec {
         }
 
         Vec normalize() {
-                double norm = this->norm();
-                if (norm == 0)
-                return Vec(size);
-                Vec ret(*this / norm);
-                return ret;
+	  float norm = this->norm();
+	  Vec<size> ret;
+	  if (norm == 0) {
+	    return ret;
+	  }
+	  ret = *this / norm;
+          return ret;
         }
 
         void print() {
-            os_printf("Vector: \n");
+            os_putstr("Vector: \n", 9);
             for (int i = 0; i < size; ++i) {
-                os_printf("%f \n", this->r[i]);
+              if (r[i] != r[i])
+                  os_putstr("NaN \n",5);
+              else {
+                os_putf(this->r[i]);
+                os_putstr("\n",1);
+              }
             }
         }
 
         void print_bare() {
             for (int i = 0; i < size - 1; ++i) {
-                os_printf("%f ,", this->r[i]);
+                if (r[i] != r[i])
+                    os_putstr("NaN \n",5);
+                else {
+                    os_putf(this->r[i]);
+                    os_putstr(", ",2);
+                }
             }
-            os_printf("%f ", this->r[size-1]);
-            os_printf("\n");
+            os_putf(this->r[size-1]);
+            os_putstr("\n",1);
         }
 };
 typedef Vec<4> Vec4;

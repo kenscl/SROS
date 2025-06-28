@@ -1,4 +1,5 @@
 #include "mem.h"
+#include <cstdint>
 #include <stdio.h>
 
 struct Chunk{
@@ -6,6 +7,7 @@ struct Chunk{
     uint8_t free;
 } Chunk;
 
+int mem_full = 0;
 uint8_t heap[OS_ALLOC_HEAP_SIZE] __attribute__((aligned(8)));
 #define LEDGER_SIZE    (OS_ALLOC_HEAP_SIZE + 63) / 64 + 1
 struct Chunk ledger[LEDGER_SIZE];
@@ -41,10 +43,12 @@ void *os_alloc(size_t size) {
                 best_fit_size = current_size;
                 current_size = 0;
             }
+            i += ledger[i].size;
         }
     }
 
     if (best_fit_size == 65535) {
+        mem_full = 1;
         return nullptr;// error return
     }
 
@@ -65,6 +69,7 @@ void *os_alloc(size_t size) {
 }
 
 void os_free(void * pointer) {
+    if (!os_test_mem(pointer)) return;
     int id = ((uint64_t) pointer - (uint64_t)&heap) / 64;
     struct Chunk * cur = &ledger[id];
     int size = cur->size;
@@ -75,3 +80,10 @@ void os_free(void * pointer) {
     }
 }
 
+
+int os_test_mem(void *pointer) {
+    if ( pointer < heap + OS_ALLOC_HEAP_SIZE && pointer >= heap) {
+        return 1;
+    }
+    return 0;
+}
