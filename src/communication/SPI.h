@@ -32,10 +32,6 @@ void CS_A_L();
 void CS_A_H();
 void CS_M_L();
 void CS_M_H();
-uint8_t LSM9DS1_A_read_register_dma(uint8_t reg, uint8_t * dma_rx_buffer, uint8_t * dma_tx_buffer, size_t size);
-uint8_t LSM9DS1_A_write_register_dma(uint8_t reg, uint8_t * dma_rx_buffer, uint8_t * dma_tx_buffer);
-uint8_t LSM9DS1_M_read_register_dma(uint8_t reg, uint8_t * dma_rx_buffer, uint8_t * dma_tx_buffer, size_t size);
-uint8_t LSM9DS1_M_write_register_dma(uint8_t reg, uint8_t * dma_rx_buffer, uint8_t * dma_tx_buffer);
 volatile void SPI_thread();
 
 #endif 

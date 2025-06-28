@@ -55,21 +55,6 @@ void SPI_send_next() {
 	     current = empty;
 	     return;
 	   }
-	   if (current->state == Read) {
-	     if (current->target == Accelerometer)
-	       LSM9DS1_A_read_register_dma(current->adress, current->rx_buffer,
-					   current->tx_buffer, current->size);
-	     if (current->target == Magnetometer)
-	       LSM9DS1_M_read_register_dma(current->adress, current->rx_buffer,
-					   current->tx_buffer, current->size);
-	   } else {
-	     if (current->target == Accelerometer)
-	       LSM9DS1_A_write_register_dma(current->adress, current->rx_buffer,
-					    current->tx_buffer);
-	     if (current->target == Magnetometer)
-	       LSM9DS1_M_write_register_dma(current->adress, current->rx_buffer,
-					    current->tx_buffer);
-	   }
       }
     } else {
 	if (current->state == Done) {
@@ -186,84 +171,6 @@ void SPI_init() {
 }
 
 
-uint8_t LSM9DS1_A_write_register_dma(uint8_t reg, uint8_t * dma_rx_buffer, uint8_t * dma_tx_buffer) {
-    DMA2_Stream3->CR &= ~DMA_SxCR_EN;
-    DMA2_Stream0->CR &= ~DMA_SxCR_EN;
-    uint8_t dma_done = 0;
-
-    dma_tx_buffer[0] = reg & 0x7F;
-    DMA2_Stream3->M0AR = (uint32_t)dma_tx_buffer;
-    DMA2_Stream3->NDTR = 2;
-
-    DMA2_Stream0->M0AR = (uint32_t) dma_rx_buffer;
-    DMA2_Stream0->NDTR = 2;
-
-    CS_A_L();
-    DMA2_Stream3->CR |= DMA_SxCR_EN;
-    DMA2_Stream0->CR |= DMA_SxCR_EN;
-    return 0;
-}
-
-uint8_t LSM9DS1_A_read_register_dma(uint8_t reg, uint8_t * dma_rx_buffer, uint8_t * dma_tx_buffer, size_t size) {
-    DMA2_Stream3->CR &= ~DMA_SxCR_EN;
-    DMA2_Stream0->CR &= ~DMA_SxCR_EN;
-    uint8_t dma_done = 0;
-
-    dma_tx_buffer[0] = reg | 0x80;
-    for (int i = 1; i < size; ++i)
-      dma_tx_buffer[i] = 0x00;
-    DMA2_Stream3->M0AR = (uint32_t) dma_tx_buffer;
-    DMA2_Stream3->NDTR = size;
-
-    DMA2_Stream0->M0AR = (uint32_t) dma_rx_buffer;
-    DMA2_Stream0->NDTR = size;
-
-    CS_A_L();
-    DMA2_Stream3->CR |= DMA_SxCR_EN;
-    DMA2_Stream0->CR |= DMA_SxCR_EN;
-    return 0;
-}
-
-uint8_t LSM9DS1_M_read_register_dma(uint8_t reg, uint8_t *dma_rx_buffer,
-                                    uint8_t *dma_tx_buffer, size_t size) {
-    DMA2_Stream3->CR &= ~DMA_SxCR_EN;
-    DMA2_Stream0->CR &= ~DMA_SxCR_EN;
-    uint8_t dma_done = 0;
-
-    dma_tx_buffer[0] = reg | 0x80;
-    if (size > 2)
-      dma_tx_buffer[0] |= (1 << 6);
-    for (int i = 1; i < size; ++i)
-      dma_tx_buffer[i] = 0x00;
-    DMA2_Stream3->M0AR = (uint32_t)dma_tx_buffer;
-    DMA2_Stream3->NDTR = size;
-
-    DMA2_Stream0->M0AR = (uint32_t) dma_rx_buffer;
-    DMA2_Stream0->NDTR = size;
-
-    CS_M_L();
-    DMA2_Stream3->CR |= DMA_SxCR_EN;
-    DMA2_Stream0->CR |= DMA_SxCR_EN;
-    return 0;
-}
-
-uint8_t LSM9DS1_M_write_register_dma(uint8_t reg, uint8_t * dma_rx_buffer, uint8_t * dma_tx_buffer) {
-    DMA2_Stream3->CR &= ~DMA_SxCR_EN;
-    DMA2_Stream0->CR &= ~DMA_SxCR_EN;
-    uint8_t dma_done = 0;
-
-    dma_tx_buffer[0] = reg & 0x7F;
-    DMA2_Stream3->M0AR = (uint32_t)dma_tx_buffer;
-    DMA2_Stream3->NDTR = 2;
-
-    DMA2_Stream0->M0AR = (uint32_t) dma_rx_buffer;
-    DMA2_Stream0->NDTR = 2;
-
-    CS_M_L();
-    DMA2_Stream3->CR |= DMA_SxCR_EN;
-    DMA2_Stream0->CR |= DMA_SxCR_EN;
-    return 0;
-}
 
 extern "C" {
     void dma2_stream3_handler(){
