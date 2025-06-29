@@ -10,9 +10,10 @@ enum SPI_state{
   Done
 };
 
-enum SPI_target {
-  Accelerometer,
-  Magnetometer
+struct SPI_target {
+  void (*cs_low)(void);
+  void (*cs_high)(void);
+  void (*send_data)(uint8_t adress, uint8_t * rx_buffer, uint8_t * tx_buffer, size_t size);
 };
 
 struct SPI_information {
@@ -20,18 +21,13 @@ struct SPI_information {
   size_t size;
   uint8_t * rx_buffer;
   uint8_t * tx_buffer;
-  SPI_target target;
+  SPI_target * target;
   uint8_t adress;
 };
 
-// use spi for communication
 uint8_t SPI_handle(SPI_information * info);
 void SPI_send_next();
 void SPI_init();
-void CS_A_L();
-void CS_A_H();
-void CS_M_L();
-void CS_M_H();
 volatile void SPI_thread();
 
 #endif 
