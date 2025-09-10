@@ -21,7 +21,7 @@ int main (void) {
 
     // default run parameters
     print_welcome_msg();
-    register_thread_auto(&idle_thread, 200, 0, "idle_thread");
+    register_thread_auto(&idle_thread, 500, 0, "idle_thread");
 
     // User Threads are defined here
     register_thread_auto(&SPI_thread, 500, 10, "SPI_thread");
@@ -32,9 +32,6 @@ int main (void) {
     print_thread_info();
     // start system
     scheduler_enable();
-
-
-    //idle_thread();
     while(1) {
         //OS_WARN("Scheduler didn't start!");
     }

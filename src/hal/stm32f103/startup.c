@@ -75,6 +75,8 @@ void spi5_handler(void) __attribute__((weak, alias("default_handler")));
 void i2c4_ev_handler(void) __attribute__((weak, alias("default_handler")));
 void i2c4_er_handler(void) __attribute__((weak, alias("default_handler")));
 void lptim1_exti23_handler(void) __attribute__((weak, alias("default_handler")));
+void tim2_handler(void) __attribute__((weak, alias("default_handler")));
+
 
 uint32_t isr_vector[ISR_VECTOR_SIZE_WORDS] __attribute__((section(".isr_vector"))) = {
   STACK_POINTER_INIT_ADDRESS,
@@ -123,7 +125,7 @@ uint32_t isr_vector[ISR_VECTOR_SIZE_WORDS] __attribute__((section(".isr_vector")
   (uint32_t)&tim1_up_handler,
   (uint32_t)&tim1_trg_com_tim11_handler,
   (uint32_t)&tim1_cc_handler,
-  0,
+  (uint32_t)&tim2_handler,
   0,
   0,
   (uint32_t)&i2c1_ev_handler,

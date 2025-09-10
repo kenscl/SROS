@@ -63,6 +63,7 @@ void TIM2_init() {
     TIM2->ARR = 0xFFFFFFFF; // max
     TIM2->DIER |= TIM_DIER_UIE;
     TIM2->CR1 |= (1 << 0); // enable
+    NVIC_EnableIRQ(TIM2_IRQn);
 }
 
 uint64_t now_high_accuracy() {
@@ -77,9 +78,7 @@ uint64_t now_high_accuracy() {
     return high * 4294967295 + low;
 }
 
-void miscellaneous_init() {
-
-}
+void miscellaneous_init() { TIM2_init(); }
 
 void print_welcome_msg() {
     os_printf("\n\n|-----------------------------------------| \n");
