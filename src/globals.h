@@ -8,7 +8,7 @@ typedef uint64_t os_time_t;
 #define OS_STD_STACK_SIZE     200 
 #define STD_THREAD_PRIORITY   10
 #define STD_THREAD_NAME       "Unnamed thread"
-#define OS_ALLOC_HEAP_SIZE    1024 * 40
+#define OS_ALLOC_HEAP_SIZE    1024 * 10
 
 
 #define MILLISECONDS 1

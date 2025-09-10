@@ -38,16 +38,47 @@ extern "C" {
     if (!sched_on) return;
     SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;
   }
+
+  volatile uint32_t tim2_overflow = 0;
+
+  void tim2_handler(void) {
+    if (TIM2->SR & TIM_SR_UIF) {
+      TIM2->SR &= ~TIM_SR_UIF;
+      tim2_overflow++;
+    }
+  }
 }
 
-void idle_thread () {
+
+volatile void idle_thread () {
   uint64_t cnt = 0;
   while (1) {
     cnt++; 
   }
 }
 
+void TIM2_init() {
+    RCC->APB1ENR |=  (1 << 0); // turn on clock form timer
+    TIM2->PSC = 83;
+    TIM2->ARR = 0xFFFFFFFF; // max
+    TIM2->DIER |= TIM_DIER_UIE;
+    TIM2->CR1 |= (1 << 0); // enable
+}
+
+uint64_t now_high_accuracy() {
+    uint64_t high, low;
+
+    // Double-read for atomicity
+    do {
+        high = tim2_overflow;
+        low = TIM2->CNT;
+    } while (high != tim2_overflow);
+
+    return high * 4294967295 + low;
+}
+
 void miscellaneous_init() {
+
 }
 
 void print_welcome_msg() {
