@@ -19,15 +19,16 @@ int main (void) {
     interrupt_init();
     miscellaneous_init();
 
+    OS_SPI_manager.init();
+
     // default run parameters
     print_welcome_msg();
     register_thread_auto(&idle_thread, 500, 0, "idle_thread");
 
     // User Threads are defined here
-    register_thread_auto(&SPI_thread, 500, 10, "SPI_thread");
+    //register_thread_auto(&SPI_thread, 500, 10, "SPI_thread");
     //register_thread_auto(&attitude_thread_complementary_filter, 3000, STD_THREAD_PRIORITY + 1, "attitude_thread");
     // End of user thread definitions
-    SPI_init();
 
     print_thread_info();
     // start system

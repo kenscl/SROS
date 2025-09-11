@@ -2,32 +2,36 @@
 #define SPI
 #include <cstddef>
 #include <cstdint>
-#include <stdint.h> 
+#include <stdint.h>
+#include "../utils/queue.h"
 
-enum SPI_state{
-  Read,
-  Write,
-  Done
-};
+extern "C" {
+void dma2_stream0_handler();
+}
 
-struct SPI_target {
+enum class SPI_state { pending, busy, done, error };
+
+typedef struct SPI_transmition {
+  uint8_t *rx_buffer;
+  uint8_t *tx_buffer;
+  size_t size;
+
   void (*cs_low)(void);
   void (*cs_high)(void);
-  void (*send_data)(uint8_t adress, uint8_t * rx_buffer, uint8_t * tx_buffer, size_t size);
-};
 
-struct SPI_information {
-  SPI_state state;
-  size_t size;
-  uint8_t * rx_buffer;
-  uint8_t * tx_buffer;
-  SPI_target * target;
-  uint8_t adress;
-};
+  volatile SPI_state state = SPI_state::pending;
+}SPI_transmition;
 
-uint8_t SPI_handle(SPI_information * info);
-void SPI_send_next();
-void SPI_init();
-volatile void SPI_thread();
+class SPI_manager {
+  protected:
+  Queue<volatile SPI_transmition> queue;
+
+  public:
+  void init();
+  int submit(SPI_transmition * tx);
+  void handle();
+
+  friend void dma2_stream0_handler();
+} extern OS_SPI_manager;
 
 #endif 

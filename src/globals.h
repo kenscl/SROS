@@ -1,4 +1,5 @@
 #pragma once
+
 #include <stdint.h>
 
 typedef uint64_t os_time_t;
@@ -9,6 +10,9 @@ typedef uint64_t os_time_t;
 #define STD_THREAD_PRIORITY   10
 #define STD_THREAD_NAME       "Unnamed thread"
 #define OS_ALLOC_HEAP_SIZE    1024 * 10
+
+// SPI
+#define SPI_buffer_lenght     20
 
 
 #define MILLISECONDS 1
@@ -21,5 +25,4 @@ extern uint8_t forced_restard;
 
 void OS_WARN (char * msg); 
 void OS_PANIC (char* msg);
-
 
