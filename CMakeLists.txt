@@ -24,6 +24,7 @@ file(GLOB CPP_SOURCES ${CMAKE_SOURCE_DIR}/src/*.cpp ${HAL_FILES_CPP} ${CMAKE_SOU
 set(SOURCES ${C_SOURCES} ${CPP_SOURCES} ${OUTHER_SOURCES})
 
 add_executable(${TARGET_NAME}.elf ${SOURCES})
+target_link_libraries(${TARGET_NAME}.elf m)
 
 add_custom_command(
     TARGET ${TARGET_NAME}.elf POST_BUILD

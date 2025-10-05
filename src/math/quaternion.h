@@ -2,197 +2,178 @@
 #define __QUATERNION
 #include "matrix.h"
 #include "vector.h"
-#include <cstddef>
-#include <cstdint>
+#include <stddef.h>
+#include <stdint.h>
 
-class Quaternion {
-    public:
-        float q, i, j, k;
-    public:
-        Quaternion() : q(1), i(0), j(0), k(0) {}
-        Quaternion(float w, float i, float j, float k) : q(w), i(i), j(j), k(k) {}
+typedef struct Quat {
+    float q, i, j, k;
+} Quat;
 
-        Quaternion(float roll, float pitch, float yaw) {
-          float cr = cos(roll * 0.5);
-          float sr = sin(roll * 0.5);
-          float cp = cos(pitch * 0.5);
-          float sp = sin(pitch * 0.5);
-          float cy = cos(yaw * 0.5);
-          float sy = sin(yaw * 0.5);
+Quat *quat_alloc() {
+    Quat *quat = (Quat *)os_alloc(sizeof(Quat));
+    if (quat == 0)
+        return 0;
+    quat->q = 0.0f;
+    quat->i = 0.0f;
+    quat->j = 0.0f;
+    quat->k = 0.0f;
+    return quat;
+}
 
-          this->q = cr * cp * cy + sr * sp * sy;
-          this->i = sr * cp * cy - cr * sp * sy;
-          this->j = cr * sp * cy + sr * cp * sy;
-          this->k = cr * cp * sy - sr * sp * cy;
-        }
+int quat_from_rpy(Quat *quat, float roll, float pitch, float yaw) {
+    float cr = cos(roll * 0.5);
+    float sr = sin(roll * 0.5);
+    float cp = cos(pitch * 0.5);
+    float sp = sin(pitch * 0.5);
+    float cy = cos(yaw * 0.5);
+    float sy = sin(yaw * 0.5);
 
-        Quaternion(Vec3 rpy) {
-	  float roll = rpy[0];
-	  float pitch = rpy[1];
-	  float yaw = rpy[2];
-          float cr = cos(roll * 0.5);
-          float sr = sin(roll * 0.5);
-          float cp = cos(pitch * 0.5);
-          float sp = sin(pitch * 0.5);
-          float cy = cos(yaw * 0.5);
-          float sy = sin(yaw * 0.5);
+    quat->q = cr * cp * cy + sr * sp * sy;
+    quat->i = sr * cp * cy - cr * sp * sy;
+    quat->j = cr * sp * cy + sr * cp * sy;
+    quat->k = cr * cp * sy - sr * sp * cy;
+    return 1;
+}
 
-          this->q = cr * cp * cy + sr * sp * sy;
-          this->i = sr * cp * cy - cr * sp * sy;
-          this->j = cr * sp * cy + sr * cp * sy;
-          this->k = cr * cp * sy - sr * sp * cy;
-        }
+int quat_from_vec3(Vec *rpy, Quat *quat) {
+    float roll = rpy->r[0];
+    float pitch = rpy->r[1];
+    float yaw = rpy->r[2];
 
-        Quaternion(const Quaternion &other) {
-          this->q = other.q;
-          this->i = other.i;
-          this->j = other.j;
-          this->k = other.k;
-        }
+    float cr = cos(roll * 0.5);
+    float sr = sin(roll * 0.5);
+    float cp = cos(pitch * 0.5);
+    float sp = sin(pitch * 0.5);
+    float cy = cos(yaw * 0.5);
+    float sy = sin(yaw * 0.5);
 
-        Quaternion(const Vec4 &vec) {
-          this->q = vec[0];
-          this->i = vec[1];
-          this->j = vec[2];
-          this->k = vec[3];
-        }
-        Quaternion(const Mat3 & mat) {
-            Quaternion ret = Quaternion(1, 0, 0, 0);
+    quat->q = cr * cp * cy + sr * sp * sy;
+    quat->i = sr * cp * cy - cr * sp * sy;
+    quat->j = cr * sp * cy + sr * cp * sy;
+    quat->k = cr * cp * sy - sr * sp * cy;
+    return 1;
+}
 
-            float trace = mat[0][0] + mat[1][1] + mat[2][2];
+int quat_from_vec4(Vec *vec, Quat *quat) {
+    quat->q = vec->r[0];
+    quat->i = vec->r[1];
+    quat->j = vec->r[2];
+    quat->k = vec->r[3];
+}
 
-            if (trace > 0) {
-                float s = 0.5 / sqrt(trace + 1);
-                this->q = 0.25 / s;
-                this->i = (mat[2][1] - mat[1][2]) * s;
-                this->j = (mat[0][2] - mat[2][0]) * s;
-                this->k = (mat[1][0] - mat[0][1]) * s;
-            } else {
-                if (mat[0][0] > mat[1][1] && mat[0][0] > mat[2][2]) {
-                float s = 2 * sqrt(1 + mat[0][0] - mat[1][1] - mat[2][2]);
-                this->q = (mat[2][1] - mat[1][2]) / s;
-                this->i = 0.25 * s;
-                this->j = (mat[0][1] + mat[1][0]) / s;
-                this->k = (mat[0][2] + mat[2][0]) / s;
-            } else if (mat[1][1] > mat[2][2]) {
-                float s = 2 * sqrt(1 + mat[1][1] - mat[0][0] - mat[2][2]);
-                this->q = (mat[0][2] - mat[2][0]) / s;
-                this->i = (mat[0][1] + mat[1][0]) / s;
-                this->j = 0.25 * s;
-                this->k = (mat[1][2] + mat[2][1]) / s;
-            } else {
-                float s = 2 * sqrt(1 + mat[2][2] - mat[0][0] - mat[1][1]);
-                this->q = (mat[1][0] - mat[0][1]) / s;
-                this->i = (mat[0][2] + mat[2][0]) / s;
-                this->j = (mat[1][2] + mat[2][1]) / s;
-                this->k = 0.25 * s;
-            }
-            }
-        }
+// Quaternion(const Mat3 &mat) {
+//     Quaternion ret = Quaternion(1, 0, 0, 0);
+//
+//     float trace = mat[0][0] + mat[1][1] + mat[2][2];
+//
+//     if (trace > 0) {
+//         float s = 0.5 / sqrt(trace + 1);
+//         this->q = 0.25 / s;
+//         this->i = (mat[2][1] - mat[1][2]) * s;
+//         this->j = (mat[0][2] - mat[2][0]) * s;
+//         this->k = (mat[1][0] - mat[0][1]) * s;
+//     } else {
+//         if (mat[0][0] > mat[1][1] && mat[0][0] > mat[2][2]) {
+//             float s = 2 * sqrt(1 + mat[0][0] - mat[1][1] - mat[2][2]);
+//             this->q = (mat[2][1] - mat[1][2]) / s;
+//             this->i = 0.25 * s;
+//             this->j = (mat[0][1] + mat[1][0]) / s;
+//             this->k = (mat[0][2] + mat[2][0]) / s;
+//         } else if (mat[1][1] > mat[2][2]) {
+//             float s = 2 * sqrt(1 + mat[1][1] - mat[0][0] - mat[2][2]);
+//             this->q = (mat[0][2] - mat[2][0]) / s;
+//             this->i = (mat[0][1] + mat[1][0]) / s;
+//             this->j = 0.25 * s;
+//             this->k = (mat[1][2] + mat[2][1]) / s;
+//         } else {
+//             float s = 2 * sqrt(1 + mat[2][2] - mat[0][0] - mat[1][1]);
+//             this->q = (mat[1][0] - mat[0][1]) / s;
+//             this->i = (mat[0][2] + mat[2][0]) / s;
+//             this->j = (mat[1][2] + mat[2][1]) / s;
+//             this->k = 0.25 * s;
+//         }
+//     }
+// }
 
-        Quaternion operator*(const Quaternion& other) const {
-            return Quaternion(
-                q * other.q - i * other.i - j * other.j - k * other.k,  
-                q * other.i + i * other.q + j * other.k - k * other.j,  
-                q * other.j - i * other.k + j * other.q + k * other.i,  
-                q * other.k + i * other.j - j * other.i + k * other.q   
-            );
-        }
+int quat_mult(Quat *a, Quat *b, Quat *result) {
+    result->q = a->q * b->q - a->i * b->i - a->j * b->j - a->k * b->k;
+    result->i = a->q * b->i + a->i * b->q + a->j * b->k - a->k * b->j;
+    result->j = a->q * b->j - a->i * b->k + a->j * b->q + a->k * b->i;
+    result->k = a->q * b->k + a->i * b->j - a->j * b->i + a->k * b->q;
+    return 1;
+}
 
-        Quaternion operator+(const Quaternion& other) const {
-            return Quaternion(
-                q + other.q,
-                i + other.i,
-                j + other.j,
-                k + other.k
-            );
-        }
+int quat_add(Quat *a, Quat *b, Quat *result) {
+    result->q = a->q + b->q;
+    result->i = a->i + b->i;
+    result->j = a->j + b->j;
+    result->k = a->k + b->k;
+    return 1;
+}
 
-        Quaternion operator*(const float& nbr) const{
-            return Quaternion(q * nbr, i * nbr, j * nbr, k * nbr);
-        }
+int quat_scalar_mult(Quat *a, float f) {
+    a->q *= f;
+    a->i *= f;
+    a->j *= f;
+    a->k *= f;
+    return 1;
+}
 
-        Quaternion operator*(const Mat4& other) const {
-            Vec4 v;
-            v[0] = this->q;
-            v[1] = this->i;
-            v[2] = this->j;
-            v[3] = this->k;
-            v = other * v;
-            return Quaternion(v[0],v[1],v[2],v[3]);
+int quat_conjugate(Quat *a) {
+    a->q = -a->q;
+    a->i = -a->i;
+    a->j = -a->j;
+    a->k = -a->k;
+}
 
-        }
+int quat_to_rpy(Quat *a, Vec *result) {
+    if (result->size != 3)
+        return 0;
+    result->r[0] = atan2(2 * (a->q * a->i + a->j * a->k), 1 - 2 * (a->i * a->i + a->j * a->j));
+    result->r[1] = asin(2 * (a->q * a->j - a->k * a->i));
+    result->r[2] = atan2(2 * (a->q * a->k + a->i * a->j), 1 - 2 * (a->j * a->j + a->k * a->k));
+    return 1;
+}
 
-        Quaternion& operator=(const Quaternion& other) {
-            this->q = other.q;
-            this->i = other.i;
-            this->j = other.j;
-            this->k = other.k;
-            return *this;
-        }
+int quat_to_vector(Quat *a, Vec *ret) {
+    ret->r[0] = a->q;
+    ret->r[1] = a->i;
+    ret->r[2] = a->j;
+    ret->r[3] = a->k;
+    return 1;
+}
 
-        Quaternion conjugate() const {
-            return Quaternion(q, -i, -j, -k);
-        }
+int quat_to_rotation_matrix(Quat *a, Mat* res)  {
+  if (res->m != 3 || res->n != 3) return 0;
+    res->[0 * res->n + 0] = 1 - 2 * (a->j * a->j + a->k * a->k);
+    res->[0 * res->n + 1] = 2 * (a->i * a->j - a->k * a->q);
+    res->[0 * res->n + 2] = 2 * (a->i * a->k + a->j * a->q);
+    res->[1 * res->n + 0] = 2 * (a->i * a->j + a->k * a->q);
+    res->[1 * res->n + 1] = 1 - 2 * (a->i * a->i + a->k * a->k);
+    res->[1 * res->n + 2] = 2 * (a->j * a->k - a->i * a->q);
+    res->[2 * res->n + 0] = 2 * (a->i * a->k - a->j * a->q);
+    res->[2 * res->n + 1] = 2 * (a->j * a->k + a->i * a->q);
+    res->[2 * res->n + 2] = 1 - 2 * (a->i * a->i + a->j * a->j);
+    return 1;
+}
 
-        Vec3 to_rpy() const {
-            Vec3 result;
-            result[0] = atan2(2 * (q * i + j * k), 1 - 2 * (i * i + j * j));
-            result[1] = asin(2 * (q * j - k * i));
-            result[2] = atan2(2 * (q * k + i * j), 1 - 2 * (j * j + k * k));
-            return result;
+float quat_norm(Quat *a) {
+    return sqrtf(a->q * a->q + a->i * a->i + a->j * a->j + a->k * a->k);
+}
 
-        }
+int quat_normalize(Quat *a) {
+    float norm = quat_norm(a);
+    if (norm == 0)
+        norm = 1;
+    a->q = a->q / norm;
+    a->i = a->i / norm;
+    a->j = a->j / norm;
+    a->k = a->k / norm;
+    return 1;
+}
 
-        Vec4 to_vector() const {
-            Vec4 ret;
-            ret[0] = q;
-            ret[1] = i;
-            ret[2] = j;
-            ret[3] = k;
-            return ret;
-        }
-
-        Mat3 to_rotation_matrix() const {
-            Mat3 result;
-            result[0][0] = 1 - 2 * (j * j + k * k);
-            result[0][1] = 2 * (i * j - k * q);
-            result[0][2] = 2 * (i * k + j * q);
-            result[1][0] = 2 * (i * j + k * q);
-            result[1][1] = 1 - 2 * (i * i + k * k);
-            result[1][2] = 2 * (j * k - i * q);
-            result[2][0] = 2 * (i * k - j * q);
-            result[2][1] = 2 * (j * k + i * q);
-            result[2][2] = 1 - 2 * (i * i + j * j);
-            return result;
-        }
-
-        float norm() const {
-            return this->to_vector().norm();
-        }
-
-        Quaternion normalize() const {
-            float norm = this->norm();
-            if (norm == 0) norm = 1;
-            return Quaternion(q / norm, i / norm, j / norm, k / norm);
-        }
-
-        void print() const {
-            os_putstr("Quaternion: \n", 13);
-            os_putstr("q: ", 3);
-            os_putf(q);
-            os_putstr("i: ", 3);
-            os_putf(i);
-            os_putstr("j: ", 3);
-            os_putf(j);
-            os_putstr("k: ", 3);
-            os_putf(k);
-            os_putstr("\n", 1);
-        }
-
-        void print_bare() const {
-            os_printf("%f, %f, %f, %f \n", q, i, j, k);
-        }
-};
+void quat_print(Quat *a) {
+    os_printf("Quaternion: [%f %f %f %f]", a->q, a->i, a->j, a->k);
+}
 
 #endif

@@ -1,286 +1,250 @@
 #ifndef __MATRIX
 #define __MATRIX
 #include "vector.h"
-#include <cstddef>
-#include <cstdint>
+#include <stddef.h>
+#include <stdint.h>
 
-class Quaternion;
+typedef struct Mat {
+    size_t m, n;
+    float *r;
+} Mat;
 
-template <size_t m, size_t n>
-class Mat {
-    protected:
-    float r[m][n]{};
+Mat *mat_alloc(size_t m, size_t n) {
+    Mat *mat = (Mat *)os_alloc(sizeof(Mat));
+    if (mat == 0)
+        return 0;
+    mat->m = m;
+    mat->n = n;
+    mat->r = (float *)os_alloc(sizeof(float) * m * n);
+    if (mat->r == 0)
+        return 0;
+    for (size_t i = 0; i < m; i++) {
+        for (size_t j = 0; j < n; j++) {
+            mat->r[i * mat->n + j] = 0.0f;
+        }
+    }
+    return mat;
+}
 
-    public:
-        Mat() {}
-        Mat(const Mat & other) {
-            for (size_t i = 0; i < m; ++i) {
-                for (size_t j = 0; j < n; ++j) {
-                    this->r[i][j] = other.r[i][j];
-                }
+void mat_free(Mat *a) {
+    os_free(a->r);
+    os_free(a);
+}
+
+int mat_mult(Mat *a, Mat *b, Mat *res) {
+    if (a->m != b->n)
+        return 0;
+    if (res->m != a->m || res->n != b->n)
+        return -1;
+    for (size_t i = 0; i < a->m; ++i) {
+        for (size_t j = 0; j < b->n; ++j) {
+            res->r[i * res->n + j] = 0.0f;
+            for (size_t k = 0; k < a->n; ++k) {
+                res->r[i * res->n + j] += a->r[i * a->n + k] * b->r[k * b->n + j];
             }
         }
-        ~Mat() {}
-        const float *operator[](size_t index) const {
-            if (m < index) {
-                OS_WARN("Out of Bounds in Mat acces, returning 0 element!");
-                return r[0];
+    }
+    return 1;
+}
+
+int mat_add(Mat *a, Mat *b, Mat *res) {
+    if (a->m != b->m || a->n != b->n)
+        return 0;
+    if (res->m != a->m || res->n != a->n)
+        return 0;
+
+    int size = a->m * a->n;
+    for (int i = 0; i < size; ++i) {
+        res->r[i] = a->r[i] + b->r[i];
+    }
+    return 1;
+}
+
+int mat_sub(Mat *a, Mat *b, Mat *res) {
+    if (a->m != b->m || a->n != b->n)
+        return 0;
+    if (res->m != a->m || res->n != a->n)
+        return 0;
+
+    int size = a->m * a->n;
+    for (int i = 0; i < size; ++i) {
+        res->r[i] = a->r[i] - b->r[i];
+    }
+    return 1;
+}
+
+int mat_scalar_mult(Mat *a, float f) {
+    int size = a->m * a->n;
+    for (int i = 0; i < size; ++i) {
+        a->r[i] *= f;
+    }
+    return 1;
+}
+
+int mat_vec_mult(Mat *a, Vec *b, Vec *res) {
+    if (a->n != b->size)
+        return 0;
+    if (b->size != res->size)
+        return 0;
+
+    for (size_t i = 0; i < a->m; ++i) {
+        float sum = 0.0;
+        for (size_t j = 0; j < a->n; ++j) {
+            sum += a->r[i * a->n + j] * b->r[j];
+        }
+        res->r[i] = sum;
+    }
+    return 1;
+}
+
+float mat_det(Mat *a) {
+    if (a->m != a->n) {
+	os_printf("Requesting determinant of non-square Matrix!");
+	return 0.0;
+    }
+
+    if (a->n == 1)
+        return a->r[0];
+    Mat *temp = mat_alloc(a->m, a->n);
+    float det = 1;
+
+    for (int i = 0; i < a->n; ++i) {
+        float max_elem = temp->r[i * temp->n + i];
+        int max_row = i;
+        for (int k = i + 1; k < a->n; ++k) {
+            if (fabs(temp->r[k * temp->n + i]) > fabs(max_elem)) {
+                max_elem = temp->r[k * temp->n + i];
+                max_row = k;
             }
-            return r[index];
         }
 
-        float *operator[](size_t index) {
-            if (m < index) {
-                OS_WARN("Out of Bounds in Mat acces, returning 0 element!");
-                return r[0];
+        if (max_row != i) {
+            for (int j = 0; j < a->n; ++j) {
+                float temp_val = temp->r[i * temp->n + j];
+                temp->r[i * temp->n + j] = temp->r[max_row * temp->n + j];
+                temp->r[max_row * temp->n + j] = temp_val;
             }
-            return r[index];
+            det *= -1;
+        }
+        if (temp->r[i * temp->n + i] == 0) {
+            return 0;
         }
 
-        uint8_t operator==(const Mat &other) const {
-            for (size_t i = 0; i < m; ++i) {
-                for (size_t j = 0; j < n; ++j) {
-                    if (r[i][j] != other.r[i][j])
-                        return false;
-                }
+        for (int k = i + 1; k < a->n; ++k) {
+            float factor = temp->r[k * temp->n + i] / temp->r[i * temp->n + i];
+            for (int j = i; j < a->n; ++j) {
+                temp->r[k * temp->n + j] -= factor * temp->r[i * temp->n + j];
             }
-            return true;
         }
 
-        template <size_t p>
-        Mat<m, p> operator*(const Mat<n, p> &other) const {
-            Mat<m, p> result;
-            for (size_t i = 0; i < m; ++i) {
-                for (size_t j = 0; j < p; ++j) {
-                    result[i][j] = 0;
-                    for (size_t k = 0; k < n; ++k) {
-                        result[i][j] += r[i][k] * other[k][j];
-                    }
-                }
-            }
-            return result;
+        det *= temp->r[i * temp->n + i];
+    }
+
+    mat_free(temp);
+    return det;
+}
+
+float mat_coaf(Mat *a, size_t i, size_t j) {
+    Mat *minor = mat_alloc(a->m - 1, a->n - 1);
+    int minor_row = 0, minor_col = 0;
+    float sign = ((i + j) % 2 == 0) ? 1 : -1;
+
+    for (int row = 0; row < a->m; ++row) {
+        if (row == i)
+            continue;
+        minor_col = 0;
+        for (int col = 0; col < a->n; ++col) {
+            if (col == j)
+                continue;
+            minor->r[minor_row * minor->n + minor_col] = a->r[row * a->n + col];
+            minor_col++;
         }
+        minor_row++;
+    }
+    return sign * mat_det(minor);
+}
 
-        Mat operator+(const Mat &other) const {
-            Mat result;
-            for (size_t i = 0; i < m; ++i) {
-                for (size_t j = 0; j < n; ++j) {
-                    result.r[i][j] = r[i][j] + other.r[i][j];
-                }
-            }
-            return result;
+int mat_adjugate(Mat *a, Mat *res) {
+    if (a->m != a->n) {
+        return 0;
+    }
+
+    if (a->m != res->n || a->n != res->n) {
+        return 0;
+    }
+
+    if (a->n == 1) {
+        res->r[0] = 1;
+        return 1;
+    }
+
+    for (int i = 0; i < a->n; ++i) {
+        for (int j = 0; j < a->n; ++j) {
+	  float cofactor = mat_coaf(a, i, j);
+	  res->r[j * res->n + i] = cofactor;
         }
+    }
+    return 1;
+}
 
-        Mat operator-(const Mat &other) const {
-            Mat result;
-            for (size_t i = 0; i < m; ++i) {
-                for (size_t j = 0; j < n; ++j) {
-                    result.r[i][j] = r[i][j] - other.r[i][j];
-                }
-            }
-            return result;
+int mat_transpose(Mat *a, Mat *res) {
+  if (a->m != res->n || a->n != res->m) return 0;
+    for (size_t i = 0; i < a->m; ++i) {
+        for (size_t j = 0; j < a->n; ++j) {
+            res->r[j * res->n + i] = a->r[i * a->n +j];
         }
+    }
+    return 1;
+}
 
-        Mat operator*(float scalar) const {
-            Mat result;
-            for (size_t i = 0; i < m; ++i) {
-                for (size_t j = 0; j < n; ++j) {
-                    result.r[i][j] = r[i][j] * scalar;
-                }
-            }
-            return result;
-        }
+int inverse(Mat *a, Mat *res) {
+    float det = mat_det(a);
+    if (a->n != a->m || det == 0) {
+        return 0;
+    }
+    if(!mat_adjugate(a, res)) return 0;
+    if(!mat_scalar_mult(res, 1/det)) return 0;
+    return 1;
+}
 
-        Mat operator/(float scalar) const {
-            if (scalar == 0) {
-                OS_WARN("M err div");
-                return *this;
-            }
-            Mat result;
-            for (size_t i = 0; i < m; ++i) {
-                for (size_t j = 0; j < n; ++j) {
-                    result.r[i][j] = r[i][j] / scalar;
-                }
-            }
-            return result;
-        }
+int mat_identity(Mat *ident) {
+    for (int i = 0; i < ident->n; ++i) {
+        ident->r[i * ident->n +i] = 1;
+    }
+    return 1;
+}
 
-        Mat& operator=(const Mat &other) {
-            if (this != &other) {
-                for (size_t i = 0; i < m; ++i) {
-                    for (size_t j = 0; j < n; ++j) {
-                        r[i][j] = other.r[i][j];
-                    }
-                }
-            }
-            return *this;
-        }
+int mat_diag(Mat* diag, float d) {
+    if (diag->n != diag->m)
+      return 0;
+    for (int i = 0; i < diag->n; ++i) {
+        diag->r[i * diag->n +i] = d;
+    }
+    return 1;
+}
 
-        Vec<m> operator*(const Vec<n> &v) const {
-            Vec<m> result;
-            for (size_t i = 0; i < m; ++i) {
-                float sum = 0.0;
-                for (size_t j = 0; j < n; ++j) {
-                    sum += r[i][j] * v[j];
-                }
-                result[i] = sum;
-            }
-            return result;
-        }
+int mat_vec_diag(Mat *diag, Vec *v) {
+    if (diag->n != diag->m)
+      return 0;
+    if (diag->n != v->size) return 0;
+    for (int i = 0; i < diag->n; ++i) {
+        diag->r[i * diag->n +i] = v->r[i];
+    }
+    return 1;
+}
 
-
-        float det() {
-            if (m != n) {
-                OS_WARN("Error: Determinant of non-square matrix!");
-                return 0;
-            }
-            if (n == 1) return this->r[0][0];
-            Mat<m, n> temp = *this; 
-            float det = 1;
-
-            for (int i = 0; i < n; ++i) {
-                float max_elem = temp[i][i];
-                int max_row = i;
-                for (int k = i + 1; k < n; ++k) {
-                    if (fabs(temp[k][i]) > fabs(max_elem)) {
-                        max_elem = temp[k][i];
-                        max_row = k;
-                    }
-                }
-
-                if (max_row != i) {
-                    for (int j = 0; j < n; ++j) {
-                        float temp_val = temp[i][j];
-                        temp[i][j] = temp[max_row][j];
-                        temp[max_row][j] = temp_val;
-                    }
-                    det *= -1;
-                }
-                if (temp[i][i] == 0) {
-                    return 0;
-                }
-
-                for (int k = i + 1; k < n; ++k) {
-                    float factor = temp[k][i] / temp[i][i];
-                    for (int j = i; j < n; ++j) {
-                        temp[k][j] -= factor * temp[i][j];
-                    }
-                }
-
-                det *= temp[i][i];
-            }
-
-            return det;
-        }
-
-        // cofactor for the adjugate since submatrix causes issues.
-        float coaf(size_t i, size_t j) {
-            Mat<m - 1, n - 1> minor;
-            int minor_row = 0, minor_col = 0;
-            float sign = ((i + j) % 2 == 0) ? 1 : -1;
-
-            for (int row = 0; row < m; ++row) {
-                if (row == i) continue;
-                minor_col = 0;
-                for (int col = 0; col < n; ++col) {
-                    if (col == j) continue; 
-                    minor[minor_row][minor_col] = r[row][col];
-                    minor_col++;
-                }
-                minor_row++;
-            }
-            return sign * minor.det();
-        }
-
-        Mat adjugate() {
-            if (m != n) {
-                OS_WARN("M err adjugate!");
-                return *this;
-            }
-            Mat adj;
-            if (n == 1) {
-                adj[0][0] = 1;
-                return adj;
-            }
-
-                for (int i = 0; i < n; ++i) {
-                        for (int j = 0; j < n; ++j) {
-                            float cofactor = this->coaf(i, j);
-                            adj[j][i] = cofactor;  
-                        }
-                    }
-            return adj;
-        }
-
-        Mat<n, m> transpose() {
-            Mat<n, m> result;
-            for (size_t i = 0; i < m; ++i) {
-                for (size_t j = 0; j < n; ++j) {
-                    result[j][i] = r[i][j];
-                }
-            }
-            return result;
-        }
-
-        Mat inverse() {
-            float det = this->det();
-            if (n != m || det == 0) {
-                OS_WARN("M err inverse!");
-		scheduler_disable();
-		while(1) {}
-                return *this;
-            }
-            Mat adj = this->adjugate();
-            return adj / det;
-        }
-
-        Mat identity() {
-          Mat ret;
-          for (int i = 0; i < n; ++i) {
-            ret[i][i] = 1;
-          }
-          return ret;
-        }
-
-        Mat diag(float d) {
-            if (n != m)
-                OS_WARN("M diag!");
-            Mat ret(*this);
-            for (int i = 0; i < n; ++i) {
-                ret[i][i] = d;
-            }
-            return ret;
-        }
-
-        Mat diag(Vec<m> v) {
-          if (n != m)
-            OS_WARN("M diag!");
-          Mat ret(*this);
-          for (int i = 0; i < n; ++i) {
-            ret[i][i] = v[i];
-          }
-          return ret;
-        }
-
-        void print() {
-            os_putstr("Mat: \n", 6);
-          for (int i = 0; i < m; ++i) {
-              for (int j = 0; j < n; j++) {
-                if (r[i][j] != r[i][j])
-                    os_putstr("NaN \n", 5);
-                else
-                  os_putf(r[i][j]);
-		os_putstr(" ", 1);
-              }
-              os_putstr("\n", 1);
-          }
-        }
-
-    friend Quaternion;
-};
-
-typedef Mat<4,4> Mat4;
-typedef Mat<3,3> Mat3;
-typedef Mat<2,2> Mat2;
+void mat_print(Mat *a) {
+    os_printf("Mat: \n");
+    for (int i = 0; i < a->m; ++i) {
+	os_printf("[ ");
+	for (int j = 0; j < a->n; j++) {
+	    if (a->r[i * a->n + j] != a->r[i * a->n + j])
+		os_printf("NaN \n");
+	    else
+	      os_printf("%f ", a->r[i * a->n + j]);
+	}
+	os_printf("]\n");
+    }
+}
 
 #endif

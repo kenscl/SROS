@@ -1,155 +1,90 @@
 #ifndef __VECTOR
 #define __VECTOR
-#include <cmath>
-#include <cstddef>
-#include <cstdint>
-#include "../krnl/mem.h"
 #include "../communication/usart.h"
-//class Matrix;
-template <size_t size>
-class Vec {
-    protected:
-    float r[size]{};
+#include "../krnl/mem.h"
+#include <math.h>
+#include <stddef.h>
+#include <stdint.h>
 
-    public:
-        Vec () {}
-        Vec(float *arr) {
-            for (size_t i = 0; i < size; i++) {
-                r[i] = arr[i];
-            }
-        }
+typedef struct Vec {
+    size_t size;
+    float *r;
+} Vec;
 
-        Vec(const Vec &other) {
-            for (size_t i = 0; i < size; i++) {
-                r[i] = other.r[i];
-            }
-        }
+Vec *vec_alloc(size_t size) {
+    Vec *vec = (Vec *)os_alloc(sizeof(Vec));
+    if (vec == 0)
+        return 0;
+    vec->size = size;
+    vec->r = (float *)os_alloc(sizeof(float) * size);
+    if (vec->r == 0)
+        return 0;
+    for (int i = 0; i < size; ++i) {
+        vec->r[i] = 0.0f;
+    }
+    return vec;
+}
 
-        ~Vec() {}
+void vec_print(Vec *vec) {
+    os_printf("Vector: [");
+    for (int i = 0; i < vec->size; ++i) {
+	if (vec->r[i] != vec->r[i])
+	    os_printf("NaN ");
+	else
+	    os_printf("%f ", vec->r[i]);
+    }
+    os_printf("] \n");
+}
 
-        Vec operator*(float d) const {
-            Vec result;
-            for (size_t i = 0; i < size; i++) {
-                result.r[i] = r[i] * d;
-            }
-            return result;
-        }
+int vec_add(Vec *a, Vec *b, Vec *result) {
+    if (a->size != b->size || a->size != result->size)
+        return 0;
+    for (int i = 0; i < a->size; ++i) {
+        result->r[i] = a->r[i] + b->r[i];
+    }
+    return 1;
+}
 
-        float operator*(Vec other) const {
-            float dot_product = 0.0;
-            for (size_t i = 0; i < size; i++) {
-                dot_product += r[i] * other.r[i];
-            }
-            return dot_product;
-        }
+int vec_mult(Vec *a, Vec *b, Vec *result) {
+    if (a->size != b->size || a->size != result->size)
+        return 0;
+    for (int i = 0; i < a->size; ++i) {
+        result->r[i] = a->r[i] * b->r[i];
+    }
+    return 1;
+}
 
-        Vec mult(Vec other) const {
-            Vec res;
-            for (size_t i = 0; i < size; i++) {
-                res[i] = this->r[i] * other.r[i];
-            }
-            return res;
-        }
+int vec_dot(Vec *a, Vec *b, float *result) {
+    if (a->size != b->size)
+        return 0;
+    *result = 0;
+    for (int i = 0; i < a->size; ++i) {
+        *result += a->r[i] * b->r[i];
+    }
+    return 1;
+}
 
-        Vec operator/(float d) const {
-            if (d == 0) {
-                OS_WARN("Vector div by 0!");
-                return *this;
-            }
-            Vec result;
-            for (size_t i = 0; i < size; i++) {
-                result.r[i] = r[i] / d;
-            }
-            return result;
-        }
+int vec_scalar_mult(Vec *a, float f) {
+    for (int i = 0; i < a->size; ++i) {
+        a->r[i] = a->r[i] * f;
+    }
+    return 1;
+}
 
-        Vec operator-(const Vec other) const {
-            Vec result;
-            for (size_t i = 0; i < size; i++) {
-                result.r[i] = r[i] - other.r[i];
-            }
-            return result;
-        }
+float vec_norm(Vec *vec) {
+    float res = 0;
+    for (int i = 0; i < vec->size; ++i) {
+        float val = vec->r[i];
+        res += val * val;
+    }
+    return sqrtf(res);
+}
 
-        Vec operator+(const Vec other) const {
-            Vec result;
-            for (size_t i = 0; i < size; i++) {
-                result.r[i] = r[i] + other.r[i];
-            }
-            return result;
-        }
+int vec_normalize(Vec *a) {
+    float norm = vec_norm(a);
+    norm = 1 / norm;
+    vec_scalar_mult(a, norm);
+    return 1;
+}
 
-        Vec &operator=(const Vec &other) {
-            if (this != &other) {
-                for (size_t i = 0; i < size; i++) {
-                    r[i] = other.r[i];
-                }
-            }
-            return *this;
-        }
-
-        uint8_t operator==(const Vec &other) const {
-            for (size_t i = 0; i < size; i++) {
-                if (r[i] != other.r[i]) return 0;
-            }
-            return 1;
-        }
-
-        const float& operator[](size_t index) const {
-            if (index >= size) OS_WARN("V err Index out of bounds");
-            return r[index];
-        }
-
-        float& operator[](size_t index) {
-            if (index >= size) OS_WARN("V err Index out of bounds");
-            return r[index];
-        }
-
-        float norm() const {
-            float sum = 0;
-            for (int i = 0; i < size; ++i) {
-                sum += this->r[i] * this->r[i];
-            }
-            return sqrt(sum);
-        }
-
-        Vec normalize() {
-	  float norm = this->norm();
-	  Vec<size> ret;
-	  if (norm == 0) {
-	    return ret;
-	  }
-	  ret = *this / norm;
-          return ret;
-        }
-
-        void print() {
-            os_putstr("Vector: \n", 9);
-            for (int i = 0; i < size; ++i) {
-              if (r[i] != r[i])
-                  os_putstr("NaN \n",5);
-              else {
-                os_putf(this->r[i]);
-                os_putstr("\n",1);
-              }
-            }
-        }
-
-        void print_bare() {
-            for (int i = 0; i < size - 1; ++i) {
-                if (r[i] != r[i])
-                    os_putstr("NaN \n",5);
-                else {
-                    os_putf(this->r[i]);
-                    os_putstr(", ",2);
-                }
-            }
-            os_putf(this->r[size-1]);
-            os_putstr("\n",1);
-        }
-};
-typedef Vec<4> Vec4;
-typedef Vec<3> Vec3;
-typedef Vec<2> Vec2;
-
-#endif __VECTOR
+#endif
