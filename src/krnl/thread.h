@@ -24,11 +24,8 @@ void os_stack_init(os_pcb * thread, void * thread_handler, void * stack, uint32_
  * This is the function you want to call if you want to create a thread.
  */
 
-#ifdef __cplusplus
-os_pcb *register_thread_auto(volatile void (*thread_handler)());
 os_pcb *register_thread_auto(volatile void (*thread_handler)(), uint32_t stack_size, uint8_t priority, char* name);
 #define OS_THREAD(handler) register_thread_auto(&handler);
-#endif
 
-  
+
 #endif

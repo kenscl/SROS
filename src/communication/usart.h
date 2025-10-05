@@ -15,13 +15,11 @@ void enable_usart();
 
 // actual print fucntions
 //void os_putchar(char c);
-#ifdef __cplusplus
 void os_putstr(char *s);
-void os_putstr(char *s, size_t size);
+//void os_putstr(char *s, size_t size);
 void os_putint(int i);
 void os_putf(float num);
 void os_printf(char * format, ...);
-#endif
 
 // used for actual printing
 int msg_put(char *msg, size_t size);
