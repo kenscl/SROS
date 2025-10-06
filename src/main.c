@@ -7,9 +7,6 @@
 #include "krnl/scheduler.h"
 #include "krnl/thread.h"
 
-#include "communication/SPI.h"
-#include "communication/lsm_test.h"
-#include "stm32f407xx.h"
 
 int main(void) {
     // system config
