@@ -19,8 +19,7 @@ include(${PLATFORM_CONFIG_FILE})
 
 set(TARGET_NAME SROS)
 
-file(GLOB C_SOURCES ${CMAKE_SOURCE_DIR}/src/*.c ${HAL_FILES_C} ${CMAKE_SOURCE_DIR}/src/krnl/*.c ${CMAKE_SOURCE_DIR}/src/hal/*.c ${CMAKE_SOURCE_DIR}/src/communication/*.c ${CMAKE_SOURCE_DIR}/src/math/*.c ${CMAKE_SOURCE_DIR}/src/utils/*.c)
-file(GLOB CPP_SOURCES ${CMAKE_SOURCE_DIR}/src/*.cpp ${HAL_FILES_CPP} ${CMAKE_SOURCE_DIR}/src/krnl/*.cpp ${CMAKE_SOURCE_DIR}/src/hal/*.cpp ${CMAKE_SOURCE_DIR}/src/communication/*.cpp ${CMAKE_SOURCE_DIR}/src/math/*.cpp ${CMAKE_SOURCE_DIR}/src/attitude/*.cpp ${CMAKE_SOURCE_DIR}/src/utils/*.cpp)
+file(GLOB C_SOURCES ${CMAKE_SOURCE_DIR}/src/*.c ${HAL_FILES_C} ${CMAKE_SOURCE_DIR}/src/krnl/*.c ${CMAKE_SOURCE_DIR}/src/hal/*.c ${CMAKE_SOURCE_DIR}/src/communication/*.c ${CMAKE_SOURCE_DIR}/src/math/*.c ${CMAKE_SOURCE_DIR}/src/utils/*.c ${CMAKE_SOURCE_DIR}/src/attitude/*.c ${CMAKE_SOURCE_DIR}/src/sensors/*.c)
 set(SOURCES ${C_SOURCES} ${CPP_SOURCES} ${OUTHER_SOURCES})
 
 add_executable(${TARGET_NAME}.elf ${SOURCES})

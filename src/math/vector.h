@@ -25,6 +25,11 @@ Vec *vec_alloc(size_t size) {
     return vec;
 }
 
+void vec_free(Vec *a) {
+    os_free(a->r);
+    os_free(a);
+}
+
 void vec_print(Vec *vec) {
     os_printf("Vector: [");
     for (int i = 0; i < vec->size; ++i) {
@@ -41,6 +46,15 @@ int vec_add(Vec *a, Vec *b, Vec *result) {
         return 0;
     for (int i = 0; i < a->size; ++i) {
         result->r[i] = a->r[i] + b->r[i];
+    }
+    return 1;
+}
+
+int vec_sub(Vec *a, Vec *b, Vec *result) {
+    if (a->size != b->size || a->size != result->size)
+        return 0;
+    for (int i = 0; i < a->size; ++i) {
+        result->r[i] = a->r[i] - b->r[i];
     }
     return 1;
 }
@@ -87,4 +101,11 @@ int vec_normalize(Vec *a) {
     return 1;
 }
 
+int vec_equals(Vec *a, Vec *b) {
+  if (a->size != b->size) return 0;
+  for (int i = 0; i < a->size; ++i) {
+    if (a->r[i] != b->r[i]) return 0;
+  }
+  return 1;
+}
 #endif

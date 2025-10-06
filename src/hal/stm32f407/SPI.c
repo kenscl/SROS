@@ -1,10 +1,27 @@
 #include "../../communication/SPI.h"
-#include "../../globals.h"
 #include "../../communication/usart.h"
+#include "../../globals.h"
 
 #include "../../hw_init.h"
 #include "stm32f407xx.h"
 #include <stdint.h>
+
+// cs-lines
+void CS_A_H() {
+    GPIOA->BSRR = GPIO_BSRR_BS_4;
+}
+
+void CS_A_L() {
+    GPIOA->BSRR = GPIO_BSRR_BR_4;
+}
+
+void CS_M_H() {
+    GPIOA->BSRR = GPIO_BSRR_BS_1;
+}
+
+void CS_M_L() {
+    GPIOA->BSRR = GPIO_BSRR_BR_1;
+}
 
 // SPI queue
 volatile SPI_transmition *SPI_buffer[SPI_buffer_lenght];
@@ -88,16 +105,16 @@ void DMA2_init() {
 
     // tx
     DMA2_Stream3->CR = 0;
-    DMA2_Stream3->PAR = (uint32_t) &SPI1->DR;
+    DMA2_Stream3->PAR = (uint32_t)&SPI1->DR;
     DMA2_Stream3->CR |= (0b011 << DMA_SxCR_CHSEL_Pos);
     DMA2_Stream3->CR |= (1 << DMA_SxCR_MINC_Pos);
     DMA2_Stream3->CR |= (0b01 << DMA_SxCR_DIR_Pos);
     DMA2_Stream3->CR |= (1 << DMA_SxCR_TCIE_Pos);
     DMA2_Stream3->CR |= (1 << DMA_SxCR_PL_Pos);
 
-    //rx
+    // rx
     DMA2_Stream0->CR = 0;
-    DMA2_Stream0->PAR = (uint32_t) &SPI1->DR;
+    DMA2_Stream0->PAR = (uint32_t)&SPI1->DR;
     DMA2_Stream0->CR |= (0b11 << DMA_SxCR_CHSEL_Pos);
     DMA2_Stream0->CR |= (1 << DMA_SxCR_MINC_Pos);
     DMA2_Stream0->CR &= ~(0b011 << DMA_SxCR_DIR_Pos);
@@ -105,12 +122,11 @@ void DMA2_init() {
     DMA2_Stream0->CR |= (1 << DMA_SxCR_PL_Pos);
     DMA2_Stream0->FCR |= DMA_SxFCR_DMDIS;
 
-    //NVIC_EnableIRQ(DMA2_Stream3_IRQn);
+    // NVIC_EnableIRQ(DMA2_Stream3_IRQn);
     NVIC_EnableIRQ(DMA2_Stream0_IRQn);
-    //NVIC_SetPriority(DMA2_Stream3_IRQn, 11);
+    // NVIC_SetPriority(DMA2_Stream3_IRQn, 11);
     NVIC_SetPriority(DMA2_Stream0_IRQn, 10);
 }
-
 
 void SPI_init() {
     RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;
@@ -120,15 +136,15 @@ void SPI_init() {
     GPIOA->MODER |= (0x1 << (4 * 2));
     SPI1->CR1 &= ~SPI_CR1_SPE;
 
-    GPIOA->MODER |= (2 << (5 * 2)) | (2 << (6 * 2)) | (2 << (7 * 2)); // af mode
+    GPIOA->MODER |= (2 << (5 * 2)) | (2 << (6 * 2)) | (2 << (7 * 2));   // af mode
     GPIOA->OSPEEDR |= (3 << (5 * 2)) | (3 << (6 * 2)) | (3 << (7 * 2)); // High speed
-    GPIOA->AFR[0]  |= (5 << (5 * 4)) | (5 << (6 * 4)) | (5 << (7 * 4)); // af 5
+    GPIOA->AFR[0] |= (5 << (5 * 4)) | (5 << (6 * 4)) | (5 << (7 * 4));  // af 5
     SPI1->CR1 = 0;
 
-    SPI1->CR1 = SPI_CR1_MSTR     // Master
-              | SPI_CR1_SSM      // Software CS management
-              | SPI_CR1_SSI      // Set nss high
-              | (3 << 3);    // fPCLK/8
+    SPI1->CR1 = SPI_CR1_MSTR  // Master
+                | SPI_CR1_SSM // Software CS management
+                | SPI_CR1_SSI // Set nss high
+                | (3 << 3);   // fPCLK/8
 
     SPI1->CR1 |= SPI_CR1_SPE;
     SPI1->CR2 = SPI_CR2_TXDMAEN | SPI_CR2_RXDMAEN;
@@ -152,7 +168,7 @@ void SPI_handle() {
     }
 
     // called when SPI is inactive
-    volatile SPI_transmition* next;
+    volatile SPI_transmition *next;
     if (SPI_current->state == pending) {
         next = SPI_current;
         next->state = busy;
