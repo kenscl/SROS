@@ -2,8 +2,7 @@
 #define SPI
 #include <stddef.h>
 #include <stdint.h>
-
-void dma2_stream0_handler();
+#include "../krnl/scheduler.h"
 
 enum SPI_state { pending, busy, done, error };
 
@@ -21,5 +20,7 @@ typedef struct SPI_transmition {
 void SPI_init();
 int SPI_submit(volatile struct SPI_transmition *tx);
 void SPI_handle();
+
+void SPI_thread();
 
 #endif

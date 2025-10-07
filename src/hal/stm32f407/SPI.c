@@ -194,3 +194,11 @@ void SPI_handle() {
     DMA2_Stream0->CR |= DMA_SxCR_EN;
     return;
 }
+
+void SPI_thread() {
+    SPI_init();
+    while (1) {
+        SPI_handle();
+        sleep(1 * MILLISECONDS);
+    }
+}
