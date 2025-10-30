@@ -1,4 +1,0 @@
-* Stuff still todo
-- find solution for different max heap sizes on different platforms.
-- SPI error handling
-

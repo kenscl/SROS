@@ -8,6 +8,7 @@
 #include "krnl/thread.h"
 #include "communication/SPI.h"
 #include "sensors/LSM9DS1.h"
+#include "attitude/ekf.h"
 
 int main(void) {
     // system config
@@ -20,11 +21,12 @@ int main(void) {
 
     // default run parameters
     print_welcome_msg();
-    register_thread_auto(&idle_thread, 500, 0, "idle_thread");
+    register_thread_auto(&idle_thread, 10, 0, "idle_thread");
 
     // User Threads are defined here
     register_thread_auto(&SPI_thread, 500, 10, "SPI_thread");
     register_thread_auto(&LSM9DS1_thread, 500, 10, "LSM9DS1_thread");
+    register_thread_auto(&attitude_thread, 1000, 10, "EKF");
     // register_thread_auto(&attitude_thread_complementary_filter, 3000,
     // STD_THREAD_PRIORITY + 1, "attitude_thread");
     // End of user thread definitions

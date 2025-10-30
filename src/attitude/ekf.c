@@ -2,14 +2,73 @@
 #include <math.h>
 #include <stdint.h>
 
+int EKF_alloc(struct EKF **ekf) {
+    *ekf = (struct EKF *)os_alloc(sizeof(EKF));
+    if (*ekf == 0)
+        return 0;
+
+    (*ekf)->attitude = quat_alloc();
+    if ((*ekf)->attitude == 0)
+        return 0;
+
+    (*ekf)->bias = vec_alloc(3);
+    if ((*ekf)->bias == 0)
+        return 0;
+
+    (*ekf)->x = vec_alloc(10);
+    if ((*ekf)->x == 0)
+        return 0;
+
+    (*ekf)->y = vec_alloc(4);
+    if ((*ekf)->y == 0)
+        return 0;
+
+    (*ekf)->z = vec_alloc(4);
+    if ((*ekf)->z == 0)
+        return 0;
+
+    (*ekf)->P = mat_alloc(10, 10);
+    if ((*ekf)->P == 0)
+        return 0;
+
+    (*ekf)->F = mat_alloc(10, 10);
+    if ((*ekf)->F == 0)
+        return 0;
+
+    (*ekf)->Q = mat_alloc(10, 10);
+    if ((*ekf)->Q == 0)
+        return 0;
+
+    (*ekf)->H = mat_alloc(4, 10);
+    if ((*ekf)->H == 0)
+        return 0;
+
+    (*ekf)->K = mat_alloc(10, 4);
+    if ((*ekf)->K == 0)
+        return 0;
+
+    (*ekf)->R = mat_alloc(4, 4);
+    if ((*ekf)->R == 0)
+        return 0;
+
+    (*ekf)->Rot = mat_alloc(3, 3);
+    if ((*ekf)->Rot == 0)
+        return 0;
+
+    (*ekf)->Rot_inv = mat_alloc(3, 3);
+    if ((*ekf)->Rot_inv == 0)
+        return 0;
+
+    return 1;
+}
 
 void EKF_init(EKF *ekf, Vec **gyro, Vec **acc, Vec **mag) {
-    int num_init = 100;
+    int num_init = 20;
     Vec *mean_gyro = vec_alloc(3);
     Vec *mean_acc = vec_alloc(3);
     Vec *mean_mag = vec_alloc(3);
 
-    float init_div = 1 / num_init;
+    float init_div = 1. / num_init;
     for (int i = 0; i < num_init; ++i) {
         vec_add(mean_gyro, gyro[i], mean_gyro);
         vec_scalar_mult(mean_gyro, init_div);
@@ -27,7 +86,7 @@ void EKF_init(EKF *ekf, Vec **gyro, Vec **acc, Vec **mag) {
     float cr = cos(roll_init);
     float sr = sin(roll_init);
 
-    ekf->Rot->r[0] = cp;
+
     ekf->Rot->r[1] = sp * sr;
     ekf->Rot->r[2] = sp * cr;
 
@@ -42,7 +101,7 @@ void EKF_init(EKF *ekf, Vec **gyro, Vec **acc, Vec **mag) {
     Vec *mr = vec_alloc(3);
     mat_vec_mult(ekf->Rot, mean_mag, mr);
     float yaw_init = atan2(-mr->r[1], mr->r[0]);
-    Quat *q_init = quat_alloc();(roll_init, pitch_init, yaw_init);
+    Quat *q_init = quat_alloc();
     quat_from_rpy(q_init, roll_init, pitch_init, yaw_init);
 
     ekf->x->r[0] = q_init->q;
@@ -102,7 +161,7 @@ void EKF_init(EKF *ekf, Vec **gyro, Vec **acc, Vec **mag) {
     Fu->r[7 * 6 +3] = 1;
     Fu->r[8 * 6 +4] = 1;
     Fu->r[9 * 6 +5] = 1;
-
+    mat_transpose(Fu, Fu_trans);
 
     float q0 = ekf->x->r[0];
     float q1 = ekf->x->r[1];
@@ -138,6 +197,12 @@ void EKF_init(EKF *ekf, Vec **gyro, Vec **acc, Vec **mag) {
     mat_free(U);
     mat_free(Fu);
     mat_free(Fu_trans);
+    vec_free(mean_gyro);
+    vec_free(mean_acc);
+    vec_free(mean_mag);
+    quat_free(q_init);
+    vec_free(gyro_sum);
+    vec_free(acc_sum);
 }
 
 void EKF_update_acc(EKF *ekf, Vec *acc) {
@@ -157,6 +222,7 @@ void EKF_update_mag(EKF *ekf, Vec *mag, Vec *acc) {
 
     float yaw = atan2(- mn->r[1], mn->r[0]);
     ekf->y->r[3] = yaw;
+    //os_printf("yaw: %f\n", yaw);
     vec_free(m);
     vec_free(mn);
 }
@@ -174,7 +240,6 @@ void EKF_predict(EKF *ekf,Vec *gyro, float dt) {
     float xgz = ekf->x->r[9];
 
     Quat *q = quat_alloc();
-    (ekf->x[0], ekf->x[1], ekf->x[2], ekf->x[3]);
     quat_from_vec4(ekf->x, q);
 
     Quat *w = quat_alloc();
@@ -182,6 +247,7 @@ void EKF_predict(EKF *ekf,Vec *gyro, float dt) {
     w->i = wx;
     w->j = wy;
     w->k = wz;
+    quat_free(w);
 
     //q = q + q * w * 0.5 * dt;
     Quat *temp = quat_alloc();
@@ -479,7 +545,7 @@ void EKF_update(EKF *ekf) {
     mat_sub(i10, tmp3, tmp4);
     mat_mult(tmp4, ekf->P, tmp3);
 
-    for (int i = 0; i < 100; ++i) {
+    for (int i = 0; i < 20; ++i) {
         ekf->P->r[i] = tmp3->r[i];
     }
 
@@ -498,49 +564,73 @@ void EKF_update(EKF *ekf) {
 int gyro_cnt = 0;
 int acc_cnt = 0;
 int mag_cnt = 0;
-EKF ekf;
-Vec *gyro[100];
-Vec *mag[100];
-Vec *acc[100];
+Vec *gyro[20];
+Vec *mag[20];
+Vec *acc[20];
 int has_init = 0;
 
 volatile void attitude_thread() {
-    //    uint64_t next_mag_time = now();
-    //    uint32_t last_time = now_high_accuracy();
-    //    while (1) {
-    //        volatile uint64_t next_time = now() + 3 * MILLISECONDS;
-    //        if (next_mag_time < now()) { // we only get this every 50 milliseconds, so setting the value more ofter just wastes computation
-    //            next_mag_time = now() + 50 * MILLISECONDS;
-    //            ekf.update_mag(LSM9DS1_mag);
-    //
-    //            if (mag_cnt < 100) {
-    //                mag[mag_cnt] = LSM9DS1_mag;
-    //                mag_cnt++;
-    //            }
-    //        }
-    //
-    //        ekf.update_acc(LSM9DS1_acc);
-    //        if (has_init) {
-    //            uint32_t start = now_high_accuracy();
-    //            ekf.predict(LSM9DS1_gyro, 0.03);//(float) (now_high_accuracy() - last_time) / 1e6);
-    //            last_time = now_high_accuracy();
-    //            ekf.update();
-    //            ekf.attitude.print_bare();
-    //            //os_printf("dt: %f [ms]\n", (float) (now_high_accuracy() - start));
-    //        }
-    //
-    //        if (acc_cnt < 100) {
-    //            acc[acc_cnt] = LSM9DS1_acc;
-    //            acc_cnt++;
-    //        }
-    //        if (gyro_cnt < 100) {
-    //            gyro[gyro_cnt] = LSM9DS1_gyro;
-    //            gyro_cnt++;
-    //        }
-    //        if (gyro_cnt == 100 && mag_cnt == 100 && acc_cnt == 100 && !has_init) {
-    //            ekf.init(gyro, acc, mag);
-    //            has_init = 1;
-    //        }
-    //        sleep_until(next_time);
-    //    }
+    static struct EKF *ekf = NULL;
+    if (!EKF_alloc(&ekf)) {
+        os_printf("EKF alloc error! \n");
+    }
+
+    for (int i = 0; i < 20; ++i) {
+        gyro[i] = vec_alloc(3);
+        acc[i] = vec_alloc(3);
+        mag[i] = vec_alloc(3);
+    }
+
+    uint64_t next_mag_time = now();
+    uint32_t last_time = now_high_accuracy();
+    while (1) {
+        volatile uint64_t next_time = now() + 3 * MILLISECONDS;
+        if (next_mag_time < now()) { // we only get this every 50 milliseconds, so setting the value
+                                     // more ofter just wastes computation
+            next_mag_time = now() + 50 * MILLISECONDS;
+            EKF_update_mag(ekf, LSM9DS1_mag, LSM9DS1_acc);
+
+                if (mag_cnt < 20) {
+                mag[mag_cnt]->r[0] = LSM9DS1_mag->r[0];
+                mag[mag_cnt]->r[1] = LSM9DS1_mag->r[1];
+                mag[mag_cnt]->r[2] = LSM9DS1_mag->r[2];
+                mag_cnt++;
+            }
+        }
+
+        if (has_init) {
+            EKF_update_acc(ekf, LSM9DS1_acc);
+            uint32_t start = now_high_accuracy();
+            EKF_predict(ekf, LSM9DS1_gyro, 0.03); //(float) (now_high_accuracy() - last_time) / 1e6);
+            last_time = now_high_accuracy();
+            EKF_update(ekf);
+            quat_print(ekf->attitude);
+            // os_printf("dt: %f [ms]\n", (float) (now_high_accuracy() - start));
+        }
+
+        if (acc_cnt < 20) {
+            acc[acc_cnt]->r[0] = LSM9DS1_acc->r[0];
+            acc[acc_cnt]->r[1] = LSM9DS1_acc->r[1];
+            acc[acc_cnt]->r[2] = LSM9DS1_acc->r[2];
+            acc_cnt++;
+        }
+        if (gyro_cnt < 20) {
+            gyro[gyro_cnt]->r[0] = LSM9DS1_gyro->r[0];
+            gyro[gyro_cnt]->r[1] = LSM9DS1_gyro->r[1];
+            gyro[gyro_cnt]->r[2] = LSM9DS1_gyro->r[2];
+            gyro_cnt++;
+        }
+
+        if (gyro_cnt == 20 && mag_cnt == 20 && acc_cnt == 20 && !has_init) {
+            EKF_init(ekf, gyro, acc, mag);
+            os_printf("Avaliable. \n");
+            has_init = 1;
+            for (int i = 0; i < 20; ++i) {
+                vec_free(gyro[i]);
+                vec_free(mag[i]);
+                vec_free(acc[i]);
+            }
+        }
+        sleep_until(next_time);
+    }
 }

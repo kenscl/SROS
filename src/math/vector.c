@@ -20,7 +20,7 @@ void vec_free(Vec *a) {
 }
 
 void vec_print(Vec *vec) {
-    os_printf("Vector: [");
+    os_printf("Vector: [ ");
     for (int i = 0; i < vec->size; ++i) {
 	if (vec->r[i] != vec->r[i])
 	    os_printf("NaN ");

@@ -57,36 +57,50 @@ int is_full() {
     return (SPI_queue_head + 1) % queue_size == SPI_queue_tail;
 }
 
+int in_queue(volatile struct SPI_transmition *element) {
+
+    for (int i = 0; i < queue_size; ++i) {
+        if (element == SPI_buffer[i]) return 1;
+    }
+    return 0;
+}
+
 int enqueue(volatile struct SPI_transmition *element) {
     if (is_full())
-        return -1;
+        return 0;
     SPI_buffer[SPI_queue_head] = element;
     SPI_queue_head = (SPI_queue_head + 1) % queue_size;
-    return 0;
+    return 1;
 }
 
 int dequeue(volatile struct SPI_transmition **ret) {
     if (is_empty())
-        return -1;
+        return 0;
     *ret = SPI_buffer[SPI_queue_tail];
     SPI_current = SPI_buffer[SPI_queue_tail];
     SPI_queue_tail = (SPI_queue_tail + 1) % queue_size;
-    return 0;
+    return 1;
 }
 
 // interrupt stuff
 uint8_t dma_done = 1;
 void dma2_stream3_handler() {
     if (DMA2->LISR & DMA_LISR_TCIF3) {
-        DMA2->LIFCR |= DMA_LIFCR_CTCIF3;
+        DMA2->LIFCR = DMA_LIFCR_CTCIF3;
     }
     if (DMA2->LISR & DMA_LISR_HTIF3) {
-        DMA2->LIFCR |= DMA_LIFCR_CHTIF3;
+        DMA2->LIFCR = DMA_LIFCR_CHTIF3;
     }
 }
 
 void dma2_stream0_handler() {
-    volatile uint32_t state = DMA2->LISR;
+    //volatile uint32_t state = DMA2->LISR;
+    if (DMA2->LISR & DMA_LISR_TEIF0) {
+        os_printf("SPI transmition error! \n");
+    }
+    if (DMA2->LISR & DMA_LISR_TEIF3) {
+        os_printf("SPI transmition error! \n");
+    }
     if (DMA2->LISR & DMA_LISR_TCIF0) {
         DMA2->LIFCR |= DMA_LIFCR_CTCIF3;
         DMA2->LIFCR |= DMA_LIFCR_CHTIF3;
@@ -96,7 +110,6 @@ void dma2_stream0_handler() {
         DMA2_Stream0->CR &= ~DMA_SxCR_EN;
         SPI_current->cs_high();
         SPI_current->state = done;
-        os_printf("res: %d \n", SPI_current->rx_buffer[1]);
     }
 }
 
@@ -105,16 +118,16 @@ void DMA2_init() {
 
     // tx
     DMA2_Stream3->CR = 0;
-    DMA2_Stream3->PAR = (uint32_t)&SPI1->DR;
+    DMA2_Stream3->PAR = (uint32_t) &SPI1->DR;
     DMA2_Stream3->CR |= (0b011 << DMA_SxCR_CHSEL_Pos);
     DMA2_Stream3->CR |= (1 << DMA_SxCR_MINC_Pos);
     DMA2_Stream3->CR |= (0b01 << DMA_SxCR_DIR_Pos);
     DMA2_Stream3->CR |= (1 << DMA_SxCR_TCIE_Pos);
     DMA2_Stream3->CR |= (1 << DMA_SxCR_PL_Pos);
 
-    // rx
+    //rx
     DMA2_Stream0->CR = 0;
-    DMA2_Stream0->PAR = (uint32_t)&SPI1->DR;
+    DMA2_Stream0->PAR = (uint32_t) &SPI1->DR;
     DMA2_Stream0->CR |= (0b11 << DMA_SxCR_CHSEL_Pos);
     DMA2_Stream0->CR |= (1 << DMA_SxCR_MINC_Pos);
     DMA2_Stream0->CR &= ~(0b011 << DMA_SxCR_DIR_Pos);
@@ -131,10 +144,6 @@ void DMA2_init() {
 void SPI_init() {
     RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;
     RCC->APB2ENR |= RCC_APB2ENR_SPI1EN;
-
-    GPIOA->MODER &= ~(0x3 << (4 * 2)); // Clear mode bits for pin 4
-    GPIOA->MODER |= (0x1 << (4 * 2));
-    SPI1->CR1 &= ~SPI_CR1_SPE;
 
     GPIOA->MODER |= (2 << (5 * 2)) | (2 << (6 * 2)) | (2 << (7 * 2));   // af mode
     GPIOA->OSPEEDR |= (3 << (5 * 2)) | (3 << (6 * 2)) | (3 << (7 * 2)); // High speed
@@ -155,7 +164,7 @@ void SPI_init() {
 }
 
 int SPI_submit(volatile struct SPI_transmition *tx) {
-    tx->state = pending;
+    if (tx->state != pending) return 0;
     return enqueue(tx);
 }
 
@@ -174,14 +183,14 @@ void SPI_handle() {
         next->state = busy;
     } else if (SPI_current->state == done) {
         int ret = dequeue(&next);
-        if (ret == -1)
+        if (!ret)
             return;
     }
 
+    SPI_current->state = busy;
     // start next transmition
     DMA2_Stream3->CR &= ~DMA_SxCR_EN;
     DMA2_Stream0->CR &= ~DMA_SxCR_EN;
-    uint8_t dma_done = 0;
 
     DMA2_Stream3->M0AR = (uint32_t)next->tx_buffer;
     DMA2_Stream3->NDTR = next->size;
@@ -189,7 +198,7 @@ void SPI_handle() {
     DMA2_Stream0->M0AR = (uint32_t)next->rx_buffer;
     DMA2_Stream0->NDTR = next->size;
 
-    next->cs_low();
+    SPI_current->cs_low();
     DMA2_Stream3->CR |= DMA_SxCR_EN;
     DMA2_Stream0->CR |= DMA_SxCR_EN;
     return;
@@ -201,4 +210,17 @@ void SPI_thread() {
         SPI_handle();
         sleep(1 * MILLISECONDS);
     }
+}
+
+void setup_cs_lines() {
+    RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;
+    RCC->APB2ENR |= RCC_APB2ENR_SPI1EN;
+
+    GPIOA->MODER &= ~(0x3 << (4 * 2)); // Clear mode bits for pin 4
+    GPIOA->MODER |= (0x1 << (4 * 2));
+    SPI1->CR1 &= ~SPI_CR1_SPE;
+    GPIOA->MODER &= ~(0x3 << (1 * 2));  // Clear mode bits for PA1
+    GPIOA->MODER |= (0x1 << (1 * 2));   // Set as output
+    GPIOA->OTYPER &= ~(1 << 1);         // Push-pull
+
 }

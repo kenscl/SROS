@@ -68,7 +68,6 @@
 #define MAG_SENSITIVITY           0.14
 
 // read write constants
-
 #define LSM9DS1_WRITE_REGISTER(reg)   ((reg) & 0x7F)
 #define LSM9DS1_READ_REGISTER(reg)    ((reg) | 0x80)
 
@@ -80,6 +79,8 @@ void CS_A_L();
 void CS_M_H();
 
 void CS_M_L();
+
+void setup_cs_lines();
 
 // configuration
 void LSM9DS1_reset();
@@ -122,7 +123,7 @@ void LSM9DS1_enable_mag();
 void LSM9DS1_enable_WHO_AM_I();
 
 // process
-Vec low_pass_filter(float alpha, Vec mean, Vec new_measurement);
+void low_pass_filter(float alpha, Vec *mean, Vec *new_measurement);
 void LSM9DS1_process_status();
 void LSM9DS1_process_gyro();
 void LSM9DS1_process_accel();

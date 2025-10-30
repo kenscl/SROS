@@ -3,52 +3,53 @@
 #include "../communication/usart.h"
 #include "../krnl/scheduler.h"
 #include "../krnl/thread.h"
+#include "../globals.h"
 #include <stdint.h>
 
-Vec gyro_bias;
-Mat soft_iron;
-Vec hard_iron;
-Mat acc_scale;
-Vec acc_bias;
+Vec *gyro_bias;
+Mat *soft_iron;
+Vec *hard_iron;
+Mat *acc_scale;
+Vec *acc_bias;
 
 /*
  * Calibration values here
  */
 
 void LSM9DS1_calibrate_sensors() {
-    //    // Gyroscope
-    //    gyro_bias[0] = -0.564394;
-    //    gyro_bias[1] = -1.807167;
-    //    gyro_bias[2] = -1.857611;
-    //  // Magnetometer
-    //    soft_iron[0][0] = 0.780890;
-    //    soft_iron[0][1] = -0.018096;
-    //    soft_iron[0][2] = 0.005514;
-    //    soft_iron[1][0] = -0.011893;
-    //    soft_iron[1][1] = 0.703616;
-    //    soft_iron[1][2] = 0.002129;
-    //    soft_iron[2][0] = 0.005069;
-    //    soft_iron[2][1] = 0.002974;
-    //    soft_iron[2][2] = 0.764143;
-    //    hard_iron[0] = 0.226322;
-    //    hard_iron[1] = 0.143636;
-    //    hard_iron[2] = -0.010043;
-    //    // Accelerometer
-    //    acc_bias[0] = -0.004453;
-    //    acc_bias[1] = 0.002806;
-    //    acc_bias[2] = -0.001830;
-    //
-    //    acc_scale[0][0] = 6.007124;
-    //    acc_scale[0][1] = 0.000000;
-    //    acc_scale[0][2] = 0.000000;
-    //
-    //    acc_scale[1][0] = 0.000000;
-    //    acc_scale[1][1] = 6.035877;
-    //    acc_scale[1][2] = 0.000000;
-    //
-    //    acc_scale[2][0] = 0.000000;
-    //    acc_scale[2][1] = 0.000000;
-    //    acc_scale[2][2] = 5.952594;
+        // Gyroscope
+        gyro_bias->r[0] = -0.564394;
+        gyro_bias->r[1] = -1.807167;
+        gyro_bias->r[2] = -1.857611;
+      // Magnetometer
+        soft_iron->r[0 * 3 + 0] = 0.780890;
+        soft_iron->r[0 * 3 + 1] = -0.018096;
+        soft_iron->r[0 * 3 + 2] = 0.005514;
+        soft_iron->r[1 * 3 + 0] = -0.011893;
+        soft_iron->r[1 * 3 + 1] = 0.703616;
+        soft_iron->r[1 * 3 + 2] = 0.002129;
+        soft_iron->r[2 * 3 + 0] = 0.005069;
+        soft_iron->r[2 * 3 + 1] = 0.002974;
+        soft_iron->r[2 * 3 + 2] = 0.764143;
+        hard_iron->r[0] = 0.226322;
+        hard_iron->r[1] = 0.143636;
+        hard_iron->r[2] = -0.010043;
+        // Accelerometer
+        acc_bias->r[0] = -0.004453;
+        acc_bias->r[1] = 0.002806;
+        acc_bias->r[2] = -0.001830;
+
+        acc_scale->r[0 * 3 + 0] = 6.007124;
+        acc_scale->r[0 * 3 + 1] = 0.000000;
+        acc_scale->r[0 * 3 + 2] = 0.000000;
+
+        acc_scale->r[1 * 3 + 0] = 0.000000;
+        acc_scale->r[1 * 3 + 1] = 6.035877;
+        acc_scale->r[1 * 3 + 2] = 0.000000;
+
+        acc_scale->r[2 * 3 + 0] = 0.000000;
+        acc_scale->r[2 * 3 + 1] = 0.000000;
+        acc_scale->r[2 * 3 + 2] = 5.952594;
 }
 
 // data values
@@ -80,7 +81,6 @@ void LSM9DS1_reset() {
                                           .cs_high = &CS_A_H,
                                           .cs_low = &CS_A_L,
                                           .state = pending};
-
     while (!SPI_submit(&info));
 }
 
@@ -93,11 +93,11 @@ void LSM9DS1_configure_gyro() {
     data1_g[0] = LSM9DS1_WRITE_REGISTER(CTRL_REG1_G);
     data1_g[1] = odr | fs | bw;
     static struct SPI_transmition info1_g = {.rx_buffer = dummy_rx,
-                                          .tx_buffer = data1_g,
-                                          .size = 2,
-                                          .cs_high = &CS_A_H,
-                                          .cs_low = &CS_A_L,
-                                          .state = pending};
+                                             .tx_buffer = data1_g,
+                                             .size = 2,
+                                             .cs_high = &CS_A_H,
+                                             .cs_low = &CS_A_L,
+                                             .state = pending};
 
     while (!SPI_submit(&info1_g));
 
@@ -108,12 +108,13 @@ void LSM9DS1_configure_gyro() {
     data3_g[1] = hp | hpcf;
 
     static struct SPI_transmition info3_g = {.rx_buffer = dummy_rx,
-                                          .tx_buffer = data3_g,
-                                          .size = 2,
-                                          .cs_high = &CS_A_H,
-                                          .cs_low = &CS_A_L,
-                                          .state = pending};
-    while (!SPI_submit(&info3_g));
+                                             .tx_buffer = data3_g,
+                                             .size = 2,
+                                             .cs_high = &CS_A_H,
+                                             .cs_low = &CS_A_L,
+                                             .state = pending};
+    while (!SPI_submit(&info3_g))
+        ;
 }
 
 uint8_t data6_xl[2];
@@ -133,13 +134,14 @@ void LSM9DS1_configure_accel() {
                                               .cs_high = &CS_A_H,
                                               .cs_low = &CS_A_L,
                                               .state = pending};
-    while (!SPI_submit(&info6_xl));
+    while (!SPI_submit(&info6_xl))
+        ;
 }
 
 uint8_t data1_m[2], data2_m[2], data3_m[2], data4_m[2];
 uint8_t ctrl_reg1_m = 0b11111110;
 uint8_t ctrl_reg2_m = 0b00000000;
-uint8_t ctrl_reg3_m = 0b00000000; // sim needs to be 0, this is an error in the datasheet!
+uint8_t ctrl_reg3_m = 0x00; // sim needs to be 0, this is an error in the datasheet!
 uint8_t ctrl_reg4_m = 0b00001100;
 void LSM9DS1_configure_mag() {
     data1_m[0] = LSM9DS1_WRITE_REGISTER(CTRL_REG1_M);
@@ -153,30 +155,29 @@ void LSM9DS1_configure_mag() {
     data4_m[1] = ctrl_reg4_m;
 
     static struct SPI_transmition info1_m = {.rx_buffer = dummy_rx,
-                                              .tx_buffer = data1_m,
-                                              .size = 2,
-                                              .cs_high = &CS_M_H,
-                                              .cs_low = &CS_M_L,
-                                              .state = pending};
+                                             .tx_buffer = data1_m,
+                                             .size = 2,
+                                             .cs_high = &CS_M_H,
+                                             .cs_low = &CS_M_L,
+                                             .state = pending};
     static struct SPI_transmition info2_m = {.rx_buffer = dummy_rx,
-                                              .tx_buffer = data2_m,
-                                              .size = 2,
-                                              .cs_high = &CS_M_H,
-                                              .cs_low = &CS_M_L,
-                                              .state = pending};
+                                             .tx_buffer = data2_m,
+                                             .size = 2,
+                                             .cs_high = &CS_M_H,
+                                             .cs_low = &CS_M_L,
+                                             .state = pending};
     static struct SPI_transmition info3_m = {.rx_buffer = dummy_rx,
-                                              .tx_buffer = data3_m,
-                                              .size = 2,
-                                              .cs_high = &CS_M_H,
-                                              .cs_low = &CS_M_L,
-                                              .state = pending};
+                                             .tx_buffer = data3_m,
+                                             .size = 2,
+                                             .cs_high = &CS_M_H,
+                                             .cs_low = &CS_M_L,
+                                             .state = pending};
     static struct SPI_transmition info4_m = {.rx_buffer = dummy_rx,
-                                              .tx_buffer = data4_m,
-                                              .size = 2,
-                                              .cs_high = &CS_M_H,
-                                              .cs_low = &CS_M_L,
-                                              .state = pending};
-
+                                             .tx_buffer = data4_m,
+                                             .size = 2,
+                                             .cs_high = &CS_M_H,
+                                             .cs_low = &CS_M_L,
+                                             .state = pending};
 
     while (!SPI_submit(&info1_m));
     while (!SPI_submit(&info2_m));
@@ -190,11 +191,11 @@ uint8_t status_reg_m[2] = {};
 uint8_t status_reg_m_tx[2] = {};
 
 static struct SPI_transmition acc_and_gyro_status = {.rx_buffer = status_reg,
-                                         .tx_buffer = status_reg_tx,
-                                         .size = 2,
-                                         .cs_high = &CS_A_H,
-                                         .cs_low = &CS_A_L,
-                                         .state = pending};
+                                                     .tx_buffer = status_reg_tx,
+                                                     .size = 2,
+                                                     .cs_high = &CS_A_H,
+                                                     .cs_low = &CS_A_L,
+                                                     .state = pending};
 static struct SPI_transmition mag_status = {.rx_buffer = status_reg_m,
                                             .tx_buffer = status_reg_m_tx,
                                             .size = 2,
@@ -223,8 +224,6 @@ void LSM9DS1_enable_status() {
     mag_status.state = pending;
 }
 
-//#pragma GCC push_options
-//#pragma GCC optimize("O0")
 void LSM9DS1_process_status() {
     if (!LSM9DS1_check_status())
         return;
@@ -233,23 +232,24 @@ void LSM9DS1_process_status() {
     LSM9DS1_mag_availiable = (status_reg_m[1] & 0b1000);
     LSM9DS1_enable_status();
 }
-//#pragma GCC pop_options
 
 uint8_t gyro_data[7] = {};
 uint8_t gyro_data_tx[7] = {};
 static struct SPI_transmition gyro_data_reg = {.rx_buffer = gyro_data,
-                                            .tx_buffer = gyro_data_tx,
-                                            .size = 7,
-                                            .cs_high = &CS_A_H,
-                                            .cs_low = &CS_A_L,
-                                            .state = pending};
+                                               .tx_buffer = gyro_data_tx,
+                                               .size = 7,
+                                               .cs_high = &CS_A_H,
+                                               .cs_low = &CS_A_L,
+                                               .state = pending};
 
 void LSM9DS1_read_gyro() {
     if (LSM9DS1_check_gyro())
         return;
     gyro_data_tx[0] = LSM9DS1_READ_REGISTER(OUT_X_G_L);
+    gyro_data[0] = 0x00;
     for (int i = 1; i < 7; ++i) {
         gyro_data_tx[i] = 0x00;
+        gyro_data[i] = 0x00;
     }
     SPI_submit(&gyro_data_reg);
 }
@@ -274,9 +274,9 @@ void LSM9DS1_process_gyro() {
     LSM9DS1_gyro->r[0] = (float)(x * GYRO_SENSITIVITY) / 1000;
     LSM9DS1_gyro->r[1] = -(float)(y * GYRO_SENSITIVITY) / 1000;
     LSM9DS1_gyro->r[2] = -(float)(z * GYRO_SENSITIVITY) / 1000;
-    vec_sub(LSM9DS1_gyro, &gyro_bias, LSM9DS1_gyro);
+    vec_sub(LSM9DS1_gyro, gyro_bias, LSM9DS1_gyro);
     LSM9DS1_gyro->r[1] = -LSM9DS1_gyro->r[1];
-    //LSM9DS1_gyro_filtered = low_pass_filter(a_gyro, LSM9DS1_gyro_filtered, LSM9DS1_gyro);
+    low_pass_filter(a_gyro, LSM9DS1_gyro_filtered, LSM9DS1_gyro);
     LSM9DS1_enable_gyro();
 }
 
@@ -284,11 +284,11 @@ uint8_t acc_data[7] = {};
 uint8_t acc_data_tx[7] = {};
 
 static struct SPI_transmition acc_data_reg = {.rx_buffer = acc_data,
-                                            .tx_buffer = acc_data_tx,
-                                            .size = 7,
-                                            .cs_high = &CS_A_H,
-                                            .cs_low = &CS_A_L,
-                                            .state = pending};
+                                              .tx_buffer = acc_data_tx,
+                                              .size = 7,
+                                              .cs_high = &CS_A_H,
+                                              .cs_low = &CS_A_L,
+                                              .state = pending};
 
 void LSM9DS1_read_accel() {
     if (LSM9DS1_check_accel())
@@ -320,22 +320,23 @@ void LSM9DS1_process_accel() {
     LSM9DS1_acc->r[0] = -(float)(x * ACC_SENSITIVITY) / 1000;
     LSM9DS1_acc->r[1] = (float)(y * ACC_SENSITIVITY) / 1000;
     LSM9DS1_acc->r[2] = (float)(z * ACC_SENSITIVITY) / 1000;
-    vec_add(LSM9DS1_acc, &acc_bias, LSM9DS1_acc);
-    Vec *tmp = vec_alloc(3);
-    if (tmp == 0) return;
-    mat_vec_mult(&acc_scale, LSM9DS1_acc, tmp);
-    LSM9DS1_acc->r[0] = tmp->r[0];
-    LSM9DS1_acc->r[1] = tmp->r[1];
-    LSM9DS1_acc->r[2] = tmp->r[2];
-    vec_free(tmp);
-    LSM9DS1_acc->r[1] = -LSM9DS1_acc->r[1];
+    // vec_add(LSM9DS1_acc, acc_bias, LSM9DS1_acc);
+    // Vec *tmp = vec_alloc(3);
+    // if (tmp == 0)
+    //     return;
+    // mat_vec_mult(acc_scale, LSM9DS1_acc, tmp);
+    // LSM9DS1_acc->r[0] = tmp->r[0];
+    // LSM9DS1_acc->r[1] = tmp->r[1];
+    // LSM9DS1_acc->r[2] = tmp->r[2];
+    // vec_free(tmp);
+    // LSM9DS1_acc->r[1] = -LSM9DS1_acc->r[1];
 
-    float res = 1 - vec_norm(LSM9DS1_acc);
-    //res = res * res;
-    //if (res < 0.1) {
-    //    LSM9DS1_acc_filtered =
-    //        low_pass_filter(a_acc, LSM9DS1_acc_filtered, LSM9DS1_acc.normalize());
-    //}
+    //float res = 1 - vec_norm(LSM9DS1_acc);
+    // res = res * res;
+    // if (res < 0.1) {
+    //     LSM9DS1_acc_filtered =
+    //         low_pass_filter(a_acc, LSM9DS1_acc_filtered, LSM9DS1_acc.normalize());
+    // }
     LSM9DS1_enable_accel();
 }
 
@@ -343,14 +344,17 @@ uint8_t mag_data[7] = {};
 uint8_t mag_data_tx[7] = {};
 
 static struct SPI_transmition mag_data_reg = {.rx_buffer = mag_data,
-                                            .tx_buffer = mag_data_tx,
-                                            .size = 7,
-                                            .cs_high = &CS_M_H,
-                                            .cs_low = &CS_M_L,
-                                            .state = pending};
+                                              .tx_buffer = mag_data_tx,
+                                              .size = 7,
+                                              .cs_high = &CS_M_H,
+                                              .cs_low = &CS_M_L,
+                                              .state = pending};
 
 void LSM9DS1_read_mag() {
+    if (LSM9DS1_check_mag())
+        return;
     mag_data_tx[0] = LSM9DS1_READ_REGISTER(OUT_X_L_M);
+    mag_data_tx[0] |= (1 << 6);
     for (int i = 1; i < 7; ++i) {
         mag_data_tx[i] = 0x00;
     }
@@ -377,16 +381,17 @@ void LSM9DS1_process_mag() {
     LSM9DS1_mag->r[0] = -(float)(x * MAG_SENSITIVITY) / 1000;
     LSM9DS1_mag->r[1] = (float)(y * MAG_SENSITIVITY) / 1000;
     LSM9DS1_mag->r[2] = -(float)(z * MAG_SENSITIVITY) / 1000;
-    vec_sub(LSM9DS1_mag, &hard_iron, LSM9DS1_mag);
+    vec_sub(LSM9DS1_mag, hard_iron, LSM9DS1_mag);
 
     Vec *tmp = vec_alloc(3);
-    if (tmp == 0) return;
-    mat_vec_mult(&soft_iron, LSM9DS1_mag, tmp);
+    if (tmp == 0)
+        return;
+    mat_vec_mult(soft_iron, LSM9DS1_mag, tmp);
     LSM9DS1_mag->r[0] = tmp->r[0];
     LSM9DS1_mag->r[1] = tmp->r[1];
     LSM9DS1_mag->r[2] = tmp->r[2];
     vec_free(tmp);
-    //LSM9DS1_mag_filtered = low_pass_filter(a_mag, LSM9DS1_mag_filtered, LSM9DS1_mag.normalize());
+    //LSM9DS1_mag_filtered = low_pass_filter(a_mag, LSM9DS1_mag_filtered, vec_normalize(LSM9DS1_mag));
     LSM9DS1_enable_mag();
 }
 
@@ -394,18 +399,18 @@ uint8_t who_data[2], who_data_m[2] = {};
 uint8_t who_data_tx[2], who_data_tx_m[2] = {};
 
 static struct SPI_transmition who_data_reg = {.rx_buffer = who_data,
-                                            .tx_buffer = who_data_tx,
-                                            .size = 2,
-                                            .cs_high = &CS_A_H,
-                                            .cs_low = &CS_A_L,
-                                            .state = pending};
+                                              .tx_buffer = who_data_tx,
+                                              .size = 2,
+                                              .cs_high = &CS_A_H,
+                                              .cs_low = &CS_A_L,
+                                              .state = pending};
 
 static struct SPI_transmition who_data_reg_m = {.rx_buffer = who_data_m,
-                                            .tx_buffer = who_data_tx_m,
-                                            .size = 2,
-                                            .cs_high = &CS_M_H,
-                                            .cs_low = &CS_M_L,
-                                            .state = pending};
+                                                .tx_buffer = who_data_tx_m,
+                                                .size = 2,
+                                                .cs_high = &CS_M_H,
+                                                .cs_low = &CS_M_L,
+                                                .state = pending};
 
 void LSM9DS1_read_WHO_AM_I() {
     if (who_data_reg.state == done)
@@ -444,39 +449,61 @@ void LSM9DS1_process_WHO_AM_I() {
     LSM9DS1_enable_WHO_AM_I();
 }
 
-//Vec  low_pass_filter(float alpha, Vec mean, Vec new_measurement) {
-//    vec_scalar_mult(&mean, alpha);
-//    vec_scalar_mult(&new_measurement, 1 - alpha);
-//    Vec *ret = vec_alloc()
-//    return ret;
-//}
+void low_pass_filter(float alpha, Vec *mean, Vec *new_measurement) {
+    vec_scalar_mult(mean, alpha);
+    vec_scalar_mult(new_measurement, 1 - alpha);
+    vec_add(mean, new_measurement, mean);
+}
+
+void allocate_data() {
+    LSM9DS1_gyro = vec_alloc(3);
+    LSM9DS1_mag = vec_alloc(3);
+    LSM9DS1_acc = vec_alloc(3);
+
+    LSM9DS1_gyro_filtered = vec_alloc(3);
+    LSM9DS1_acc_filtered = vec_alloc(3);
+    LSM9DS1_mag_filtered = vec_alloc(3);
+
+    gyro_bias = vec_alloc(3);
+    soft_iron = mat_alloc(3, 3);
+    hard_iron = vec_alloc(3);
+    acc_scale = mat_alloc(3, 3);
+    acc_bias = vec_alloc(3);
+}
+
+void configure() {
+    sleep(10 * MILLISECONDS);
+
+    LSM9DS1_configure_gyro();
+    LSM9DS1_configure_accel();
+    LSM9DS1_configure_mag();
+    LSM9DS1_read_WHO_AM_I();
+
+    LSM9DS1_calibrate_sensors();
+
+    sleep(10 * MILLISECONDS);
+    LSM9DS1_process_WHO_AM_I();
+}
 
 uint8_t eq_cnt = 0;
 uint32_t last_time = 0;
 uint32_t next_mag = 0;
 volatile void LSM9DS1_thread() {
-    LSM9DS1_gyro = vec_alloc(3);
-    LSM9DS1_mag = vec_alloc(3);
-    LSM9DS1_acc = vec_alloc(3);
+    allocate_data();
+    setup_cs_lines();
     SPI_init();
     LSM9DS1_reset();
-    sleep(10 * MILLISECONDS);
-    LSM9DS1_configure_gyro();
-    LSM9DS1_configure_accel();
-    LSM9DS1_configure_mag();
-    LSM9DS1_read_WHO_AM_I();
-    // calibration
-    LSM9DS1_calibrate_sensors();
-    sleep(10 * MILLISECONDS);
-    LSM9DS1_process_WHO_AM_I();
+
+    configure();
+
     while (1) {
         volatile uint32_t next_time = now() + 3 * MILLISECONDS;
         last_time = now();
 
         LSM9DS1_read_gyro();
+        LSM9DS1_read_accel();
         if (next_mag < now()) {
             LSM9DS1_read_mag();
-            LSM9DS1_read_accel();
             next_mag = now() + 50 * MILLISECONDS;
         }
 
@@ -484,51 +511,21 @@ volatile void LSM9DS1_thread() {
 
         sleep(2 * MILLISECONDS);
 
-        Vec *last_gyro = vec_alloc(3);
-        last_gyro->r[0] = LSM9DS1_gyro->r[0];
-        last_gyro->r[1] = LSM9DS1_gyro->r[1];
-        last_gyro->r[2] = LSM9DS1_gyro->r[2];
-
-
         LSM9DS1_process_gyro();
         LSM9DS1_process_accel();
         LSM9DS1_process_mag();
-        // os_printf("LSM9DS1_mag, ");
-        // LSM9DS1_mag.print_bare();
 
-        if (vec_equals(last_gyro, LSM9DS1_gyro)) {
-            eq_cnt++;
-        } else {
-            eq_cnt = 0;
+        if (DEBUG) {
+            os_printf("[LSM9DS1_gyro] ");
+            vec_print(LSM9DS1_gyro);
+
+            os_printf("[LSM9DS1_acc] ");
+            vec_print(LSM9DS1_acc);
+
+            os_printf("[LSM9DS1_mag] ");
+            vec_print(LSM9DS1_mag);
         }
-        vec_free(last_gyro);
 
         sleep_until(next_time);
-        if (eq_cnt > 10) {
-            eq_cnt = 0;
-            os_printf("\n\n\nconnection error! \n\n\n");
-            SPI_init();
-            sleep(1 * MILLISECONDS);
-            LSM9DS1_reset();
-            SPI_handle();
-            sleep(1 * MILLISECONDS);
-
-            LSM9DS1_configure_gyro();
-            LSM9DS1_configure_accel();
-            LSM9DS1_configure_mag();
-            LSM9DS1_read_WHO_AM_I();
-            SPI_handle();
-            sleep(20 * MILLISECONDS);
-
-            LSM9DS1_process_WHO_AM_I();
-
-            LSM9DS1_enable_status();
-            LSM9DS1_enable_gyro();
-            LSM9DS1_enable_mag();
-            LSM9DS1_enable_accel();
-
-            next_time = now() + 3 * MILLISECONDS;
-            last_time = now();
-        }
     }
 }

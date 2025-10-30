@@ -1,15 +1,15 @@
-# SROS (Simple Realtime Operating System) 
+# SROS (Simple Realtime Operating System)
 
 SROS is a simple rtos for the stm32f103.
 It features preemptive real-time scheduling and blocking printf.
 
 ## Compiling
 
-First you will have to create the build folder: 
+First you will have to create the build folder:
 ``` bash
 mkdir build && cd build
-``` 
-And then you'll have to run CMake with the selected compilation target passed in: 
+```
+And then you'll have to run CMake with the selected compilation target passed in:
 For STM32F407G:
 ``` bash
 cmake -DPLATFORM_CONFIG_FILE=platform/stm32f407.cmake ..
@@ -24,7 +24,7 @@ You might also want to add the `compile_commands.json` file depending on your id
 ``` bash
 cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DPLATFORM_CONFIG_FILE=platform/stm32f407.cmake ..
 ```
-or 
+or
 ``` bash
 cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DPLATFORM_CONFIG_FILE=platform/stm32f103.cmake ..
 ```
@@ -38,6 +38,21 @@ The make script already includes a flashing script:
 ``` bash
 make flash
 ```
+
+## Debugging
+
+For debugging the f407 in one terminal:
+``` bash
+openocd -f /usr/share/openocd/scripts/interface/stlink.cfg -f /usr/share/openocd/scripts/target/stm32f4x.cfg
+```
+For the f103:
+
+``` bash
+openocd -f /usr/share/openocd/scripts/interface/stlink.cfg -f /usr/share/openocd/scripts/target/stm32f1x.cfg
+```
+
+Then use gdb for debugging.
+
 
 ## Creating threads
 

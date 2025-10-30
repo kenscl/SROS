@@ -1,6 +1,7 @@
 #include "mem.h"
 #include <stdint.h>
 #include <stdio.h>
+#include "../communication/usart.h"
 
 struct Chunk{
     uint16_t size;
@@ -49,6 +50,7 @@ void *os_alloc(size_t size) {
 
     if (best_fit_size == 65535) {
         mem_full = 1;
+        if (DEBUG) os_printf("OUT OF MEMORY! \n");
         return 0;// error return
     }
 

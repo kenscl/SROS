@@ -2,7 +2,7 @@
 #define __EKF
 #include "../math/matrix.h"
 #include "../math/quaternion.h"
-//#include "../communication/LSM9DS1.h"
+#include "../sensors/LSM9DS1.h"
 #include <stdint.h>
 #define M_PI 3.14159265358979323846264338327950288419716939937510
 
@@ -19,6 +19,7 @@ typedef struct EKF {
     Mat *Rot_inv; // 3 x 3
 } EKF;
 
+int EKF_alloc(struct EKF **ekf);
 void EKF_init(EKF *ekf, Vec **gyro, Vec **acc, Vec **mag);
 void EKF_update_acc(EKF *ekf, Vec *acc);
 void EKF_update_mag(EKF *ekf, Vec *mag, Vec *acc);

@@ -23,10 +23,10 @@ void mat_free(Mat *a) {
 }
 
 int mat_mult(Mat *a, Mat *b, Mat *res) {
-    if (a->m != b->n)
+    if (a->n != b->m)
         return 0;
     if (res->m != a->m || res->n != b->n)
-        return -1;
+        return 0;
     for (size_t i = 0; i < a->m; ++i) {
         for (size_t j = 0; j < b->n; ++j) {
             res->r[i * res->n + j] = 0.0f;

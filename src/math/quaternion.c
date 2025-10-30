@@ -168,5 +168,5 @@ int quat_normalize(Quat *a) {
 }
 
 void quat_print(Quat *a) {
-    os_printf("Quaternion: [%f %f %f %f]", a->q, a->i, a->j, a->k);
+    os_printf("Quaternion: [%f %f %f %f] \n", a->q, a->i, a->j, a->k);
 }
