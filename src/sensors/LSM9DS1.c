@@ -320,16 +320,16 @@ void LSM9DS1_process_accel() {
     LSM9DS1_acc->r[0] = -(float)(x * ACC_SENSITIVITY) / 1000;
     LSM9DS1_acc->r[1] = (float)(y * ACC_SENSITIVITY) / 1000;
     LSM9DS1_acc->r[2] = (float)(z * ACC_SENSITIVITY) / 1000;
-    // vec_add(LSM9DS1_acc, acc_bias, LSM9DS1_acc);
-    // Vec *tmp = vec_alloc(3);
-    // if (tmp == 0)
-    //     return;
-    // mat_vec_mult(acc_scale, LSM9DS1_acc, tmp);
-    // LSM9DS1_acc->r[0] = tmp->r[0];
-    // LSM9DS1_acc->r[1] = tmp->r[1];
-    // LSM9DS1_acc->r[2] = tmp->r[2];
-    // vec_free(tmp);
-    // LSM9DS1_acc->r[1] = -LSM9DS1_acc->r[1];
+     vec_add(LSM9DS1_acc, acc_bias, LSM9DS1_acc);
+     Vec *tmp = vec_alloc(3);
+     if (tmp == 0)
+         return;
+     mat_vec_mult(acc_scale, LSM9DS1_acc, tmp);
+     LSM9DS1_acc->r[0] = tmp->r[0];
+     LSM9DS1_acc->r[1] = tmp->r[1];
+     LSM9DS1_acc->r[2] = tmp->r[2];
+     vec_free(tmp);
+     LSM9DS1_acc->r[1] = -LSM9DS1_acc->r[1];
 
     //float res = 1 - vec_norm(LSM9DS1_acc);
     // res = res * res;
@@ -485,6 +485,23 @@ void configure() {
     LSM9DS1_process_WHO_AM_I();
 }
 
+uint64_t read_sensors(uint64_t last_time) {
+    LSM9DS1_read_gyro();
+    if (now() >= last_time + 50 * MILLISECONDS) {
+        LSM9DS1_read_accel();
+        LSM9DS1_read_mag();
+
+        last_time = now();
+    }
+    return last_time;
+}
+
+void process_sensors() {
+    LSM9DS1_process_gyro();
+    LSM9DS1_process_accel();
+    LSM9DS1_process_mag();
+}
+
 uint8_t eq_cnt = 0;
 uint32_t last_time = 0;
 uint32_t next_mag = 0;
@@ -498,26 +515,16 @@ volatile void LSM9DS1_thread() {
 
     while (1) {
         volatile uint32_t next_time = now() + 3 * MILLISECONDS;
-        last_time = now();
 
-        LSM9DS1_read_gyro();
-        LSM9DS1_read_accel();
-        if (next_mag < now()) {
-            LSM9DS1_read_mag();
-            next_mag = now() + 50 * MILLISECONDS;
-        }
-
+        last_time = read_sensors(last_time);
         SPI_handle();
 
         sleep(2 * MILLISECONDS);
 
-        LSM9DS1_process_gyro();
-        LSM9DS1_process_accel();
-        LSM9DS1_process_mag();
-
+        process_sensors();
         if (DEBUG) {
             os_printf("[LSM9DS1_gyro] ");
-            vec_print(LSM9DS1_gyro);
+            vec_print(LSM9DS1_gyro_filtered);
 
             os_printf("[LSM9DS1_acc] ");
             vec_print(LSM9DS1_acc);

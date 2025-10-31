@@ -172,7 +172,7 @@ void EKF_init(EKF *ekf, Vec **gyro, Vec **acc, Vec **mag) {
     ekf->Rot->r[1] = 2 * (q1 * q2 - q0 * q3);
     ekf->Rot->r[2] = 2 * (q0 * q2 + q1 * q3);
 
-    ekf->Rot->r[3] = 2 * (q1 * q2 + q0 * q3);
+    ekf->Rot->r[3] = 2 * (q1 * q2 - q0 * q3);
     ekf->Rot->r[4] = (q0 * q0 - q1 * q1 + q2 * q2 - q3 * q3);
     ekf->Rot->r[5] = 2 * (q2 * q3 - q0 * q1);
 
@@ -247,7 +247,6 @@ void EKF_predict(EKF *ekf,Vec *gyro, float dt) {
     w->i = wx;
     w->j = wy;
     w->k = wz;
-    quat_free(w);
 
     //q = q + q * w * 0.5 * dt;
     Quat *temp = quat_alloc();
@@ -256,6 +255,7 @@ void EKF_predict(EKF *ekf,Vec *gyro, float dt) {
     quat_add(q, temp, q);
     quat_normalize(q);
     quat_free(temp);
+    quat_free(w);
 
     ekf->x->r[0] = q->q;
     ekf->x->r[1] = q->i;
@@ -623,7 +623,6 @@ volatile void attitude_thread() {
 
         if (gyro_cnt == 20 && mag_cnt == 20 && acc_cnt == 20 && !has_init) {
             EKF_init(ekf, gyro, acc, mag);
-            os_printf("Avaliable. \n");
             has_init = 1;
             for (int i = 0; i < 20; ++i) {
                 vec_free(gyro[i]);

@@ -4,7 +4,7 @@
 
 typedef uint64_t os_time_t;
 
-#define DEBUG                 0
+#define DEBUG                 1
 
 // os defines
 #define OS_MAX_THREAD_COUNT   8

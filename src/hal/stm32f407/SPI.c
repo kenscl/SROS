@@ -110,6 +110,10 @@ void dma2_stream0_handler() {
         DMA2_Stream0->CR &= ~DMA_SxCR_EN;
         SPI_current->cs_high();
         SPI_current->state = done;
+        if (SPI_queue_tail != 0)
+            SPI_buffer[SPI_queue_tail-1] = &dmy;
+        if (SPI_queue_tail == 0)
+            SPI_buffer[queue_size-1] = &dmy;
     }
 }
 
@@ -165,6 +169,9 @@ void SPI_init() {
 
 int SPI_submit(volatile struct SPI_transmition *tx) {
     if (tx->state != pending) return 0;
+    for (int i = 0; i < queue_size; i++) {
+        if (in_queue(tx)) return 0;
+    }
     return enqueue(tx);
 }
 
