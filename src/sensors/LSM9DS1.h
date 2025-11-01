@@ -91,14 +91,14 @@ void LSM9DS1_configure_mag();
 void LSM9DS1_calibrate_sensors();
 
 // data values
-extern Vec *LSM9DS1_gyro;
-extern Vec *LSM9DS1_gyro_filtered;
+extern Vec LSM9DS1_gyro;
+extern Vec LSM9DS1_gyro_filtered;
 extern float LSM9DS1_gyro_availiable;
-extern Vec *LSM9DS1_acc;
-extern Vec *LSM9DS1_acc_filtered;
+extern Vec LSM9DS1_acc;
+extern Vec LSM9DS1_acc_filtered;
 extern float LSM9DS1_acc_availiable;
-extern Vec *LSM9DS1_mag;
-extern Vec *LSM9DS1_mag_filtered;
+extern Vec LSM9DS1_mag;
+extern Vec LSM9DS1_mag_filtered;
 extern float LSM9DS1_mag_availiable;
 
 // data read

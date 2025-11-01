@@ -1,149 +1,86 @@
 #include "ekf.h"
 #include <math.h>
 #include <stdint.h>
+// Quaternions
+QUAT_ALLOC_STATIC(attitude_static);
+QUAT_ALLOC_STATIC(q_static);
+QUAT_ALLOC_STATIC(w_static);
+QUAT_ALLOC_STATIC(q_temp_static);
 
-int EKF_alloc(struct EKF **ekf) {
-    *ekf = (struct EKF *)os_alloc(sizeof(EKF));
-    if (*ekf == 0)
-        return 0;
+// Vectors
+VEC_ALLOC_STATIC(bias_static, 3);
+VEC_ALLOC_STATIC(x_static, 10);
+VEC_ALLOC_STATIC(y_static, 4);
+VEC_ALLOC_STATIC(z_static, 4);
+VEC_ALLOC_STATIC(rev_g_static, 3);
+VEC_ALLOC_STATIC(z_acc_static, 3);
+VEC_ALLOC_STATIC(rpy_static, 3);
+VEC_ALLOC_STATIC(v_static, 4);
+VEC_ALLOC_STATIC(tmp_static, 10);
+VEC_ALLOC_STATIC(m_static, 3);
+VEC_ALLOC_STATIC(mn_static, 3);
 
-    (*ekf)->attitude = quat_alloc();
-    if ((*ekf)->attitude == 0)
-        return 0;
+// Matrices
+MAT_ALLOC_STATIC(P_static, 10, 10);
+MAT_ALLOC_STATIC(F_static, 10, 10);
+MAT_ALLOC_STATIC(Q_static, 10, 10);
+MAT_ALLOC_STATIC(H_static, 4, 10);
+MAT_ALLOC_STATIC(K_static, 10, 4);
+MAT_ALLOC_STATIC(R_static, 4, 4);
+MAT_ALLOC_STATIC(Rot_static, 3, 3);
+MAT_ALLOC_STATIC(Rot_inv_static, 3, 3);
 
-    (*ekf)->bias = vec_alloc(3);
-    if ((*ekf)->bias == 0)
-        return 0;
+MAT_ALLOC_STATIC(temp_mat1_static, 10, 10);
+MAT_ALLOC_STATIC(temp_mat2_static, 10, 10);
+MAT_ALLOC_STATIC(F_trans_static, 10, 10);
 
-    (*ekf)->x = vec_alloc(10);
-    if ((*ekf)->x == 0)
-        return 0;
+MAT_ALLOC_STATIC(S_static, 4, 4);
+MAT_ALLOC_STATIC(S_inv_static, 4, 4);
+MAT_ALLOC_STATIC(H_trans_static, 10, 4);
+MAT_ALLOC_STATIC(tmp1_static, 10, 4);
+MAT_ALLOC_STATIC(tmp2_static, 4, 4);
 
-    (*ekf)->y = vec_alloc(4);
-    if ((*ekf)->y == 0)
-        return 0;
+MAT_ALLOC_STATIC(i10_static, 10, 10);
+MAT_ALLOC_STATIC(tmp3_static, 10, 10);
+MAT_ALLOC_STATIC(tmp4_static, 10, 10);
 
-    (*ekf)->z = vec_alloc(4);
-    if ((*ekf)->z == 0)
-        return 0;
+EKF ekf_static = {
+    .attitude = &attitude_static,
+    .bias = &bias_static,
+    .x = &x_static,
+    .y = &y_static,
+    .z = &z_static,
+    .P = &P_static,
+    .F = &F_static,
+    .Q = &Q_static,
+    .H = &H_static,
+    .K = &K_static,
+    .R = &R_static,
+    .Rot = &Rot_static,
+    .Rot_inv = &Rot_inv_static,
+    .q = &q_static,
+    .w = &w_static,
+    .q_temp = &q_temp_static,
+    .temp_mat1 = &temp_mat1_static,
+    .temp_mat2 = &temp_mat2_static,
+    .F_trans = &F_trans_static,
+    .rev_g = &rev_g_static,
+    .z_acc = &z_acc_static,
+    .rpy = &rpy_static,
+    .v = &v_static,
+    .S = &S_static,
+    .S_inv = &S_inv_static,
+    .H_trans = &H_trans_static,
+    .tmp1 = &tmp1_static,
+    .tmp2 = &tmp2_static,
+    .tmp = &tmp_static,
+    .i10 = &i10_static,
+    .tmp3 = &tmp3_static,
+    .tmp4 = &tmp4_static,
+    .m = &m_static,
+    .mn = &mn_static
+};
 
-    (*ekf)->P = mat_alloc(10, 10);
-    if ((*ekf)->P == 0)
-        return 0;
-
-    (*ekf)->F = mat_alloc(10, 10);
-    if ((*ekf)->F == 0)
-        return 0;
-
-    (*ekf)->Q = mat_alloc(10, 10);
-    if ((*ekf)->Q == 0)
-        return 0;
-
-    (*ekf)->H = mat_alloc(4, 10);
-    if ((*ekf)->H == 0)
-        return 0;
-
-    (*ekf)->K = mat_alloc(10, 4);
-    if ((*ekf)->K == 0)
-        return 0;
-
-    (*ekf)->R = mat_alloc(4, 4);
-    if ((*ekf)->R == 0)
-        return 0;
-
-    (*ekf)->Rot = mat_alloc(3, 3);
-    if ((*ekf)->Rot == 0)
-        return 0;
-
-    (*ekf)->Rot_inv = mat_alloc(3, 3);
-    if ((*ekf)->Rot_inv == 0)
-        return 0;
-
-    (*ekf)->q = quat_alloc();
-    if ((*ekf)->q == 0)
-        return 0;
-
-    (*ekf)->w = quat_alloc();
-    if ((*ekf)->w == 0)
-        return 0;
-
-    (*ekf)->q_temp = quat_alloc();
-    if ((*ekf)->q_temp == 0)
-        return 0;
-
-    (*ekf)->temp_mat1 = mat_alloc(10, 10);
-    if ((*ekf)->temp_mat1 == 0)
-        return 0;
-
-    (*ekf)->temp_mat2 = mat_alloc(10, 10);
-    if ((*ekf)->temp_mat2 == 0)
-        return 0;
-
-    (*ekf)->F_trans = mat_alloc(10, 10);
-    if ((*ekf)->F_trans == 0)
-        return 0;
-
-    (*ekf)->rev_g = vec_alloc(3);
-    if ((*ekf)->rev_g == 0)
-        return 0;
-
-    (*ekf)->z_acc = vec_alloc(3);
-    if ((*ekf)->z_acc == 0)
-        return 0;
-
-    (*ekf)->rpy = vec_alloc(3);
-    if ((*ekf)->rpy == 0)
-        return 0;
-
-    (*ekf)->v = vec_alloc(4);
-    if ((*ekf)->v == 0)
-        return 0;
-
-    (*ekf)->S = mat_alloc(4, 4);
-    if ((*ekf)->S == 0)
-        return 0;
-
-    (*ekf)->S_inv = mat_alloc(4, 4);
-    if ((*ekf)->S_inv == 0)
-        return 0;
-
-    (*ekf)->H_trans = mat_alloc(10, 4);
-    if ((*ekf)->H_trans == 0)
-        return 0;
-
-    (*ekf)->tmp1 = mat_alloc(10, 4);
-    if ((*ekf)->tmp1  == 0)
-        return 0;
-
-    (*ekf)->tmp2 = mat_alloc(4, 4);
-    if ((*ekf)->tmp2 == 0)
-        return 0;
-
-    (*ekf)->tmp = vec_alloc(10);
-    if ((*ekf)->tmp == 0)
-        return 0;
-
-    (*ekf)->i10 = mat_alloc(10, 10);
-    if ((*ekf)->i10 == 0)
-        return 0;
-
-    (*ekf)->tmp3 = mat_alloc(10, 10);
-    if ((*ekf)->tmp3 == 0)
-        return 0;
-
-    (*ekf)->tmp4 = mat_alloc(10, 10);
-    if ((*ekf)->tmp4 == 0)
-        return 0;
-
-    (*ekf)->m = vec_alloc(3);
-    if ((*ekf)->m == 0)
-        return 0;
-
-    (*ekf)->mn = vec_alloc(3);
-    if ((*ekf)->mn == 0)
-        return 0;
-    return 1;
-}
 
 void EKF_init(EKF *ekf, Vec **gyro, Vec **acc, Vec **mag) {
     int num_init = 20;
@@ -602,13 +539,10 @@ Vec *gyro[20];
 Vec *mag[20];
 Vec *acc[20];
 
+struct EKF *ekf;
 volatile void attitude_thread() {
+    ekf = &ekf_static;
     int has_init = 0;
-    static struct EKF *ekf = NULL;
-    if (!EKF_alloc(&ekf)) {
-        os_printf("EKF alloc error! \n");
-    }
-
     for (int i = 0; i < 20; ++i) {
         gyro[i] = vec_alloc(3);
         acc[i] = vec_alloc(3);
@@ -622,20 +556,20 @@ volatile void attitude_thread() {
         if (next_mag_time < now()) { // we only get this every 50 milliseconds, so setting the value
                                      // more ofter just wastes computation
             next_mag_time = now() + 50 * MILLISECONDS;
-            EKF_update_mag(ekf, LSM9DS1_mag, LSM9DS1_acc);
+            EKF_update_mag(ekf, &LSM9DS1_mag, &LSM9DS1_acc);
 
                 if (mag_cnt < 20) {
-                mag[mag_cnt]->r[0] = LSM9DS1_mag->r[0];
-                mag[mag_cnt]->r[1] = LSM9DS1_mag->r[1];
-                mag[mag_cnt]->r[2] = LSM9DS1_mag->r[2];
+                mag[mag_cnt]->r[0] = LSM9DS1_mag.r[0];
+                mag[mag_cnt]->r[1] = LSM9DS1_mag.r[1];
+                mag[mag_cnt]->r[2] = LSM9DS1_mag.r[2];
                 mag_cnt++;
             }
         }
 
         if (has_init) {
-            EKF_update_acc(ekf, LSM9DS1_acc);
+            EKF_update_acc(ekf, &LSM9DS1_acc);
             uint32_t start = now_high_accuracy();
-            EKF_predict(ekf, LSM9DS1_gyro, 0.03); //(float) (now_high_accuracy() - last_time) / 1e6);
+            EKF_predict(ekf, &LSM9DS1_gyro, 0.03); //(float) (now_high_accuracy() - last_time) / 1e6);
             last_time = now_high_accuracy();
             EKF_update(ekf);
             quat_print(ekf->attitude);
@@ -643,15 +577,15 @@ volatile void attitude_thread() {
         }
 
         if (acc_cnt < 20) {
-            acc[acc_cnt]->r[0] = LSM9DS1_acc->r[0];
-            acc[acc_cnt]->r[1] = LSM9DS1_acc->r[1];
-            acc[acc_cnt]->r[2] = LSM9DS1_acc->r[2];
+            acc[acc_cnt]->r[0] = LSM9DS1_acc.r[0];
+            acc[acc_cnt]->r[1] = LSM9DS1_acc.r[1];
+            acc[acc_cnt]->r[2] = LSM9DS1_acc.r[2];
             acc_cnt++;
         }
         if (gyro_cnt < 20) {
-            gyro[gyro_cnt]->r[0] = LSM9DS1_gyro->r[0];
-            gyro[gyro_cnt]->r[1] = LSM9DS1_gyro->r[1];
-            gyro[gyro_cnt]->r[2] = LSM9DS1_gyro->r[2];
+            gyro[gyro_cnt]->r[0] = LSM9DS1_gyro.r[0];
+            gyro[gyro_cnt]->r[1] = LSM9DS1_gyro.r[1];
+            gyro[gyro_cnt]->r[2] = LSM9DS1_gyro.r[2];
             gyro_cnt++;
         }
 

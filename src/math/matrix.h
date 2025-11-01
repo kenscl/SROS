@@ -9,6 +9,10 @@ typedef struct Mat {
     float *r;
 } Mat;
 
+#define MAT_ALLOC_STATIC(name, rows, cols) \
+    float name##_data[(rows) * (cols)] = {0}; \
+    Mat name = {(rows), (cols), name##_data};
+
 Mat *mat_alloc(size_t m, size_t n);
 void mat_free(Mat *a);
 void zero_mat(Mat *a);

@@ -6,11 +6,22 @@
 #include "../globals.h"
 #include <stdint.h>
 
-Vec *gyro_bias;
-Mat *soft_iron;
-Vec *hard_iron;
-Mat *acc_scale;
-Vec *acc_bias;
+// data values
+VEC_ALLOC_STATIC(LSM9DS1_gyro, 3);
+VEC_ALLOC_STATIC(LSM9DS1_mag, 3);
+VEC_ALLOC_STATIC(LSM9DS1_acc, 3);
+
+VEC_ALLOC_STATIC(LSM9DS1_gyro_filtered, 3);
+VEC_ALLOC_STATIC(LSM9DS1_acc_filtered, 3);
+VEC_ALLOC_STATIC(LSM9DS1_mag_filtered, 3);
+
+VEC_ALLOC_STATIC(gyro_bias, 3);
+VEC_ALLOC_STATIC(hard_iron, 3);
+VEC_ALLOC_STATIC(acc_bias, 3);
+
+MAT_ALLOC_STATIC(soft_iron, 3, 3);
+MAT_ALLOC_STATIC(acc_scale, 3, 3);
+
 
 /*
  * Calibration values here
@@ -18,49 +29,42 @@ Vec *acc_bias;
 
 void LSM9DS1_calibrate_sensors() {
         // Gyroscope
-        gyro_bias->r[0] = -0.564394;
-        gyro_bias->r[1] = -1.807167;
-        gyro_bias->r[2] = -1.857611;
+        gyro_bias.r[0] = -0.564394;
+        gyro_bias.r[1] = -1.807167;
+        gyro_bias.r[2] = -1.857611;
       // Magnetometer
-        soft_iron->r[0 * 3 + 0] = 0.780890;
-        soft_iron->r[0 * 3 + 1] = -0.018096;
-        soft_iron->r[0 * 3 + 2] = 0.005514;
-        soft_iron->r[1 * 3 + 0] = -0.011893;
-        soft_iron->r[1 * 3 + 1] = 0.703616;
-        soft_iron->r[1 * 3 + 2] = 0.002129;
-        soft_iron->r[2 * 3 + 0] = 0.005069;
-        soft_iron->r[2 * 3 + 1] = 0.002974;
-        soft_iron->r[2 * 3 + 2] = 0.764143;
-        hard_iron->r[0] = 0.226322;
-        hard_iron->r[1] = 0.143636;
-        hard_iron->r[2] = -0.010043;
+        soft_iron.r[0 * 3 + 0] = 0.780890;
+        soft_iron.r[0 * 3 + 1] = -0.018096;
+        soft_iron.r[0 * 3 + 2] = 0.005514;
+        soft_iron.r[1 * 3 + 0] = -0.011893;
+        soft_iron.r[1 * 3 + 1] = 0.703616;
+        soft_iron.r[1 * 3 + 2] = 0.002129;
+        soft_iron.r[2 * 3 + 0] = 0.005069;
+        soft_iron.r[2 * 3 + 1] = 0.002974;
+        soft_iron.r[2 * 3 + 2] = 0.764143;
+        hard_iron.r[0] = 0.226322;
+        hard_iron.r[1] = 0.143636;
+        hard_iron.r[2] = -0.010043;
         // Accelerometer
-        acc_bias->r[0] = -0.004453;
-        acc_bias->r[1] = 0.002806;
-        acc_bias->r[2] = -0.001830;
+        acc_bias.r[0] = -0.004453;
+        acc_bias.r[1] = 0.002806;
+        acc_bias.r[2] = -0.001830;
 
-        acc_scale->r[0 * 3 + 0] = 6.007124;
-        acc_scale->r[0 * 3 + 1] = 0.000000;
-        acc_scale->r[0 * 3 + 2] = 0.000000;
+        acc_scale.r[0 * 3 + 0] = 6.007124;
+        acc_scale.r[0 * 3 + 1] = 0.000000;
+        acc_scale.r[0 * 3 + 2] = 0.000000;
 
-        acc_scale->r[1 * 3 + 0] = 0.000000;
-        acc_scale->r[1 * 3 + 1] = 6.035877;
-        acc_scale->r[1 * 3 + 2] = 0.000000;
+        acc_scale.r[1 * 3 + 0] = 0.000000;
+        acc_scale.r[1 * 3 + 1] = 6.035877;
+        acc_scale.r[1 * 3 + 2] = 0.000000;
 
-        acc_scale->r[2 * 3 + 0] = 0.000000;
-        acc_scale->r[2 * 3 + 1] = 0.000000;
-        acc_scale->r[2 * 3 + 2] = 5.952594;
+        acc_scale.r[2 * 3 + 0] = 0.000000;
+        acc_scale.r[2 * 3 + 1] = 0.000000;
+        acc_scale.r[2 * 3 + 2] = 5.952594;
 }
 
-// data values
-Vec *LSM9DS1_gyro;
-Vec *LSM9DS1_acc;
-Vec *LSM9DS1_mag;
-Vec *LSM9DS1_gyro_filtered;
 float LSM9DS1_gyro_availiable = 0;
-Vec *LSM9DS1_acc_filtered;
 float LSM9DS1_acc_availiable = 0;
-Vec *LSM9DS1_mag_filtered;
 float LSM9DS1_mag_availiable = 0;
 
 uint8_t dummy_rx[2] = {};
@@ -271,12 +275,12 @@ void LSM9DS1_process_gyro() {
     volatile int16_t x = (gyro_data[1 + 1] << 8) | gyro_data[0 + 1];
     volatile int16_t y = (gyro_data[3 + 1] << 8) | gyro_data[2 + 1];
     volatile int16_t z = (gyro_data[5 + 1] << 8) | gyro_data[4 + 1];
-    LSM9DS1_gyro->r[0] = (float)(x * GYRO_SENSITIVITY) / 1000;
-    LSM9DS1_gyro->r[1] = -(float)(y * GYRO_SENSITIVITY) / 1000;
-    LSM9DS1_gyro->r[2] = -(float)(z * GYRO_SENSITIVITY) / 1000;
-    vec_sub(LSM9DS1_gyro, gyro_bias, LSM9DS1_gyro);
-    LSM9DS1_gyro->r[1] = -LSM9DS1_gyro->r[1];
-    low_pass_filter(a_gyro, LSM9DS1_gyro_filtered, LSM9DS1_gyro);
+    LSM9DS1_gyro.r[0] = (float)(x * GYRO_SENSITIVITY) / 1000;
+    LSM9DS1_gyro.r[1] = -(float)(y * GYRO_SENSITIVITY) / 1000;
+    LSM9DS1_gyro.r[2] = -(float)(z * GYRO_SENSITIVITY) / 1000;
+    vec_sub(&LSM9DS1_gyro, &gyro_bias, &LSM9DS1_gyro);
+    LSM9DS1_gyro.r[1] = -LSM9DS1_gyro.r[1];
+    low_pass_filter(a_gyro, &LSM9DS1_gyro_filtered, &LSM9DS1_gyro);
     LSM9DS1_enable_gyro();
 }
 
@@ -317,19 +321,19 @@ void LSM9DS1_process_accel() {
     int16_t x = (acc_data[1 + 1] << 8) | acc_data[0 + 1];
     int16_t y = (acc_data[3 + 1] << 8) | acc_data[2 + 1];
     int16_t z = (acc_data[5 + 1] << 8) | acc_data[4 + 1];
-    LSM9DS1_acc->r[0] = -(float)(x * ACC_SENSITIVITY) / 1000;
-    LSM9DS1_acc->r[1] = (float)(y * ACC_SENSITIVITY) / 1000;
-    LSM9DS1_acc->r[2] = (float)(z * ACC_SENSITIVITY) / 1000;
-     vec_add(LSM9DS1_acc, acc_bias, LSM9DS1_acc);
+    LSM9DS1_acc.r[0] = -(float)(x * ACC_SENSITIVITY) / 1000;
+    LSM9DS1_acc.r[1] = (float)(y * ACC_SENSITIVITY) / 1000;
+    LSM9DS1_acc.r[2] = (float)(z * ACC_SENSITIVITY) / 1000;
+     vec_add(&LSM9DS1_acc, &acc_bias, &LSM9DS1_acc);
      Vec *tmp = vec_alloc(3);
      if (tmp == 0)
          return;
-     mat_vec_mult(acc_scale, LSM9DS1_acc, tmp);
-     LSM9DS1_acc->r[0] = tmp->r[0];
-     LSM9DS1_acc->r[1] = tmp->r[1];
-     LSM9DS1_acc->r[2] = tmp->r[2];
+     mat_vec_mult(&acc_scale, &LSM9DS1_acc, tmp);
+     LSM9DS1_acc.r[0] = tmp->r[0];
+     LSM9DS1_acc.r[1] = tmp->r[1];
+     LSM9DS1_acc.r[2] = tmp->r[2];
      vec_free(tmp);
-     LSM9DS1_acc->r[1] = -LSM9DS1_acc->r[1];
+     LSM9DS1_acc.r[1] = -LSM9DS1_acc.r[1];
 
     //float res = 1 - vec_norm(LSM9DS1_acc);
     // res = res * res;
@@ -378,18 +382,18 @@ void LSM9DS1_process_mag() {
     int16_t x = (mag_data[1 + 1] << 8) | mag_data[0 + 1];
     int16_t y = (mag_data[3 + 1] << 8) | mag_data[2 + 1];
     int16_t z = (mag_data[5 + 1] << 8) | mag_data[4 + 1];
-    LSM9DS1_mag->r[0] = -(float)(x * MAG_SENSITIVITY) / 1000;
-    LSM9DS1_mag->r[1] = (float)(y * MAG_SENSITIVITY) / 1000;
-    LSM9DS1_mag->r[2] = -(float)(z * MAG_SENSITIVITY) / 1000;
-    vec_sub(LSM9DS1_mag, hard_iron, LSM9DS1_mag);
+    LSM9DS1_mag.r[0] = -(float)(x * MAG_SENSITIVITY) / 1000;
+    LSM9DS1_mag.r[1] = (float)(y * MAG_SENSITIVITY) / 1000;
+    LSM9DS1_mag.r[2] = -(float)(z * MAG_SENSITIVITY) / 1000;
+    vec_sub(&LSM9DS1_mag, &hard_iron, &LSM9DS1_mag);
 
     Vec *tmp = vec_alloc(3);
     if (tmp == 0)
         return;
-    mat_vec_mult(soft_iron, LSM9DS1_mag, tmp);
-    LSM9DS1_mag->r[0] = tmp->r[0];
-    LSM9DS1_mag->r[1] = tmp->r[1];
-    LSM9DS1_mag->r[2] = tmp->r[2];
+    mat_vec_mult(&soft_iron, &LSM9DS1_mag, tmp);
+    LSM9DS1_mag.r[0] = tmp->r[0];
+    LSM9DS1_mag.r[1] = tmp->r[1];
+    LSM9DS1_mag.r[2] = tmp->r[2];
     vec_free(tmp);
     //LSM9DS1_mag_filtered = low_pass_filter(a_mag, LSM9DS1_mag_filtered, vec_normalize(LSM9DS1_mag));
     LSM9DS1_enable_mag();
@@ -455,22 +459,6 @@ void low_pass_filter(float alpha, Vec *mean, Vec *new_measurement) {
     vec_add(mean, new_measurement, mean);
 }
 
-void allocate_data() {
-    LSM9DS1_gyro = vec_alloc(3);
-    LSM9DS1_mag = vec_alloc(3);
-    LSM9DS1_acc = vec_alloc(3);
-
-    LSM9DS1_gyro_filtered = vec_alloc(3);
-    LSM9DS1_acc_filtered = vec_alloc(3);
-    LSM9DS1_mag_filtered = vec_alloc(3);
-
-    gyro_bias = vec_alloc(3);
-    soft_iron = mat_alloc(3, 3);
-    hard_iron = vec_alloc(3);
-    acc_scale = mat_alloc(3, 3);
-    acc_bias = vec_alloc(3);
-}
-
 void configure() {
     sleep(10 * MILLISECONDS);
 
@@ -506,7 +494,6 @@ uint8_t eq_cnt = 0;
 uint32_t last_time = 0;
 uint32_t next_mag = 0;
 volatile void LSM9DS1_thread() {
-    allocate_data();
     setup_cs_lines();
     SPI_init();
     LSM9DS1_reset();
@@ -522,15 +509,15 @@ volatile void LSM9DS1_thread() {
         sleep(2 * MILLISECONDS);
 
         process_sensors();
-        if (DEBUG) {
+        if (DEBUG == 2) {
             os_printf("[LSM9DS1_gyro] ");
-            vec_print(LSM9DS1_gyro_filtered);
+            vec_print(&LSM9DS1_gyro_filtered);
 
             os_printf("[LSM9DS1_acc] ");
-            vec_print(LSM9DS1_acc);
+            vec_print(&LSM9DS1_acc);
 
             os_printf("[LSM9DS1_mag] ");
-            vec_print(LSM9DS1_mag);
+            vec_print(&LSM9DS1_mag);
         }
 
         sleep_until(next_time);

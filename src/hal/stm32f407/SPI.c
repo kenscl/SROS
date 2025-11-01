@@ -208,6 +208,7 @@ void SPI_handle() {
     SPI_current->cs_low();
     DMA2_Stream3->CR |= DMA_SxCR_EN;
     DMA2_Stream0->CR |= DMA_SxCR_EN;
+
     return;
 }
 

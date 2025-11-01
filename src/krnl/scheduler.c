@@ -55,6 +55,9 @@ void schedule() {
   }
 
   current_thread->last_time = now_high_accuracy();
+  if (current_thread->stack_end > current_thread->sp > current_thread->stack_begin) {
+      os_printf("Stack overrun in thread %s \n", current_thread->name);
+  }
   volatile os_pcb *next_thread = current_thread;
 
   for (uint16_t i = 0; i < OS_MAX_THREAD_COUNT; ++i) {

@@ -11,6 +11,11 @@ typedef struct Vec {
     float *r;
 } Vec;
 
+#define VEC_ALLOC_STATIC(name, size) \
+    float name##_data[size] = {0}; \
+    Vec name = {size, name##_data};
+
+
 Vec *vec_alloc(size_t size);
 void vec_free(Vec *a);
 void vec_print(Vec *vec);

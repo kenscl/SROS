@@ -12,6 +12,8 @@ typedef struct {
   uint8_t priority;
   uint8_t rdy;
   uint64_t sleep_until;
+  void *stack_begin;
+  void *stack_end;
 } os_pcb;
 
 void yield();

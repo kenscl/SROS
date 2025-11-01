@@ -5,6 +5,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define QUAT_ALLOC_STATIC(name) \
+    static Quat name = {0.0f, 0.0f, 0.0f, 0.0f}
+
 typedef struct Quat {
     float q, i, j, k;
 } Quat;
