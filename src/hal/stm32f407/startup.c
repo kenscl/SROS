@@ -9,7 +9,7 @@
 
 void reset_handler(void);
 void default_handler(void);
-void hard_fault_handler(void); 
+void hard_fault_handler(void);
 
 // Cortex-M system exceptions
 void nmi_handler(void) __attribute__((weak, alias("default_handler")));
@@ -204,8 +204,8 @@ void __libc_init_array();
 void reset_handler(void)
 {
   uint32_t data_size = (uint32_t)&_edata - (uint32_t)&_sdata;
-  uint8_t *flash_data = (uint8_t*) &_sidata; 
-  uint8_t *sram_data = (uint8_t*) &_sdata;   
+  uint8_t *flash_data = (uint8_t*) &_sidata;
+  uint8_t *sram_data = (uint8_t*) &_sdata;
 
   for (uint32_t i = 0; i < data_size; i++)
   {
@@ -222,7 +222,7 @@ void reset_handler(void)
   {
     bss[i] = 0;
   }
-  
+
   __libc_init_array();
   main();
 }
@@ -237,21 +237,38 @@ volatile uint32_t usageFault = 0;
 volatile uint32_t busFaultAddress = 0;
 volatile uint32_t memManageFaultAddress = 0;
 
-void hard_fault_handler (void)
-{
-    uint32_t cfsr = SCB->CFSR;   
+void hard_fault_handler_c(uint32_t *stack_address) {
+    uint32_t r0  = stack_address[0];
+    uint32_t r1  = stack_address[1];
+    uint32_t r2  = stack_address[2];
+    uint32_t r3  = stack_address[3];
+    uint32_t r12 = stack_address[4];
+    uint32_t lr  = stack_address[5];
+    uint32_t pc  = stack_address[6];
+    uint32_t psr = stack_address[7];
+
+    uint32_t cfsr = SCB->CFSR;
 
     memManageFault = (cfsr & 0xFF);
     busFault = (cfsr >> 8) & 0xFF;
-    usageFault = (cfsr >> 16) & 0xFFFF; 
+    usageFault = (cfsr >> 16) & 0xFFFF;
 
-    if (busFault & (1 << 7)) {                
-        busFaultAddress = SCB->BFAR;          
+    if (busFault & (1 << 7)) {
+        busFaultAddress = SCB->BFAR;
     }
 
-    if (memManageFault & (1 << 7)) {          
-        memManageFaultAddress = SCB->MMFAR;   
+    if (memManageFault & (1 << 7)) {
+        memManageFaultAddress = SCB->MMFAR;
     }
 
     while (1);
+}
+
+
+void hard_fault_handler(void) {
+    __asm volatile("TST LR, #4 \n"
+                   "ITE EQ \n"
+                   "MRSEQ R0, MSP \n"
+                   "MRSNE R0, PSP \n"
+                   "B hard_fault_handler_c \n");
 }

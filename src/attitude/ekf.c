@@ -59,6 +59,89 @@ int EKF_alloc(struct EKF **ekf) {
     if ((*ekf)->Rot_inv == 0)
         return 0;
 
+    (*ekf)->q = quat_alloc();
+    if ((*ekf)->q == 0)
+        return 0;
+
+    (*ekf)->w = quat_alloc();
+    if ((*ekf)->w == 0)
+        return 0;
+
+    (*ekf)->q_temp = quat_alloc();
+    if ((*ekf)->q_temp == 0)
+        return 0;
+
+    (*ekf)->temp_mat1 = mat_alloc(10, 10);
+    if ((*ekf)->temp_mat1 == 0)
+        return 0;
+
+    (*ekf)->temp_mat2 = mat_alloc(10, 10);
+    if ((*ekf)->temp_mat2 == 0)
+        return 0;
+
+    (*ekf)->F_trans = mat_alloc(10, 10);
+    if ((*ekf)->F_trans == 0)
+        return 0;
+
+    (*ekf)->rev_g = vec_alloc(3);
+    if ((*ekf)->rev_g == 0)
+        return 0;
+
+    (*ekf)->z_acc = vec_alloc(3);
+    if ((*ekf)->z_acc == 0)
+        return 0;
+
+    (*ekf)->rpy = vec_alloc(3);
+    if ((*ekf)->rpy == 0)
+        return 0;
+
+    (*ekf)->v = vec_alloc(4);
+    if ((*ekf)->v == 0)
+        return 0;
+
+    (*ekf)->S = mat_alloc(4, 4);
+    if ((*ekf)->S == 0)
+        return 0;
+
+    (*ekf)->S_inv = mat_alloc(4, 4);
+    if ((*ekf)->S_inv == 0)
+        return 0;
+
+    (*ekf)->H_trans = mat_alloc(10, 4);
+    if ((*ekf)->H_trans == 0)
+        return 0;
+
+    (*ekf)->tmp1 = mat_alloc(10, 4);
+    if ((*ekf)->tmp1  == 0)
+        return 0;
+
+    (*ekf)->tmp2 = mat_alloc(4, 4);
+    if ((*ekf)->tmp2 == 0)
+        return 0;
+
+    (*ekf)->tmp = vec_alloc(10);
+    if ((*ekf)->tmp == 0)
+        return 0;
+
+    (*ekf)->i10 = mat_alloc(10, 10);
+    if ((*ekf)->i10 == 0)
+        return 0;
+
+    (*ekf)->tmp3 = mat_alloc(10, 10);
+    if ((*ekf)->tmp3 == 0)
+        return 0;
+
+    (*ekf)->tmp4 = mat_alloc(10, 10);
+    if ((*ekf)->tmp4 == 0)
+        return 0;
+
+    (*ekf)->m = vec_alloc(3);
+    if ((*ekf)->m == 0)
+        return 0;
+
+    (*ekf)->mn = vec_alloc(3);
+    if ((*ekf)->mn == 0)
+        return 0;
     return 1;
 }
 
@@ -212,19 +295,14 @@ void EKF_update_acc(EKF *ekf, Vec *acc) {
 }
 
 void EKF_update_mag(EKF *ekf, Vec *mag, Vec *acc) {
-    Vec *m = vec_alloc(3);
-    Vec *mn = vec_alloc(3);
-    mat_vec_mult(ekf->Rot, mag, m);
-    m->r[2] = 0;
+    mat_vec_mult(ekf->Rot, mag, ekf->m);
+    ekf->m->r[2] = 0;
 
     //m =  ekf->Rot_inv * m;
-    mat_vec_mult(ekf->Rot_inv, m, mn);
+    mat_vec_mult(ekf->Rot_inv, ekf->m, ekf->mn);
 
-    float yaw = atan2(- mn->r[1], mn->r[0]);
+    float yaw = atan2(- ekf->mn->r[1], ekf->mn->r[0]);
     ekf->y->r[3] = yaw;
-    //os_printf("yaw: %f\n", yaw);
-    vec_free(m);
-    vec_free(mn);
 }
 
 void EKF_predict(EKF *ekf,Vec *gyro, float dt) {
@@ -239,28 +317,23 @@ void EKF_predict(EKF *ekf,Vec *gyro, float dt) {
     float xgy = ekf->x->r[8];
     float xgz = ekf->x->r[9];
 
-    Quat *q = quat_alloc();
-    quat_from_vec4(ekf->x, q);
+    quat_from_vec4(ekf->x, ekf->q);
 
-    Quat *w = quat_alloc();
-    w->q = 0;
-    w->i = wx;
-    w->j = wy;
-    w->k = wz;
+    ekf->w->q = 0;
+    ekf->w->i = wx;
+    ekf->w->j = wy;
+    ekf->w->k = wz;
 
     //q = q + q * w * 0.5 * dt;
-    Quat *temp = quat_alloc();
-    quat_mult(q, w, temp);
-    quat_scalar_mult(temp, 0.5f * dt);
-    quat_add(q, temp, q);
-    quat_normalize(q);
-    quat_free(temp);
-    quat_free(w);
+    quat_mult(ekf->q, ekf->w, ekf->q_temp);
+    quat_scalar_mult(ekf->q_temp, 0.5f * dt);
+    quat_add(ekf->q, ekf->q_temp, ekf->q);
+    quat_normalize(ekf->q);
 
-    ekf->x->r[0] = q->q;
-    ekf->x->r[1] = q->i;
-    ekf->x->r[2] = q->j;
-    ekf->x->r[3] = q->k;
+    ekf->x->r[0] = ekf->q->q;
+    ekf->x->r[1] = ekf->q->i;
+    ekf->x->r[2] = ekf->q->j;
+    ekf->x->r[3] = ekf->q->k;
     ekf->x->r[4] = gyro->r[0] - xgx;
     ekf->x->r[5] = gyro->r[1] - xgy;
     ekf->x->r[6] = gyro->r[2] - xgz;
@@ -379,16 +452,10 @@ void EKF_predict(EKF *ekf,Vec *gyro, float dt) {
     ekf->F->r[9 * 10 + 9] = 1;
 
     //ekf->P = ekf->F * ekf->P * ekf->F.transpose() + ekf->Q;
-    Mat *temp_mat1 = mat_alloc(10, 10);
-    Mat *temp_mat2 = mat_alloc(10, 10);
-    Mat *F_trans =  mat_alloc(10, 10);
-    mat_transpose(ekf->F, F_trans);
-    mat_mult(ekf->P, F_trans, temp_mat1);
-    mat_mult(ekf->F, temp_mat1, temp_mat2);
-    mat_add(temp_mat2, ekf->Q, ekf->P);
-    mat_free(temp_mat1);
-    mat_free(temp_mat2);
-    mat_free(F_trans);
+    mat_transpose(ekf->F, ekf->F_trans);
+    mat_mult(ekf->F, ekf->P, ekf->temp_mat1);
+    mat_mult(ekf->temp_mat1, ekf->F_trans, ekf->temp_mat2);
+    mat_add(ekf->temp_mat2, ekf->Q, ekf->P);
 
     q0 = ekf->x->r[0];
     q1 = ekf->x->r[1];
@@ -408,41 +475,34 @@ void EKF_predict(EKF *ekf,Vec *gyro, float dt) {
     ekf->Rot->r[8] = (q0 * q0 - q1 * q1 - q2 * q2 + q3 * q3);
     mat_transpose(ekf->Rot, ekf->Rot_inv);
 
-    quat_from_vec4(ekf->x, q);
+    quat_from_vec4(ekf->x, ekf->q);
 
-
-    Vec *rev_g = vec_alloc(3);
-    Vec *z_acc = vec_alloc(3);
-    Vec *rpy = vec_alloc(3);
-    rev_g->r[2] = -1;
-    mat_vec_mult(ekf->Rot_inv, rev_g, z_acc);
-    quat_to_rpy(q, rpy);
-    float zyaw = rpy->r[2];
-    ekf->z->r[0] = z_acc->r[0];
-    ekf->z->r[1] = z_acc->r[1];
-    ekf->z->r[2] = z_acc->r[2];
+    ekf->rev_g->r[2] = -1;
+    mat_vec_mult(ekf->Rot_inv, ekf->rev_g, ekf->z_acc);
+    quat_to_rpy(ekf->q, ekf->rpy);
+    float zyaw = ekf->rpy->r[2];
+    ekf->z->r[0] = ekf->z_acc->r[0];
+    ekf->z->r[1] = ekf->z_acc->r[1];
+    ekf->z->r[2] = ekf->z_acc->r[2];
     ekf->z->r[3] = zyaw;
-    vec_free(rev_g);
-    vec_free(z_acc);
-    vec_free(rpy);
 
     float dhm_dqw =
-        (2 * q3 * (1 - 2 * (q2 * q2 + q3 * q3))) /
-        (4 * (q1 * q2 + q0 * q3) * (q1 * q2 + q0 * q3) +
-         (1 - 2 * (q2 * q2 + q3 * q3)) * (1 - 2 * (q2 * q2 + q3 * q3)));
+    (2 * q3 * (1 - 2 * (q2 * q2 + q3 * q3))) /
+    (4 * (q1 * q2 + q0 * q3) * (q1 * q2 + q0 * q3) +
+      (1 - 2 * (q2 * q2 + q3 * q3)) * (1 - 2 * (q2 * q2 + q3 * q3)));
     float dhm_dqi =
-        (2 * q2 * (1 - 2 * (q2 * q2 + q3 * q3))) /
-        (4 * (q1 * q2 + q0 * q3) * (q1 * q2 + q0 * q3) +
-         (1 - 2 * (q2 * q2 + q3 * q3)) * (1 - 2 * (q2 * q2 + q3 * q3)));
+    (2 * q2 * (1 - 2 * (q2 * q2 + q3 * q3))) /
+    (4 * (q1 * q2 + q0 * q3) * (q1 * q2 + q0 * q3) +
+     (1 - 2 * (q2 * q2 + q3 * q3)) * (1 - 2 * (q2 * q2 + q3 * q3)));
     float dhm_dqj =
-        (2 * (q1 + 2 * q1 * q2 * q2 + 4 * q0 * q2 * q3 - 2 * q1 * q3 * q3)) /
-        (1 + 4 * q2 * q2 * q2 * q2 + 8 * q0 * q1 * q2 * q3 +
-         4 * (-1 + q0 * q0) * q3 * q3 + 4 * q3 * q3 * q3 * q3 +
-         4 * q2 * q2 * (-1 + q1 * q1 + 2 * q3 * q3));
-    float dhm_dqk = (8 * q1 * q2 * q3 + q0 * (2 - 4 * q2 * q2 + 4 * q3 * q3)) /
-                     (1 + 4 * q2 * q2 * q2 * q2 + 8 * q0 * q1 * q2 * q3 +
-                      4 * (-1 + q0 * q0) * q3 * q3 + 4 * q3 * q3 * q3 * q3 +
-                      4 * q2 * q2 * (-1 + q1 * q1 + 2 * q3 * q3));
+           (2 * (q1 + 2 * q1 * q2 * q2 + 4 * q0 * q2 * q3 - 2 * q1 * q3 * q3)) /
+           (1 + 4 * q2 * q2 * q2 * q2 + 8 * q0 * q1 * q2 * q3 +
+            4 * (-1 + q0 * q0) * q3 * q3 + 4 * q3 * q3 * q3 * q3 +
+            4 * q2 * q2 * (-1 + q1 * q1 + 2 * q3 * q3));
+        float dhm_dqk = (8 * q1 * q2 * q3 + q0 * (2 - 4 * q2 * q2 + 4 * q3 * q3)) /
+                    (1 + 4 * q2 * q2 * q2 * q2 + 8 * q0 * q1 * q2 * q3 +
+                     4 * (-1 + q0 * q0) * q3 * q3 + 4 * q3 * q3 * q3 * q3 +
+                     4 * q2 * q2 * (-1 + q1 * q1 + 2 * q3 * q3));
 
     ekf->H->r[0 * 10 + 0] =  2 * q2;
     ekf->H->r[0 * 10 + 1] = -2 * q3;
@@ -487,78 +547,52 @@ void EKF_predict(EKF *ekf,Vec *gyro, float dt) {
     ekf->H->r[3 * 10 + 7] = 0;
     ekf->H->r[3 * 10 + 8] = 0;
     ekf->H->r[3 * 10 + 9] = 0;
-
-    quat_free(q);
 }
 
 void EKF_update(EKF *ekf) {
-    Vec *v =  vec_alloc(4);
-    vec_sub(ekf->y, ekf->z, v);
-    if (v->r[3] > M_PI) {
-      v->r[3] -= 2 * M_PI;
-    } else if (v->r[3] < -M_PI) {
-        v->r[3] += 2 * M_PI;
+    vec_sub(ekf->y, ekf->z, ekf->v);
+    if (ekf->v->r[3] > M_PI) {
+      ekf->v->r[3] -= 2 * M_PI;
+    } else if (ekf->v->r[3] < -M_PI) {
+        ekf->v->r[3] += 2 * M_PI;
     }
 
     //Mat<4,4> S = this->H * this->P * this->H.transpose() + this->R;
-    Mat *S = mat_alloc(4, 4);
-    Mat *S_inv = mat_alloc(4, 4);
-    Mat *H_trans= mat_alloc(10, 4);
-    Mat *tmp1 = mat_alloc(10, 4);
-    Mat *tmp2 = mat_alloc(4, 4);
-    mat_transpose(ekf->H, H_trans);
-    mat_mult(ekf->P, H_trans, tmp1);
-    mat_mult(ekf->H, tmp1, tmp2);
-    mat_add(tmp2, ekf->R, S);
-
-    mat_free(tmp2);
+    mat_transpose(ekf->H, ekf->H_trans);
+    mat_mult(ekf->P, ekf->H_trans, ekf->tmp1);
+    mat_mult(ekf->H, ekf->tmp1, ekf->tmp2);
+    mat_add(ekf->tmp2, ekf->R, ekf->S);
 
     //this->K = this->P * this->H.transpose() * S.inverse();
-    mat_inverse(S, S_inv);
-    mat_mult(H_trans, S_inv, tmp1);
-    mat_mult(ekf->P, tmp1, ekf->K);
-
-    mat_free(H_trans);
-    mat_free(S);
-    mat_free(S_inv);
+    mat_inverse(ekf->S, ekf->S_inv);
+    mat_mult(ekf->H_trans, ekf->S_inv, ekf->tmp1);
+    mat_mult(ekf->P, ekf->tmp1, ekf->K);
 
     //this->x = this->x + this->K * v;
-    Vec *tmp = vec_alloc(10);
-    mat_vec_mult(ekf->K, v, tmp);
-    vec_add(ekf->x, tmp, ekf->x);
-    vec_free(tmp);
+    mat_vec_mult(ekf->K, ekf->v, ekf->tmp);
+    vec_add(ekf->x, ekf->tmp, ekf->x);
 
-    Quat *q = quat_alloc();
-    quat_from_vec4(ekf->x, q);
-    quat_normalize(q);
-    ekf->x->r[0] = q->q;
-    ekf->x->r[1] = q->i;
-    ekf->x->r[2] = q->j;
-    ekf->x->r[3] = q->k;
+    quat_from_vec4(ekf->x, ekf->q);
+    quat_normalize(ekf->q);
+    ekf->x->r[0] = ekf->q->q;
+    ekf->x->r[1] = ekf->q->i;
+    ekf->x->r[2] = ekf->q->j;
+    ekf->x->r[3] = ekf->q->k;
 
     //this->P = (Mat<10,10>().identity() - (this->K * this->H)) * this->P;
-    Mat *i10 = mat_alloc(10, 10);
-    Mat *tmp3 = mat_alloc(10, 10);
-    Mat *tmp4 = mat_alloc(10, 10);
-    mat_identity(i10);
-    mat_mult(ekf->K, ekf->H, tmp3);
-    mat_sub(i10, tmp3, tmp4);
-    mat_mult(tmp4, ekf->P, tmp3);
+    mat_identity(ekf->i10);
+    mat_mult(ekf->K, ekf->H, ekf->tmp3);
+    mat_sub(ekf->i10, ekf->tmp3, ekf->tmp4);
+    mat_mult(ekf->tmp4, ekf->P, ekf->tmp3);
 
-    for (int i = 0; i < 20; ++i) {
-        ekf->P->r[i] = tmp3->r[i];
+    for (int i = 0; i < 100; ++i) {
+        ekf->P->r[i] = ekf->tmp3->r[i];
     }
 
-    ekf->attitude->q = q->q;
-    ekf->attitude->i = q->i;
-    ekf->attitude->j = q->j;
-    ekf->attitude->k = q->k;
-
-    vec_free(v);
-    quat_free(q);
-    mat_free(i10);
-    mat_free(tmp3);
-    mat_free(tmp4);
+    ekf->attitude->q = ekf->q->q;
+    ekf->attitude->i = ekf->q->i;
+    ekf->attitude->j = ekf->q->j;
+    ekf->attitude->k = ekf->q->k;
 }
 
 int gyro_cnt = 0;
@@ -567,9 +601,9 @@ int mag_cnt = 0;
 Vec *gyro[20];
 Vec *mag[20];
 Vec *acc[20];
-int has_init = 0;
 
 volatile void attitude_thread() {
+    int has_init = 0;
     static struct EKF *ekf = NULL;
     if (!EKF_alloc(&ekf)) {
         os_printf("EKF alloc error! \n");
@@ -630,6 +664,7 @@ volatile void attitude_thread() {
                 vec_free(acc[i]);
             }
         }
+
         sleep_until(next_time);
     }
 }

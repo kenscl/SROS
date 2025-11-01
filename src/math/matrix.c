@@ -22,6 +22,13 @@ void mat_free(Mat *a) {
     os_free(a);
 }
 
+
+void zero_mat(Mat *a) {
+    for (int i = 0; i < a->m * a->n; i++) {
+        a->r[i] = 0.0f;
+    }
+}
+
 int mat_mult(Mat *a, Mat *b, Mat *res) {
     if (a->n != b->m)
         return 0;
@@ -97,6 +104,9 @@ float mat_det(Mat *a) {
     if (a->n == 1)
         return a->r[0];
     Mat *temp = mat_alloc(a->m, a->n);
+    if (temp == 0) {
+        os_printf("Out of memeory! \n");
+    }
     float det = 1;
 
     for (int i = 0; i < a->n; ++i) {
@@ -118,6 +128,7 @@ float mat_det(Mat *a) {
             det *= -1;
         }
         if (temp->r[i * temp->n + i] == 0) {
+            mat_free(temp);
             return 0;
         }
 
@@ -152,7 +163,9 @@ float mat_coaf(Mat *a, size_t i, size_t j) {
         }
         minor_row++;
     }
-    return sign * mat_det(minor);
+    float res = sign * mat_det(minor);
+    mat_free(minor);
+    return res;
 }
 
 int mat_adjugate(Mat *a, Mat *res) {

@@ -11,6 +11,7 @@ typedef struct Mat {
 
 Mat *mat_alloc(size_t m, size_t n);
 void mat_free(Mat *a);
+void zero_mat(Mat *a);
 int mat_mult(Mat *a, Mat *b, Mat *res);
 int mat_add(Mat *a, Mat *b, Mat *res);
 int mat_sub(Mat *a, Mat *b, Mat *res);
