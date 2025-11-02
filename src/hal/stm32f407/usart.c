@@ -134,7 +134,6 @@ void os_putf(float num) {
 }
 
 void os_printf(char *format, ...) {
-    scheduler_disable();
     GPIOD->ODR |= (1 << 12);
     __disable_irq();
     va_list args;
@@ -185,7 +184,6 @@ void os_printf(char *format, ...) {
     va_end(args);
     GPIOD->ODR &= ~(1 << 12);
     __enable_irq();
-    scheduler_enable();
 }
 msg_object l = {.next = (msg_object*) 0, .msg = (char*) 0, .size = 0};
 msg_object * last = &l;

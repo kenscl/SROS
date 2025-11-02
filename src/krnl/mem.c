@@ -25,8 +25,8 @@ void mem_init() {
 
 int alloc;
 void *os_alloc(size_t size) {
-    while(1)
-        if (!alloc) break;
+    //while(1)
+    //    if (!alloc) break;
     alloc = 1;
     size = (size + 63) & ~63;  // Align to the next multiple of 64
     size = size / 64; // adjust to the ledger size

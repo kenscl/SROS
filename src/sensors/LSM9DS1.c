@@ -276,10 +276,9 @@ void LSM9DS1_process_gyro() {
     volatile int16_t y = (gyro_data[3 + 1] << 8) | gyro_data[2 + 1];
     volatile int16_t z = (gyro_data[5 + 1] << 8) | gyro_data[4 + 1];
     LSM9DS1_gyro.r[0] = (float)(x * GYRO_SENSITIVITY) / 1000;
-    LSM9DS1_gyro.r[1] = -(float)(y * GYRO_SENSITIVITY) / 1000;
-    LSM9DS1_gyro.r[2] = -(float)(z * GYRO_SENSITIVITY) / 1000;
+    LSM9DS1_gyro.r[1] = (float)(y * GYRO_SENSITIVITY) / 1000;
+    LSM9DS1_gyro.r[2] = (float)(z * GYRO_SENSITIVITY) / 1000;
     vec_sub(&LSM9DS1_gyro, &gyro_bias, &LSM9DS1_gyro);
-    LSM9DS1_gyro.r[1] = -LSM9DS1_gyro.r[1];
     low_pass_filter(a_gyro, &LSM9DS1_gyro_filtered, &LSM9DS1_gyro);
     LSM9DS1_enable_gyro();
 }
@@ -321,7 +320,7 @@ void LSM9DS1_process_accel() {
     int16_t x = (acc_data[1 + 1] << 8) | acc_data[0 + 1];
     int16_t y = (acc_data[3 + 1] << 8) | acc_data[2 + 1];
     int16_t z = (acc_data[5 + 1] << 8) | acc_data[4 + 1];
-    LSM9DS1_acc.r[0] = -(float)(x * ACC_SENSITIVITY) / 1000;
+    LSM9DS1_acc.r[0] = (float)(x * ACC_SENSITIVITY) / 1000;
     LSM9DS1_acc.r[1] = (float)(y * ACC_SENSITIVITY) / 1000;
     LSM9DS1_acc.r[2] = (float)(z * ACC_SENSITIVITY) / 1000;
      vec_add(&LSM9DS1_acc, &acc_bias, &LSM9DS1_acc);
@@ -333,7 +332,7 @@ void LSM9DS1_process_accel() {
      LSM9DS1_acc.r[1] = tmp->r[1];
      LSM9DS1_acc.r[2] = tmp->r[2];
      vec_free(tmp);
-     LSM9DS1_acc.r[1] = -LSM9DS1_acc.r[1];
+     //LSM9DS1_acc.r[1] = -LSM9DS1_acc.r[1];
 
     //float res = 1 - vec_norm(LSM9DS1_acc);
     // res = res * res;
@@ -382,9 +381,9 @@ void LSM9DS1_process_mag() {
     int16_t x = (mag_data[1 + 1] << 8) | mag_data[0 + 1];
     int16_t y = (mag_data[3 + 1] << 8) | mag_data[2 + 1];
     int16_t z = (mag_data[5 + 1] << 8) | mag_data[4 + 1];
-    LSM9DS1_mag.r[0] = -(float)(x * MAG_SENSITIVITY) / 1000;
-    LSM9DS1_mag.r[1] = (float)(y * MAG_SENSITIVITY) / 1000;
-    LSM9DS1_mag.r[2] = -(float)(z * MAG_SENSITIVITY) / 1000;
+    LSM9DS1_mag.r[0] = (float)(y * MAG_SENSITIVITY) / 1000;
+    LSM9DS1_mag.r[1] = -(float)(x * MAG_SENSITIVITY) / 1000;
+    LSM9DS1_mag.r[2] = (float)(z * MAG_SENSITIVITY) / 1000;
     vec_sub(&LSM9DS1_mag, &hard_iron, &LSM9DS1_mag);
 
     Vec *tmp = vec_alloc(3);
@@ -484,6 +483,7 @@ uint64_t read_sensors(uint64_t last_time) {
     return last_time;
 }
 
+
 void process_sensors() {
     LSM9DS1_process_gyro();
     LSM9DS1_process_accel();
@@ -493,6 +493,46 @@ void process_sensors() {
 uint8_t eq_cnt = 0;
 uint32_t last_time = 0;
 uint32_t next_mag = 0;
+VEC_ALLOC_STATIC(comparison, 3);
+
+int test_for_freeze() {
+    for (int i = 0; i < 3; ++i) {
+        if (comparison.r[i] != LSM9DS1_gyro.r[i]) {
+            comparison.r[i] = LSM9DS1_gyro.r[i];
+            eq_cnt = 0;
+            return 0;
+        }
+    }
+    if (eq_cnt > 10) {
+        scheduler_disable();
+        SPI_init();
+        CS_A_H();
+        CS_M_H();
+        eq_cnt = 0;
+        os_printf("\n\n\nconnection error! \n\n\n");
+        sleep(5 * MILLISECONDS);
+        LSM9DS1_reset();
+        SPI_handle();
+        sleep(20 * MILLISECONDS);
+        LSM9DS1_configure_gyro();
+        LSM9DS1_configure_accel();
+        LSM9DS1_configure_mag();
+        LSM9DS1_read_WHO_AM_I();
+        SPI_handle();
+        sleep(20 * MILLISECONDS);
+
+        LSM9DS1_process_WHO_AM_I();
+
+        LSM9DS1_enable_status();
+        LSM9DS1_enable_gyro();
+        LSM9DS1_enable_mag();
+        LSM9DS1_enable_accel();
+        return 1;
+    }
+    eq_cnt += 1;
+    return 0;
+}
+
 volatile void LSM9DS1_thread() {
     setup_cs_lines();
     SPI_init();
@@ -509,6 +549,11 @@ volatile void LSM9DS1_thread() {
         sleep(2 * MILLISECONDS);
 
         process_sensors();
+
+        if (test_for_freeze()) {
+            os_printf("Frozen! \n");
+        }
+
         if (DEBUG == 2) {
             os_printf("[LSM9DS1_gyro] ");
             vec_print(&LSM9DS1_gyro_filtered);
@@ -519,7 +564,6 @@ volatile void LSM9DS1_thread() {
             os_printf("[LSM9DS1_mag] ");
             vec_print(&LSM9DS1_mag);
         }
-
         sleep_until(next_time);
     }
 }

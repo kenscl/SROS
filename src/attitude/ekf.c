@@ -99,7 +99,7 @@ void EKF_init(EKF *ekf, Vec **gyro, Vec **acc, Vec **mag) {
     }
 
     float roll_init = atan2(mean_acc->r[1], mean_acc->r[2]);
-    float pitch_init = atan2(mean_acc->r[0], sqrt(mean_acc->r[1]*mean_acc->r[1]+mean_acc->r[2]*mean_acc->r[2]));
+    float pitch_init = atan2(-mean_acc->r[0], sqrt(mean_acc->r[1]*mean_acc->r[1]+mean_acc->r[2]*mean_acc->r[2]));
 
     float cp = cos(pitch_init);
     float sp = sin(pitch_init);

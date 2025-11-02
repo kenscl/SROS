@@ -91,7 +91,7 @@ uint64_t now_high_accuracy() {
         low = TIM2->CNT;
     } while (high != tim2_overflow);
 
-    return high * 4294967295 + low;
+    return ((uint64_t)high << 32) | low;
 }
 
 void miscellaneous_init() {
