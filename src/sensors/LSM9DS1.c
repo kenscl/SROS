@@ -29,38 +29,38 @@ MAT_ALLOC_STATIC(acc_scale, 3, 3);
 
 void LSM9DS1_calibrate_sensors() {
         // Gyroscope
-        gyro_bias.r[0] = -0.564394;
-        gyro_bias.r[1] = -1.807167;
-        gyro_bias.r[2] = -1.857611;
+        gyro_bias.r[0] = 0;
+        gyro_bias.r[1] = 0;
+        gyro_bias.r[2] = 0;
       // Magnetometer
-        soft_iron.r[0 * 3 + 0] = 0.780890;
-        soft_iron.r[0 * 3 + 1] = -0.018096;
-        soft_iron.r[0 * 3 + 2] = 0.005514;
-        soft_iron.r[1 * 3 + 0] = -0.011893;
-        soft_iron.r[1 * 3 + 1] = 0.703616;
-        soft_iron.r[1 * 3 + 2] = 0.002129;
-        soft_iron.r[2 * 3 + 0] = 0.005069;
-        soft_iron.r[2 * 3 + 1] = 0.002974;
-        soft_iron.r[2 * 3 + 2] = 0.764143;
-        hard_iron.r[0] = 0.226322;
-        hard_iron.r[1] = 0.143636;
-        hard_iron.r[2] = -0.010043;
+        soft_iron.r[0 * 3 + 0] = 1;
+        soft_iron.r[0 * 3 + 1] = 0;
+        soft_iron.r[0 * 3 + 2] = 0;
+        soft_iron.r[1 * 3 + 0] = 0;
+        soft_iron.r[1 * 3 + 1] = 1;
+        soft_iron.r[1 * 3 + 2] = 0;
+        soft_iron.r[2 * 3 + 0] = 0;
+        soft_iron.r[2 * 3 + 1] = 0;
+        soft_iron.r[2 * 3 + 2] = 1;
+        hard_iron.r[0] = 0;
+        hard_iron.r[1] = 0;
+        hard_iron.r[2] = 0;
         // Accelerometer
-        acc_bias.r[0] = -0.004453;
-        acc_bias.r[1] = 0.002806;
-        acc_bias.r[2] = -0.001830;
+        acc_bias.r[0] = 0;
+        acc_bias.r[1] = 0;
+        acc_bias.r[2] = 0;
 
-        acc_scale.r[0 * 3 + 0] = 6.007124;
-        acc_scale.r[0 * 3 + 1] = 0.000000;
-        acc_scale.r[0 * 3 + 2] = 0.000000;
+        acc_scale.r[0 * 3 + 0] = 1;
+        acc_scale.r[0 * 3 + 1] = 0;
+        acc_scale.r[0 * 3 + 2] = 0;
 
-        acc_scale.r[1 * 3 + 0] = 0.000000;
-        acc_scale.r[1 * 3 + 1] = 6.035877;
-        acc_scale.r[1 * 3 + 2] = 0.000000;
+        acc_scale.r[1 * 3 + 0] = 0;
+        acc_scale.r[1 * 3 + 1] = 1;
+        acc_scale.r[1 * 3 + 2] = 0;
 
-        acc_scale.r[2 * 3 + 0] = 0.000000;
-        acc_scale.r[2 * 3 + 1] = 0.000000;
-        acc_scale.r[2 * 3 + 2] = 5.952594;
+        acc_scale.r[2 * 3 + 0] = 0;
+        acc_scale.r[2 * 3 + 1] = 0;
+        acc_scale.r[2 * 3 + 2] = 1;
 }
 
 float LSM9DS1_gyro_availiable = 0;
