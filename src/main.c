@@ -27,8 +27,8 @@ int main(void) {
     // User Threads are defined here
     register_thread_auto(&SPI_thread, 500, 10, "SPI_thread");
     register_thread_auto(&LSM9DS1_thread, 1000, 10, "LSM9DS1_thread");
-    //register_thread_auto(&attitude_thread, 4000, 10, "EKF");
-    register_thread_auto(&complementary_thread, 1000, 10, "c_thread");
+    register_thread_auto(&attitude_thread, 4000, 10, "EKF");
+    //register_thread_auto(&complementary_thread, 1000, 10, "c_thread");
     // End of user thread definitions
 
 

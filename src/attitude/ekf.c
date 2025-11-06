@@ -21,8 +21,6 @@ MAT_ALLOC_STATIC(Q_static, 7, 7);
 MAT_ALLOC_STATIC(H_static, 4, 7);
 MAT_ALLOC_STATIC(K_static, 7, 4);
 MAT_ALLOC_STATIC(R_static, 4, 4);
-MAT_ALLOC_STATIC(Rot_static, 3, 3);
-MAT_ALLOC_STATIC(Rot_inv_static, 3, 3);
 
 MAT_ALLOC_STATIC(temp_mat1_static, 7, 7);
 MAT_ALLOC_STATIC(temp_mat2_static, 7, 7);
@@ -51,8 +49,6 @@ EKF ekf_static = {
     .H = &H_static,
     .K = &K_static,
     .R = &R_static,
-    .Rot = &Rot_static,
-    .Rot_inv = &Rot_inv_static,
     .q = &q_static,
     .temp_mat1 = &temp_mat1_static,
     .temp_mat2 = &temp_mat2_static,
@@ -73,8 +69,8 @@ void rp_from_acc(Vec *acc, float* roll, float* pitch) {
     float m_a_c_y = acc->r[1];
     float m_a_c_z = acc->r[2];
 
-    *roll = atan2(m_a_c_y, m_a_c_z);
-    *pitch = atan(- m_a_c_x / sqrt(m_a_c_y * m_a_c_y + m_a_c_z * m_a_c_z));
+    *roll = atan2f(m_a_c_y, m_a_c_z);
+    *pitch = atanf(- m_a_c_x / sqrtf(m_a_c_y * m_a_c_y + m_a_c_z * m_a_c_z));
 }
 
 void EKF_update_acc(EKF *ekf, Vec *acc) {
@@ -90,10 +86,10 @@ void EKF_update_mag(EKF *ekf, Vec *mag, Vec *acc) {
 
     rp_from_acc(acc, &roll, &pitch);
 
-    mm_c_x = m_x * cos(pitch) + m_z * sin(pitch);
-    mm_c_y = m_x * sin(roll) * sin(pitch) + m_y * cos(roll) - m_z * sin(roll) * cos(pitch);
+    mm_c_x = m_x * cosf(pitch) + m_z * sinf(pitch);
+    mm_c_y = m_x * sinf(roll) * sinf(pitch) + m_y * cosf(roll) - m_z * sinf(roll) * cosf(pitch);
 
-    float yaw = atan2(- mm_c_y, mm_c_x);
+    float yaw = atan2f(- mm_c_y, mm_c_x);
     ekf->z->r[3] = yaw;
 }
 
@@ -111,7 +107,7 @@ void predict_state(EKF *ekf, Vec *gyro, float dt) {
     float q_j_kp1 = q_q_k + 0.5 *  dt * (wy * q_q_k + wz * q_i_k - wx * q_k_k);
     float q_k_kp1 = q_q_k + 0.5 *  dt * (- wz * q_q_k - wy * q_i_k - wx * q_j_k);
 
-    float norm_div  = 1 / sqrt(q_q_kp1 * q_q_kp1 + q_i_kp1 * q_i_kp1 + q_j_kp1 * q_j_kp1 + q_k_kp1 * q_k_kp1);
+    float norm_div  = 1 / sqrtf(q_q_kp1 * q_q_kp1 + q_i_kp1 * q_i_kp1 + q_j_kp1 * q_j_kp1 + q_k_kp1 * q_k_kp1);
     q_q_kp1 *= norm_div;
     q_i_kp1 *= norm_div;
     q_j_kp1 *= norm_div;
@@ -197,7 +193,7 @@ void h_prediction(EKF *ekf) {
     ekf->h->r[0] = 2 * (qi * qk - qw * qj);
     ekf->h->r[1] = 2 * (qj * qk + qw * qi);
     ekf->h->r[2] = qw * qw - qi * qi - qj * qj + qk * qk;
-    ekf->h->r[3] = atan2(2 * (qw * qk + qi * qj, 1 - 2 * qj * qj - 2 * qk * qk));
+    ekf->h->r[3] = atan2f(2 * (qw * qk + qi * qj), 1 - 2 * qj * qj - 2 * qk * qk);
 }
 
 void limit_yaw(float *yaw) {
@@ -286,6 +282,141 @@ void EKF_update(EKF *ekf) {
     ekf->bias->r[2] = ekf->x->r[6];
 }
 
-void EKF_init_incremental(EKF *ekf, Vec *gyro, Vec *acc, Vec *mag) {
+VEC_ALLOC_STATIC(gyro_mean, 3);
+VEC_ALLOC_STATIC(acc_mean, 3);
+VEC_ALLOC_STATIC(mag_mean, 3);
 
+VEC_ALLOC_STATIC(M_gyro, 3);
+VEC_ALLOC_STATIC(M_acc, 3);
+VEC_ALLOC_STATIC(M_mag, 3);
+VEC_ALLOC_STATIC(temp, 3);
+VEC_ALLOC_STATIC(temp2, 3);
+
+int cnt = 0;
+void EKF_init_incremental(EKF *ekf, Vec *gyro, Vec *acc, Vec *mag) {
+    cnt += 1;
+
+    vec_copy(&gyro_mean, &temp2);
+    vec_sub(gyro, &gyro_mean, &temp);
+    vec_scalar_mult(&temp, 1.0/cnt);
+    vec_add(&gyro_mean, &temp, &gyro_mean);
+
+    vec_sub(gyro, &temp2, &temp2);
+    vec_sub(gyro, &gyro_mean, &temp);
+    vec_mult(&temp2, &temp, &temp);
+    vec_add(&M_gyro, &temp, &M_gyro);
+
+
+    vec_copy(&acc_mean, &temp2);
+    vec_sub(acc, &acc_mean, &temp);
+    vec_scalar_mult(&temp, 1.0/cnt);
+    vec_add(&acc_mean, &temp, &acc_mean);
+
+    vec_sub(acc, &temp2, &temp2);
+    vec_sub(acc, &acc_mean, &temp);
+    vec_mult(&temp2, &temp, &temp);
+    vec_add(&M_acc, &temp, &M_acc);
+
+
+    vec_copy(&mag_mean, &temp2);
+    vec_sub(mag, &mag_mean, &temp);
+    vec_scalar_mult(&temp, 1.0/cnt);
+    vec_add(&mag_mean, &temp, &mag_mean);
+
+    vec_sub(mag, &temp2, &temp2);
+    vec_sub(mag, &mag_mean, &temp);
+    vec_mult(&temp2, &temp, &temp);
+    vec_add(&M_mag, &temp, &M_mag);
+}
+MAT_ALLOC_STATIC(omega, 4, 3);
+MAT_ALLOC_STATIC(tmp1, 4, 3);
+MAT_ALLOC_STATIC(Q_q, 4, 4);
+MAT_ALLOC_STATIC(omega_T, 3, 4);
+MAT_ALLOC_STATIC(Q_g, 3, 3);
+
+void EKF_init_final(EKF *ekf) {
+    vec_scalar_mult(&M_gyro, 1.0 / (cnt - 1));
+    vec_scalar_mult(&M_acc, 1.0 / (cnt - 1));
+    vec_scalar_mult(&M_mag, 1.0 / (cnt - 1));
+
+    float ss_gyro = vec_norm(&M_gyro);
+    float ss_acc = vec_norm(&M_acc);
+    float ss_mag = vec_norm(&M_mag);
+
+    float m_a_c_x = acc_mean.r[0];
+    float m_a_c_y = acc_mean.r[1];
+    float m_a_c_z = acc_mean.r[2];
+
+    float m_x = mag_mean.r[0];
+    float m_y = mag_mean.r[1];
+    float m_z = mag_mean.r[2];
+
+    float roll = atan2f(m_a_c_y, m_a_c_z);
+    float pitch = atanf(- m_a_c_x / sqrtf(m_a_c_y * m_a_c_y + m_a_c_z * m_a_c_z));
+
+    float mm_c_x = m_x * cosf(pitch) + m_z * sinf(pitch);
+    float mm_c_y = m_x * sinf(roll) * sinf(pitch) + m_y * cosf(roll) - m_z * sinf(roll) * cosf(pitch);
+
+    float yaw = atan2f(- mm_c_y, mm_c_x);
+
+    quat_from_rpy(ekf->attitude, roll, pitch, yaw);
+    ekf->x->r[0] = ekf->attitude->q;
+    ekf->x->r[1] = ekf->attitude->i;
+    ekf->x->r[2] = ekf->attitude->j;
+    ekf->x->r[3] = ekf->attitude->k;
+
+    ekf->R->r[0 + 6 * 0] = ss_acc;
+    ekf->R->r[1 + 6 * 1] = ss_acc;
+    ekf->R->r[2 + 6 * 2] = ss_acc;
+    ekf->R->r[3 + 6 * 3] = ss_mag;
+
+    ekf->Q->r[0 + 7 * 0] = BIAS_INSTABILITY * 0.0009;
+    ekf->Q->r[1 + 7 * 1] = BIAS_INSTABILITY * 0.0009;
+    ekf->Q->r[2 + 7 * 2] = BIAS_INSTABILITY * 0.0009;
+
+    float q = ekf->attitude->q;
+    float i = ekf->attitude->i;
+    float j = ekf->attitude->j;
+    float k = ekf->attitude->k;
+
+    omega.r[0 + 3 * 0] = -i;  omega.r[0 + 3 * 1] = -j;  omega.r[0 + 3 * 2] = -k;
+    omega.r[1 + 3 * 0] =  q;  omega.r[1 + 3 * 1] = -k;  omega.r[1 + 3 * 2] =  j;
+    omega.r[2 + 3 * 0] =  k;  omega.r[2 + 3 * 1] =  q;  omega.r[2 + 3 * 2] = -i;
+    omega.r[3 + 3 * 0] = -j;  omega.r[3 + 3 * 1] =  i;  omega.r[3 + 3 * 2] =  q;
+
+    Q_g.r[0 + 3 * 0] = ss_gyro;
+    Q_g.r[1 + 3 * 1] = ss_gyro;
+    Q_g.r[2 + 3 * 2] = ss_gyro;
+
+    mat_mult(&omega, &Q_g, &tmp1);
+    mat_transpose(&omega, &omega_T);
+
+    mat_mult(&tmp1, &omega_T, &Q_q);
+
+    mat_scalar_mult(&Q_q, 0.25 * 0.0009);
+    ekf->Q->r[3 + 7 * 3] = Q_q.r[0 +3 * 0];
+    ekf->Q->r[4 + 7 * 4] = Q_q.r[1 +3 * 1];
+    ekf->Q->r[5 + 7 * 5] = Q_q.r[2 +3 * 2];
+}
+
+EKF ekf;
+
+volatile void attitude_thread() {
+    sleep(20 * MILLISECONDS);
+    for (int i = 0; i < CALIB_COUNT; i++) {
+        EKF_init_incremental(&ekf, &LSM9DS1_gyro_filtered, &LSM9DS1_acc_filtered, &LSM9DS1_mag_filtered);
+    }
+
+    EKF_init_final(&ekf);
+
+    uint64_t next_time = now();
+    while(1) {
+        next_time = now() + 3 * MILLISECONDS;
+        EKF_update_acc(&ekf, &LSM9DS1_acc_filtered);
+        EKF_update_mag(&ekf, &LSM9DS1_mag_filtered, &LSM9DS1_acc_filtered);
+        EKF_predict(&ekf, &LSM9DS1_gyro_filtered, 0.003);
+        EKF_update(&ekf);
+        quat_print(ekf.attitude);
+        sleep_until(next_time);
+    }
 }

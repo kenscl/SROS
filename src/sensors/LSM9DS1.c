@@ -78,9 +78,9 @@ uint8_t data[2];
 
 // filter constants
 
-float a_acc = 0.15;
-float a_gyro = 0.2;
-float a_mag = 0.15;
+float a_acc = 0.2;
+float a_gyro = 0.05;
+float a_mag = 0.2;
 
 void LSM9DS1_reset() {
     data[0] = LSM9DS1_WRITE_REGISTER(CTRL_REG8);
@@ -349,8 +349,7 @@ void LSM9DS1_process_accel() {
     // float res = 1 - vec_norm(LSM9DS1_acc);
     //  res = res * res;
     //  if (res < 0.1) {
-    //      LSM9DS1_acc_filtered =
-    //          low_pass_filter(a_acc, LSM9DS1_acc_filtered, LSM9DS1_acc.normalize());
+    low_pass_filter(a_acc, &LSM9DS1_acc_filtered, &LSM9DS1_acc);
     //  }
     LSM9DS1_enable_accel();
 }
@@ -406,7 +405,7 @@ void LSM9DS1_process_mag() {
     LSM9DS1_mag.r[1] = tmp->r[1];
     LSM9DS1_mag.r[2] = tmp->r[2];
     vec_free(tmp);
-    // LSM9DS1_mag_filtered = low_pass_filter(a_mag, LSM9DS1_mag_filtered,
+    low_pass_filter(a_mag, &LSM9DS1_mag_filtered, &LSM9DS1_mag);
     // vec_normalize(LSM9DS1_mag));
     LSM9DS1_enable_mag();
 }
