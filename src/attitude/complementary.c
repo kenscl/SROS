@@ -30,15 +30,11 @@ void complementary_predict(Vec *gyro, float dt) {
     float gy = gyro->r[1];
     float gz = gyro->r[2];
 
-    roll_gyro += gx * dt;
-    pitch_gyro += gy * dt;
-    yaw_gyro += gz * dt;
+    float alpha = 0.9; // Higher = trust gyro more, lower = trust accel more
 
-    float alpha = 0.98; // Higher = trust gyro more, lower = trust accel more
-
-    roll = alpha * (roll + gx * dt) + (1.0 - alpha) * roll_acc;
-    pitch = alpha * (pitch + gy * dt) + (1.0 - alpha) * pitch_acc;
-    yaw = alpha * (yaw + gz * dt) + (1.0 - alpha) * yaw_mag;
+    roll = alpha * (roll + gx * dt / 57.2) + (1.0 - alpha) * roll_acc;
+    pitch = alpha * (pitch + gy * dt / 57.2) + (1.0 - alpha) * pitch_acc;
+    yaw = alpha * (yaw + gz * dt / 57.2) + (1.0 - alpha) * yaw_mag;
 }
 
 void complementary_thread() {
@@ -52,7 +48,7 @@ void complementary_thread() {
 
             next_mag_time = now() + 50 * MILLISECONDS;
         }
-        complementary_predict(&LSM9DS1_gyro, 0.003);
+        complementary_predict(&LSM9DS1_gyro_filtered, 0.003);
         os_printf("%f %f %f \n", roll * 57.2, pitch * 57.2, yaw * 57.2);
 
         sleep_until(next_time);

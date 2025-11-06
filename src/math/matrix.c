@@ -250,3 +250,14 @@ void mat_print(Mat *a) {
 	os_printf("]\n");
     }
 }
+
+int mat_copy(Mat *source, Mat *target) {
+    if (source->m != target->n | source->n != target->n) {
+        return 0;
+    }
+
+    for (int i = 0; i < source->m * source->n; i++) {
+        target->r[i] = source->r[i];
+    }
+    return 1;
+}

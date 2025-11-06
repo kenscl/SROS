@@ -97,3 +97,13 @@ int vec_equals(Vec *a, Vec *b) {
   }
   return 1;
 }
+
+int vec_copy(Vec *source, Vec *destination) {
+    if (source->size > destination->size) return 0;
+    else {
+        for (int i; i < source->size; i++) {
+            destination->r[i] = source->r[i];
+        }
+    }
+    return 1;
+}

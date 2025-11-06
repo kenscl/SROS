@@ -30,5 +30,6 @@ int mat_identity(Mat *ident);
 int mat_diag(Mat* diag, float d);
 int mat_vec_diag(Mat *diag, Vec *v);
 void mat_print(Mat *a);
+int mat_copy(Mat* source, Mat* target);
 
 #endif

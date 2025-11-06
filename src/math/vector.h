@@ -27,5 +27,6 @@ int vec_scalar_mult(Vec *a, float f);
 float vec_norm(Vec *vec);
 int vec_normalize(Vec *a);
 int vec_equals(Vec *a, Vec *b);
+int vec_copy(Vec *source, Vec *destination);
 
 #endif
