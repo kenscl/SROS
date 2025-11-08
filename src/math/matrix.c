@@ -97,8 +97,8 @@ int mat_vec_mult(Mat *a, Vec *b, Vec *res) {
 
 float mat_det(Mat *a) {
     if (a->m != a->n) {
-	os_printf("Requesting determinant of non-square Matrix!");
-	return 0.0;
+        os_printf("Requesting determinant of non-square Matrix!");
+        return 0.0;
     }
 
     if (a->n == 1)
@@ -108,6 +108,7 @@ float mat_det(Mat *a) {
         os_printf("Out of memeory! \n");
     }
     float det = 1;
+    mat_copy(a, temp);
 
     for (int i = 0; i < a->n; ++i) {
         float max_elem = temp->r[i * temp->n + i];
