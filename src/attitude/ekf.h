@@ -5,7 +5,7 @@
 #include "../sensors/LSM9DS1.h"
 #include <stdint.h>
 #define M_PI 3.14159265358979323846264338327950288419716939937510
-#define BIAS_INSTABILITY 1e-7
+#define BIAS_INSTABILITY 1e-11
 #define CALIB_COUNT      50
 
 typedef struct EKF {
@@ -14,17 +14,19 @@ typedef struct EKF {
     Vec *bias; // 3
     // EKF components
     Vec *x; // 7
-    Vec *h, *z, *y; // 4
+    Vec *h, *z, *y; // 6
     Mat *P, *F, *Q; //7 x 7
     Mat *H; // 4 x 7
     Mat *K;// 7 x 4
-    Mat *R; // 4 x 4
+    Mat *R; // 6 x 6
     // helper data
     Quat *q;
 
     Mat *temp_mat1; // 7 x 7
     Mat *temp_mat2; // 7 x 7
     Mat *F_trans; // 7 x 7
+    Mat *W; // 3 x 4
+    Mat *W_trans; // 4 x 3
 
     Mat *S; // 4 x 4
     Mat *S_inv; // 4 x 4
@@ -37,6 +39,13 @@ typedef struct EKF {
     Mat *i7; // 7 x 7
     Mat *tmp3; // 7 x 7
     Mat *tmp4; // 7 x 7
+    Mat *rot; // 3 x 3
+    Mat *rot_inv; // 3 x 3
+    Vec *acc_refrence; // 3
+    Vec *mag_refrence; // 3
+    Vec *vtmp; // 3
+
+    float gyro_variance;
 } EKF;
 
 void EKF_init_incremental(EKF *ekf, Vec *gyro, Vec *acc, Vec *mag);

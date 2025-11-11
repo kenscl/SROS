@@ -22,10 +22,10 @@ void vec_free(Vec *a) {
 void vec_print(Vec *vec) {
     os_printf("Vector: [ ");
     for (int i = 0; i < vec->size; ++i) {
-	if (vec->r[i] != vec->r[i])
-	    os_printf("NaN ");
-	else
-	    os_printf("%f ", vec->r[i]);
+        if (vec->r[i] != vec->r[i])
+            os_printf("NaN ");
+        else
+            os_printf("%f ", vec->r[i]);
     }
     os_printf("] \n");
 }
@@ -85,23 +85,27 @@ float vec_norm(Vec *vec) {
 
 int vec_normalize(Vec *a) {
     float norm = vec_norm(a);
+    if (norm == 0) return 0;
     norm = 1 / norm;
     vec_scalar_mult(a, norm);
     return 1;
 }
 
 int vec_equals(Vec *a, Vec *b) {
-  if (a->size != b->size) return 0;
-  for (int i = 0; i < a->size; ++i) {
-    if (a->r[i] != b->r[i]) return 0;
-  }
-  return 1;
+    if (a->size != b->size)
+        return 0;
+    for (int i = 0; i < a->size; ++i) {
+        if (a->r[i] != b->r[i])
+            return 0;
+    }
+    return 1;
 }
 
 int vec_copy(Vec *source, Vec *destination) {
-    if (source->size > destination->size) return 0;
+    if (source->size > destination->size)
+        return 0;
     else {
-        for (int i; i < source->size; i++) {
+        for (int i = 0; i < source->size; i++) {
             destination->r[i] = source->r[i];
         }
     }

@@ -287,9 +287,9 @@ void LSM9DS1_process_gyro() {
     volatile int16_t x = (gyro_data[1 + 1] << 8) | gyro_data[0 + 1];
     volatile int16_t y = (gyro_data[3 + 1] << 8) | gyro_data[2 + 1];
     volatile int16_t z = (gyro_data[5 + 1] << 8) | gyro_data[4 + 1];
-    LSM9DS1_gyro.r[0] = (float)(x * GYRO_SENSITIVITY) / 1000;
-    LSM9DS1_gyro.r[1] = (float)(y * GYRO_SENSITIVITY) / 1000;
-    LSM9DS1_gyro.r[2] = (float)(z * GYRO_SENSITIVITY) / 1000;
+    LSM9DS1_gyro.r[0] = (float)(x * GYRO_SENSITIVITY) / 1000 * M_PI / 180;
+    LSM9DS1_gyro.r[1] = (float)(y * GYRO_SENSITIVITY) / 1000 * M_PI / 180;
+    LSM9DS1_gyro.r[2] = (float)(z * GYRO_SENSITIVITY) / 1000 * M_PI / 180;
     vec_sub(&LSM9DS1_gyro, &gyro_bias, &LSM9DS1_gyro);
     low_pass_filter(a_gyro, &LSM9DS1_gyro_filtered, &LSM9DS1_gyro);
     LSM9DS1_enable_gyro();
@@ -326,31 +326,29 @@ void LSM9DS1_enable_accel() {
     acc_data_reg.state = pending;
 }
 
+VEC_ALLOC_STATIC(tmp, 3);
 void LSM9DS1_process_accel() {
     if (!LSM9DS1_check_accel())
         return;
     int16_t x = (acc_data[1 + 1] << 8) | acc_data[0 + 1];
     int16_t y = (acc_data[3 + 1] << 8) | acc_data[2 + 1];
     int16_t z = (acc_data[5 + 1] << 8) | acc_data[4 + 1];
-    LSM9DS1_acc.r[0] = (float)(x * ACC_SENSITIVITY) / 1000;
-    LSM9DS1_acc.r[1] = (float)(y * ACC_SENSITIVITY) / 1000;
-    LSM9DS1_acc.r[2] = (float)(z * ACC_SENSITIVITY) / 1000;
-    vec_add(&LSM9DS1_acc, &acc_bias, &LSM9DS1_acc);
-    Vec *tmp = vec_alloc(3);
-    if (tmp == 0)
-        return;
-    mat_vec_mult(&acc_scale, &LSM9DS1_acc, tmp);
-    LSM9DS1_acc.r[0] = tmp->r[0];
-    LSM9DS1_acc.r[1] = tmp->r[1];
-    LSM9DS1_acc.r[2] = tmp->r[2];
-    vec_free(tmp);
-    // LSM9DS1_acc.r[1] = -LSM9DS1_acc.r[1];
+    //LSM9DS1_acc.r[0] = (float)(x * ACC_SENSITIVITY) / 1000;
+    //LSM9DS1_acc.r[1] = (float)(y * ACC_SENSITIVITY) / 1000;
+    //LSM9DS1_acc.r[2] = (float)(z * ACC_SENSITIVITY) / 1000;
+    //vec_add(&LSM9DS1_acc, &acc_bias, &LSM9DS1_acc);
+    //mat_vec_mult(&acc_scale, &LSM9DS1_acc, &tmp);
+    //LSM9DS1_acc.r[0] = tmp.r[0];
+    //LSM9DS1_acc.r[1] = tmp.r[1];
+    //LSM9DS1_acc.r[2] = tmp.r[2];
+    //// LSM9DS1_acc.r[1] = -LSM9DS1_acc.r[1];
 
-    // float res = 1 - vec_norm(LSM9DS1_acc);
-    //  res = res * res;
-    //  if (res < 0.1) {
-    low_pass_filter(a_acc, &LSM9DS1_acc_filtered, &LSM9DS1_acc);
-    //  }
+    //// float res = 1 - vec_norm(LSM9DS1_acc);
+    ////  res = res * res;
+    ////  if (res < 0.1) {
+    //low_pass_filter(a_acc, &LSM9DS1_acc_filtered, &LSM9DS1_acc);
+    //vec_normalize(&LSM9DS1_acc_filtered);
+    ////  }
     LSM9DS1_enable_accel();
 }
 
@@ -392,21 +390,18 @@ void LSM9DS1_process_mag() {
     int16_t x = (mag_data[1 + 1] << 8) | mag_data[0 + 1];
     int16_t y = (mag_data[3 + 1] << 8) | mag_data[2 + 1];
     int16_t z = (mag_data[5 + 1] << 8) | mag_data[4 + 1];
-    LSM9DS1_mag.r[0] = (float)(y * MAG_SENSITIVITY) / 1000;
-    LSM9DS1_mag.r[1] = -(float)(x * MAG_SENSITIVITY) / 1000;
-    LSM9DS1_mag.r[2] = (float)(z * MAG_SENSITIVITY) / 1000;
-    vec_sub(&LSM9DS1_mag, &hard_iron, &LSM9DS1_mag);
+    //LSM9DS1_mag.r[0] = (float)(y * MAG_SENSITIVITY) / 1000;
+    //LSM9DS1_mag.r[1] = -(float)(x * MAG_SENSITIVITY) / 1000;
+    //LSM9DS1_mag.r[2] = (float)(z * MAG_SENSITIVITY) / 1000;
+    //vec_sub(&LSM9DS1_mag, &hard_iron, &LSM9DS1_mag);
 
-    Vec *tmp = vec_alloc(3);
-    if (tmp == 0)
-        return;
-    mat_vec_mult(&soft_iron, &LSM9DS1_mag, tmp);
-    LSM9DS1_mag.r[0] = tmp->r[0];
-    LSM9DS1_mag.r[1] = tmp->r[1];
-    LSM9DS1_mag.r[2] = tmp->r[2];
-    vec_free(tmp);
-    low_pass_filter(a_mag, &LSM9DS1_mag_filtered, &LSM9DS1_mag);
-    // vec_normalize(LSM9DS1_mag));
+    //mat_vec_mult(&soft_iron, &LSM9DS1_mag, &tmp);
+    //LSM9DS1_mag.r[0] = tmp.r[0];
+    //LSM9DS1_mag.r[1] = tmp.r[1];
+    //LSM9DS1_mag.r[2] = tmp.r[2];
+    //low_pass_filter(a_mag, &LSM9DS1_mag_filtered, &LSM9DS1_mag);
+    //vec_normalize(&LSM9DS1_mag_filtered);
+    //// vec_normalize(LSM9DS1_mag));
     LSM9DS1_enable_mag();
 }
 
@@ -561,19 +556,19 @@ volatile void LSM9DS1_thread() {
 
         process_sensors();
 
-        if (test_for_freeze()) {
-            os_printf("Frozen! \n");
-        }
+        //if (test_for_freeze()) {
+        //    os_printf("Frozen! \n");
+        //}
 
         if (DEBUG == 2) {
             os_printf("[LSM9DS1_gyro] ");
             vec_print(&LSM9DS1_gyro_filtered);
 
             os_printf("[LSM9DS1_acc] ");
-            vec_print(&LSM9DS1_acc);
+            vec_print(&LSM9DS1_acc_filtered);
 
             os_printf("[LSM9DS1_mag] ");
-            vec_print(&LSM9DS1_mag);
+            vec_print(&LSM9DS1_mag_filtered);
         }
         sleep_until(next_time);
     }

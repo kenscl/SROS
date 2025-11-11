@@ -86,17 +86,4 @@ SECTIONS
         KEEP(*(.fini_array))
         PROVIDE_HIDDEN(__fini_array_end = .);
     } > FLASH
-
-    /* C++ runtime initialization */
-    .init :
-    {
-        KEEP(*(SORT(.init.*)))
-        KEEP(*(.init))
-    } > FLASH
-
-    .fini :
-    {
-        KEEP(*(SORT(.fini.*)))
-        KEEP(*(.fini))
-    } > FLASH
 }

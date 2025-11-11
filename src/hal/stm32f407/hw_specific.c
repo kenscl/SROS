@@ -13,15 +13,23 @@ void os_interrupt_disable() {
 }
 
 __attribute__((naked)) void pendsv_handler(void) {
-
     __asm volatile("CPSID         I \n"
 
                    "LDR           r1,=current_thread \n"
                    "LDR           r1,[r1,#0x00] \n"
                    "CBZ           r1,_restore \n"
 
+
                    "mrs r0, psp \n"
+
+                   "tst r14, #0x10 \n"
+                   "it eq\n"
+                   "vstmdbeq r0!, {s16-s31}\n"
+
+
                    "stmdb	r0!, {r4, r5, r6, r7, r8, r9, r10, r11, r14} \n"
+
+
                    "LDR           r1,=current_thread \n"
                    "LDR           r1,[r1,#0x00] \n"
                    "STR           r0,[r1,#0x00] \n"
@@ -34,7 +42,14 @@ __attribute__((naked)) void pendsv_handler(void) {
 
                    "ldmia	r0!, {r4, r5, r6, r7, r8, r9, r10, r11, r14} \n"
 
+                   "tst r14, #0x10\n"
+                   "it eq\n"
+                   "vldmiaeq r0!, {s16-s31}\n"
+
                    "msr            psp,r0 \n"
+
+
+
 
                    "CPSIE         I \n"
 
@@ -110,6 +125,7 @@ void miscellaneous_init() {
         ((0b01 << (12 * 2)) | (0b01 << (13 * 2)) | (0b01 << (14 * 2)) | (0b01 << (15 * 2)));
 
     RCC->AHB1ENR |= (1 << 21); // enable DMA1 clock
+
     NVIC_EnableIRQ(DMA1_Stream6_IRQn);
     NVIC_EnableIRQ(TIM2_IRQn);
     register_thread_auto(&one_second_thread, 128, STD_THREAD_PRIORITY, "1_second_thread");

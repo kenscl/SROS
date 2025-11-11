@@ -54,6 +54,7 @@ int quat_from_vec4(Vec *vec, Quat *quat) {
     quat->i = vec->r[1];
     quat->j = vec->r[2];
     quat->k = vec->r[3];
+    return 1;
 }
 
 // Quaternion(const Mat3 &mat) {
@@ -115,17 +116,23 @@ int quat_scalar_mult(Quat *a, float f) {
 }
 
 int quat_conjugate(Quat *a) {
-    a->q = -a->q;
+    a->q = a->q;
     a->i = -a->i;
     a->j = -a->j;
     a->k = -a->k;
+    return 1;
 }
 
 int quat_to_rpy(Quat *a, Vec *result) {
     if (result->size != 3)
         return 0;
     result->r[0] = atan2(2 * (a->q * a->i + a->j * a->k), 1 - 2 * (a->i * a->i + a->j * a->j));
-    result->r[1] = asin(2 * (a->q * a->j - a->k * a->i));
+    float sp = 2 * (a->q * a->j - a->k * a->i);
+    if (sp > 1)
+        sp = 1;
+    if (sp < -1)
+        sp = -1;
+    result->r[1] = asin(sp);
     result->r[2] = atan2(2 * (a->q * a->k + a->i * a->j), 1 - 2 * (a->j * a->j + a->k * a->k));
     return 1;
 }
@@ -140,15 +147,15 @@ int quat_to_vector(Quat *a, Vec *ret) {
 
 int quat_to_rotation_matrix(Quat *a, Mat* res)  {
   if (res->m != 3 || res->n != 3) return 0;
-    res->r[0 * res->n + 0] = 1 - 2 * (a->j * a->j + a->k * a->k);
+    res->r[0 * res->n + 0] = a->q * a->q + a->i * a->i - a->j * a->j - a->k * a->k;
     res->r[0 * res->n + 1] = 2 * (a->i * a->j - a->k * a->q);
     res->r[0 * res->n + 2] = 2 * (a->i * a->k + a->j * a->q);
     res->r[1 * res->n + 0] = 2 * (a->i * a->j + a->k * a->q);
-    res->r[1 * res->n + 1] = 1 - 2 * (a->i * a->i + a->k * a->k);
+    res->r[1 * res->n + 1] = a->q * a->q - a->i * a->i + a->j * a->j - a->k * a->k;
     res->r[1 * res->n + 2] = 2 * (a->j * a->k - a->i * a->q);
     res->r[2 * res->n + 0] = 2 * (a->i * a->k - a->j * a->q);
     res->r[2 * res->n + 1] = 2 * (a->j * a->k + a->i * a->q);
-    res->r[2 * res->n + 2] = 1 - 2 * (a->i * a->i + a->j * a->j);
+    res->r[2 * res->n + 2] = a->q * a->q - a->i * a->i - a->j * a->j + a->k * a->k;
     return 1;
 }
 

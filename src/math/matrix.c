@@ -82,7 +82,7 @@ int mat_scalar_mult(Mat *a, float f) {
 int mat_vec_mult(Mat *a, Vec *b, Vec *res) {
     if (a->n != b->size)
         return 0;
-    if (b->size != res->size)
+    if (a->m != res->size)
         return 0;
 
     for (size_t i = 0; i < a->m; ++i) {
@@ -95,60 +95,66 @@ int mat_vec_mult(Mat *a, Vec *b, Vec *res) {
     return 1;
 }
 
+MAT_ALLOC_STATIC(det_m, MAX_MATRIX, MAX_MATRIX)
 float mat_det(Mat *a) {
-    if (a->m != a->n) {
-        os_printf("Requesting determinant of non-square Matrix!");
-        return 0.0;
-    }
-
-    if (a->n == 1)
-        return a->r[0];
-    Mat *temp = mat_alloc(a->m, a->n);
-    if (temp == 0) {
-        os_printf("Out of memeory! \n");
-    }
+    if (a->m != a->n) return 0;
+    det_m.m = MAX_MATRIX;
+    det_m.n = MAX_MATRIX;
+    mat_fill(&det_m, 0);
+    det_m.m = a->m;
+    det_m.n = a->n;
+    mat_copy(a, &det_m);
     float det = 1;
-    mat_copy(a, temp);
 
     for (int i = 0; i < a->n; ++i) {
-        float max_elem = temp->r[i * temp->n + i];
+        // Partial pivoting
+        float max_elem = det_m.r[i * det_m.n + i];
         int max_row = i;
         for (int k = i + 1; k < a->n; ++k) {
-            if (fabs(temp->r[k * temp->n + i]) > fabs(max_elem)) {
-                max_elem = temp->r[k * temp->n + i];
+            if (fabs(det_m.r[k * det_m.n + i]) > fabs(max_elem)) {
+                max_elem = det_m.r[k * det_m.n + i];
                 max_row = k;
             }
         }
 
-        if (max_row != i) {
-            for (int j = 0; j < a->n; ++j) {
-                float temp_val = temp->r[i * temp->n + j];
-                temp->r[i * temp->n + j] = temp->r[max_row * temp->n + j];
-                temp->r[max_row * temp->n + j] = temp_val;
-            }
-            det *= -1;
-        }
-        if (temp->r[i * temp->n + i] == 0) {
-            mat_free(temp);
+        if (fabs(max_elem) < 1e-8) {  // singular
             return 0;
         }
 
+        if (max_row != i) {
+            for (int j = 0; j < a->n; ++j) {
+                float tmp = det_m.r[i * det_m.n + j];
+                det_m.r[i * det_m.n + j] = det_m.r[max_row * det_m.n + j];
+                det_m.r[max_row * det_m.n + j] = tmp;
+            }
+            det *= -1;
+        }
+
         for (int k = i + 1; k < a->n; ++k) {
-            float factor = temp->r[k * temp->n + i] / temp->r[i * temp->n + i];
+            float factor = 0;
+            if (fabs(det_m.r[i * det_m.n + i]) > 1e-8)
+                factor = det_m.r[k * det_m.n + i] / det_m.r[i * det_m.n + i];
+            else
+                factor = 1;
             for (int j = i; j < a->n; ++j) {
-                temp->r[k * temp->n + j] -= factor * temp->r[i * temp->n + j];
+                det_m.r[k * det_m.n + j] -= factor * det_m.r[i * det_m.n + j];
             }
         }
 
-        det *= temp->r[i * temp->n + i];
+        det *= det_m.r[i * det_m.n + i];
     }
 
-    mat_free(temp);
     return det;
 }
 
+MAT_ALLOC_STATIC(minor, MAX_MATRIX, MAX_MATRIX);
 float mat_coaf(Mat *a, size_t i, size_t j) {
-    Mat *minor = mat_alloc(a->m - 1, a->n - 1);
+    minor.m = MAX_MATRIX;
+    minor.n = MAX_MATRIX;
+    mat_fill(&minor, 0);
+    minor.m = a->m-1;
+    minor.n = a->n-1;
+    //Mat *minor = mat_alloc(a->m - 1, a->n - 1);
     int minor_row = 0, minor_col = 0;
     float sign = ((i + j) % 2 == 0) ? 1 : -1;
 
@@ -159,13 +165,12 @@ float mat_coaf(Mat *a, size_t i, size_t j) {
         for (int col = 0; col < a->n; ++col) {
             if (col == j)
                 continue;
-            minor->r[minor_row * minor->n + minor_col] = a->r[row * a->n + col];
+            minor.r[minor_row * minor.n + minor_col] = a->r[row * a->n + col];
             minor_col++;
         }
         minor_row++;
     }
-    float res = sign * mat_det(minor);
-    mat_free(minor);
+    float res = sign * mat_det(&minor);
     return res;
 }
 
@@ -207,12 +212,13 @@ int mat_inverse(Mat *a, Mat *res) {
     if (a->n != a->m || det == 0) {
         return 0;
     }
-    if(!mat_adjugate(a, res)) return 0;
-    if(!mat_scalar_mult(res, 1/det)) return 0;
+    if(!mat_adjugate(a, res)) return -1;
+    if(!mat_scalar_mult(res, 1/det)) return -2;
     return 1;
 }
 
 int mat_identity(Mat *ident) {
+    mat_fill(ident, 0);
     for (int i = 0; i < ident->n; ++i) {
         ident->r[i * ident->n +i] = 1;
     }
@@ -253,7 +259,7 @@ void mat_print(Mat *a) {
 }
 
 int mat_copy(Mat *source, Mat *target) {
-    if (source->m != target->n | source->n != target->n) {
+    if (source->m != target->n || source->n != target->n) {
         return 0;
     }
 
@@ -261,4 +267,10 @@ int mat_copy(Mat *source, Mat *target) {
         target->r[i] = source->r[i];
     }
     return 1;
+}
+
+void mat_fill(Mat *m, float a) {
+    for (int i = 0; i < m->m * m->n; i++) {
+        m->r[i] = a;
+    }
 }

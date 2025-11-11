@@ -10,7 +10,7 @@ typedef struct Mat {
 } Mat;
 
 #define MAT_ALLOC_STATIC(name, rows, cols) \
-    float name##_data[(rows) * (cols)] = {0}; \
+    float name##_data[(rows)*(cols)] __attribute__((aligned(8))) = {0}; \
     Mat name = {(rows), (cols), name##_data};
 
 Mat *mat_alloc(size_t m, size_t n);
@@ -31,5 +31,6 @@ int mat_diag(Mat* diag, float d);
 int mat_vec_diag(Mat *diag, Vec *v);
 void mat_print(Mat *a);
 int mat_copy(Mat* source, Mat* target);
+void mat_fill(Mat* m, float a);
 
 #endif

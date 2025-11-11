@@ -31,6 +31,7 @@ volatile struct SPI_transmition *SPI_current;
 volatile uint8_t SPI_queue_tail;
 
 volatile struct SPI_transmition dmy;
+void dummy_cs() {}
 
 void queue_init(volatile SPI_transmition **buffer, size_t size) {
     queue_size = size;
@@ -41,8 +42,8 @@ void queue_init(volatile SPI_transmition **buffer, size_t size) {
     dmy.state = done;
     dmy.rx_buffer = 0;
     dmy.tx_buffer = 0;
-    dmy.cs_high = 0;
-    dmy.cs_low = 0;
+    dmy.cs_high = dummy_cs;
+    dmy.cs_low = dummy_cs;
     SPI_current = &dmy;
     for (int i = 0; i < SPI_buffer_lenght; ++i) {
         SPI_buffer[i] = &dmy;
@@ -85,22 +86,10 @@ int dequeue(volatile struct SPI_transmition **ret) {
 // interrupt stuff
 uint8_t dma_done = 1;
 void dma2_stream3_handler() {
-    if (DMA2->LISR & DMA_LISR_TCIF3) {
-        DMA2->LIFCR = DMA_LIFCR_CTCIF3;
-    }
-    if (DMA2->LISR & DMA_LISR_HTIF3) {
-        DMA2->LIFCR = DMA_LIFCR_CHTIF3;
-    }
 }
 
-void dma2_stream0_handler() {
+void dma2_stream0_handler(void) {
     //volatile uint32_t state = DMA2->LISR;
-    if (DMA2->LISR & DMA_LISR_TEIF0) {
-        os_printf("SPI transmition error! \n");
-    }
-    if (DMA2->LISR & DMA_LISR_TEIF3) {
-        os_printf("SPI transmition error! \n");
-    }
     if (DMA2->LISR & DMA_LISR_TCIF0) {
         DMA2->LIFCR |= DMA_LIFCR_CTCIF3;
         DMA2->LIFCR |= DMA_LIFCR_CHTIF3;
@@ -197,10 +186,13 @@ void SPI_handle() {
     SPI_current->state = busy;
     // start next transmition
     DMA2_Stream3->CR &= ~DMA_SxCR_EN;
+    while(DMA2_Stream3->CR & DMA_SxCR_EN);
     DMA2_Stream0->CR &= ~DMA_SxCR_EN;
+    while (DMA2_Stream0->CR & DMA_SxCR_EN);
 
     DMA2_Stream3->M0AR = (uint32_t)next->tx_buffer;
     DMA2_Stream3->NDTR = next->size;
+
 
     DMA2_Stream0->M0AR = (uint32_t)next->rx_buffer;
     DMA2_Stream0->NDTR = next->size;
