@@ -79,7 +79,9 @@ EKF ekf = {
 };
 
 void EKF_update_acc(EKF *ekf, Vec *acc) {
-    vec_copy(acc, ekf->z);
+    ekf->z->r[0] = acc->r[0];
+    ekf->z->r[1] = acc->r[1];
+    ekf->z->r[2] = acc->r[2];
 }
 
 void EKF_update_mag(EKF *ekf, Vec *mag, Vec *acc) {
@@ -376,10 +378,8 @@ void EKF_init_incremental(EKF *ekf, Vec *gyro, Vec *acc, Vec *mag) {
     //vec_print(&M_mag);
     //vec_print(&M_acc);
 }
-MAT_ALLOC_STATIC(omega, 4, 3);
 MAT_ALLOC_STATIC(tmp1, 4, 3);
 MAT_ALLOC_STATIC(Q_q, 4, 4);
-MAT_ALLOC_STATIC(omega_T, 3, 4);
 MAT_ALLOC_STATIC(Q_g, 3, 3);
 
 void EKF_init_final(EKF *ekf) {
@@ -414,8 +414,9 @@ void EKF_init_final(EKF *ekf) {
     ekf->x->r[5] = 0.0;
     ekf->x->r[6] = 0.0;
 
-    ss_acc *= ss_acc;
-    ss_mag *= ss_mag;
+    ss_acc = 0.01 * 0.01;
+    ss_mag = 0.02 * 0.02;
+    ss_gyro = 0.3 * 0.3;
     ekf->R->r[0 + 6 * 0] = ss_acc;
     ekf->R->r[1 + 6 * 1] = ss_acc;
     ekf->R->r[2 + 6 * 2] = ss_acc;
@@ -423,22 +424,7 @@ void EKF_init_final(EKF *ekf) {
     ekf->R->r[4 + 6 * 4] = ss_mag;
     ekf->R->r[5 + 6 * 5] = ss_mag;
 
-    ekf->Q->r[0 + 7 * 0] = BIAS_INSTABILITY;
-    ekf->Q->r[1 + 7 * 1] = BIAS_INSTABILITY;
-    ekf->Q->r[2 + 7 * 2] = BIAS_INSTABILITY;
-
-    float q = ekf->attitude->q;
-    float i = ekf->attitude->i;
-    float j = ekf->attitude->j;
-    float k = ekf->attitude->k;
-
-    omega.r[0 + 3 * 0] = -i;  omega.r[0 + 3 * 1] = -j;  omega.r[0 + 3 * 2] = -k;
-    omega.r[1 + 3 * 0] =  q;  omega.r[1 + 3 * 1] = -k;  omega.r[1 + 3 * 2] =  j;
-    omega.r[2 + 3 * 0] =  k;  omega.r[2 + 3 * 1] =  q;  omega.r[2 + 3 * 2] = -i;
-    omega.r[3 + 3 * 0] = -j;  omega.r[3 + 3 * 1] =  i;  omega.r[3 + 3 * 2] =  q;
-
-
-    ekf->gyro_variance = ss_gyro * ss_gyro;
+    ekf->gyro_variance = ss_gyro;
     mat_print(ekf->Q);
     mat_print(ekf->R);
 
@@ -450,14 +436,14 @@ void EKF_init_final(EKF *ekf) {
     mat_vec_mult(ekf->rot, &mag_mean, ekf->mag_refrence);
 
     vec_normalize(ekf->mag_refrence);
-    mat_diag(ekf->P, 0.00001);
+    mat_diag(ekf->P, 1);
 }
 uint64_t next_mag_time = 0;
 void update_measurements() {
     if (next_mag_time <= now()) {
         EKF_update_acc(&ekf, &LSM9DS1_acc_filtered);
         EKF_update_mag(&ekf, &LSM9DS1_mag_filtered, &LSM9DS1_acc_filtered);
-        next_mag_time = now() + 50 * MILLISECONDS;
+        next_mag_time = now() + 10 * MILLISECONDS;
     }
 }
 
@@ -466,43 +452,6 @@ VEC_ALLOC_STATIC(acc_, 3);
 VEC_ALLOC_STATIC(gyro_, 3);
 VEC_ALLOC_STATIC(mag_, 3);
 volatile void attitude_thread() {
-    //ekf.gyro_variance = 0.09;
-    //mat_diag(ekf.P, 1);
-    //ekf.R->r[0 + 6 * 0] = 0.25;
-    //ekf.R->r[1 + 6 * 1] = 0.25;
-    //ekf.R->r[2 + 6 * 2] = 0.25;
-    //ekf.R->r[3 + 6 * 3] = 0.64;
-    //ekf.R->r[4 + 6 * 4] = 0.64;
-    //ekf.R->r[5 + 6 * 5] = 0.64;
-    //ekf.x->r[0] = 1;
-    //ekf.x->r[1] = 2;
-    //ekf.x->r[2] = 3;
-    //ekf.x->r[3] = 4;
-    //gyro_.r[0] = 1;
-    //gyro_.r[1] = 2;
-    //gyro_.r[2] = 3;
-    //acc_.r[0] = 1;
-    //acc_.r[1] = -2;
-    //acc_.r[2] = 3;
-    //mag_.r[0] = 1;
-    //mag_.r[1] = 2;
-    //mag_.r[2] = -3;
-    //vec_normalize(&acc_);
-    //vec_normalize(&mag_);
-    //vec_normalize(&gyro_);
-    //ekf.acc_refrence->r[0] = 0;
-    //ekf.acc_refrence->r[1] = 0;
-    //ekf.acc_refrence->r[2] = 1;
-    //ekf.mag_refrence->r[0] = 0.44271204;
-    //ekf.mag_refrence->r[1] = 0.0246963;
-    //ekf.mag_refrence->r[2] = 0.89632368;
-    //vec_normalize(ekf.x);
-    //EKF_update_acc(&ekf, &acc_);
-    //EKF_update_mag(&ekf, &mag_, & mag_);
-    //EKF_predict(&ekf, &gyro_, 0.003);
-    //EKF_update(&ekf);
-    //os_printf("lenf %d \n", ekf.x->size);
-    //vec_print(ekf.x);
     sleep(20 * MILLISECONDS);
     for (int i = 0; i < CALIB_COUNT; i++) {
         EKF_init_incremental(&ekf, &LSM9DS1_gyro_filtered, &LSM9DS1_acc_filtered, &LSM9DS1_mag_filtered);
@@ -517,9 +466,8 @@ volatile void attitude_thread() {
         update_measurements();
         EKF_predict(&ekf, &LSM9DS1_gyro_filtered, 0.005);
         EKF_update(&ekf);
-        //os_printf("Attitude: ");
-        //quat_print(ekf.attitude);
+        os_printf("Attitude: ");
+        quat_print(ekf.attitude);
         sleep_until(next_time);
-        uint64_t end = now_high_accuracy();
     }
 }
