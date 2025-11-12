@@ -414,17 +414,17 @@ void EKF_init_final(EKF *ekf) {
     ekf->x->r[5] = 0.0;
     ekf->x->r[6] = 0.0;
 
-    ss_acc = 0.01 * 0.01;
-    ss_mag = 0.02 * 0.02;
-    ss_gyro = 0.3 * 0.3;
-    ekf->R->r[0 + 6 * 0] = ss_acc;
-    ekf->R->r[1 + 6 * 1] = ss_acc;
-    ekf->R->r[2 + 6 * 2] = ss_acc;
-    ekf->R->r[3 + 6 * 3] = ss_mag;
-    ekf->R->r[4 + 6 * 4] = ss_mag;
-    ekf->R->r[5 + 6 * 5] = ss_mag;
+    //ss_acc = 0.01 * 0.01;
+    //ss_mag = 0.02 * 0.02;
+    //ss_gyro = 0.3 * 0.3;
+    ekf->R->r[0 + 6 * 0] = ss_acc * ss_acc;
+    ekf->R->r[1 + 6 * 1] = ss_acc * ss_acc;
+    ekf->R->r[2 + 6 * 2] = ss_acc * ss_acc;
+    ekf->R->r[3 + 6 * 3] = ss_mag * ss_mag;
+    ekf->R->r[4 + 6 * 4] = ss_mag * ss_mag;
+    ekf->R->r[5 + 6 * 5] = ss_mag * ss_mag;
 
-    ekf->gyro_variance = ss_gyro;
+    ekf->gyro_variance = ss_gyro * ss_gyro;
     mat_print(ekf->Q);
     mat_print(ekf->R);
 
