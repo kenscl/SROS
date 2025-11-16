@@ -32,7 +32,7 @@ add_custom_command(
 )
 
 add_custom_target(flash
-    COMMAND st-flash write ${TARGET_NAME}.bin ${FLASH_LOCATION}
+    COMMAND st-flash --reset write ${TARGET_NAME}.bin ${FLASH_LOCATION}
     DEPENDS ${TARGET_NAME}.bin
 )
 
