@@ -1,8 +1,10 @@
-#include <stm32f4xx.h>
 #include "./Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h"
+#include <stm32f4xx.h>
+#include "../../krnl/scheduler.h"
+#include "../../krnl/thread.h"
 
-SPI_HandleTypeDef hspi2;
-UART_HandleTypeDef huart2;
+void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
+void Error_Handler(void);
 
 #define CS_I2C_SPI_Pin GPIO_PIN_3
 #define CS_I2C_SPI_GPIO_Port GPIOE
@@ -71,6 +73,17 @@ UART_HandleTypeDef huart2;
 #define MEMS_INT2_Pin GPIO_PIN_1
 #define MEMS_INT2_GPIO_Port GPIOE
 
+SPI_HandleTypeDef hspi2;
+
+TIM_HandleTypeDef htim3;
+
+UART_HandleTypeDef huart2;
+
+void SystemClock_Config(void);
+static void MX_GPIO_Init(void);
+static void MX_SPI2_Init(void);
+static void MX_USART2_UART_Init(void);
+static void MX_TIM3_Init(void);
 
 void SystemClock_Config(void)
 {
@@ -96,7 +109,7 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLQ = 7;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
-      //Error_Handler();
+    Error_Handler();
   }
 
   /** Initializes the CPU, AHB and APB buses clocks
@@ -110,44 +123,152 @@ void SystemClock_Config(void)
 
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_5) != HAL_OK)
   {
-      //Error_Handler();
+    Error_Handler();
   }
 }
 
+/**
+  * @brief SPI2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_SPI2_Init(void)
+{
 
-void hal_init() {
-  HAL_Init();
+  /* USER CODE BEGIN SPI2_Init 0 */
+
+  /* USER CODE END SPI2_Init 0 */
+
+  /* USER CODE BEGIN SPI2_Init 1 */
+
+  /* USER CODE END SPI2_Init 1 */
+  /* SPI2 parameter configuration*/
+  hspi2.Instance = SPI2;
+  hspi2.Init.Mode = SPI_MODE_MASTER;
+  hspi2.Init.Direction = SPI_DIRECTION_2LINES;
+  hspi2.Init.DataSize = SPI_DATASIZE_8BIT;
+  hspi2.Init.CLKPolarity = SPI_POLARITY_LOW;
+  hspi2.Init.CLKPhase = SPI_PHASE_1EDGE;
+  hspi2.Init.NSS = SPI_NSS_SOFT;
+  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
+  hspi2.Init.FirstBit = SPI_FIRSTBIT_MSB;
+  hspi2.Init.TIMode = SPI_TIMODE_DISABLE;
+  hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+  hspi2.Init.CRCPolynomial = 10;
+  if (HAL_SPI_Init(&hspi2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN SPI2_Init 2 */
+
+  /* USER CODE END SPI2_Init 2 */
+
 }
 
-void clock_init(){
-    SystemClock_Config();
+/**
+  * @brief TIM3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM3_Init(void)
+{
+
+  /* USER CODE BEGIN TIM3_Init 0 */
+
+  /* USER CODE END TIM3_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
+
+  /* USER CODE BEGIN TIM3_Init 1 */
+
+  /* USER CODE END TIM3_Init 1 */
+  htim3.Instance = TIM3;
+  htim3.Init.Prescaler = 168;
+  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim3.Init.Period = 100;
+  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
+  if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim3, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_Init(&htim3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 50;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM3_Init 2 */
+
+  /* USER CODE END TIM3_Init 2 */
+  HAL_TIM_MspPostInit(&htim3);
+
 }
 
+/**
+  * @brief USART2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART2_UART_Init(void)
+{
 
-void interrupt_init() {
-    // configure systick handler
-    // rvr = (cpu clock / 1000) - 1 = 168 MHz / 1000 - 1 = 167999
-    //SysTick->LOAD = 167999;
-    //SysTick->VAL = 0;
-    //SysTick->CTRL |= (1 << 2); // cpu clock source
-    //SysTick->CTRL |= (1 << 1); // set status to pending on count == 0
+  /* USER CODE BEGIN USART2_Init 0 */
 
-    //// set pendsv prio to 0xff and systick to 0x00
-    //SCB->SHP[10] = 0xff;
-    //SCB->SHP[11] = 0x05;
-    ////NVIC_SetPriority(DMA1_Stream6_IRQn, 3);
-    //// enable systick and pendsv
-    //SysTick->CTRL |= (1 << 0); // enable
-    // enable global interrupts
+  /* USER CODE END USART2_Init 0 */
 
-    // some more work is needed to preserve fpu context on expetion
-    FPU->FPCCR |= (1 << 31); // Set ASPEN (Automatic State Preservation Enable)
-    FPU->FPCCR |= (1 << 30); // Set LSPEN (Lazy State Preservation Enable)
-    __enable_irq();
+  /* USER CODE BEGIN USART2_Init 1 */
+
+  /* USER CODE END USART2_Init 1 */
+  huart2.Instance = USART2;
+  huart2.Init.BaudRate = 115200;
+  huart2.Init.WordLength = UART_WORDLENGTH_8B;
+  huart2.Init.StopBits = UART_STOPBITS_1;
+  huart2.Init.Parity = UART_PARITY_NONE;
+  huart2.Init.Mode = UART_MODE_TX_RX;
+  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART2_Init 2 */
+
+  /* USER CODE END USART2_Init 2 */
+
 }
 
-static void gpio_init(void){
+/**
+  * @brief GPIO Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_GPIO_Init(void)
+{
   GPIO_InitTypeDef GPIO_InitStruct = {0};
+  /* USER CODE BEGIN MX_GPIO_Init_1 */
+
+  /* USER CODE END MX_GPIO_Init_1 */
+
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
@@ -269,50 +390,94 @@ static void gpio_init(void){
   GPIO_InitStruct.Alternate = GPIO_AF4_I2C1;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : MEMS_INT2_Pin */
   GPIO_InitStruct.Pin = MEMS_INT2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_EVT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(MEMS_INT2_GPIO_Port, &GPIO_InitStruct);
+
+  /* USER CODE BEGIN MX_GPIO_Init_2 */
+
+  /* USER CODE END MX_GPIO_Init_2 */
 }
 
-static void spi_init(void)
+/* USER CODE BEGIN 4 */
+
+/* USER CODE END 4 */
+
+/**
+  * @brief  This function is executed in case of error occurrence.
+  * @retval None
+  */
+void Error_Handler(void)
 {
-  hspi2.Instance = SPI2;
-  hspi2.Init.Mode = SPI_MODE_MASTER;
-  hspi2.Init.Direction = SPI_DIRECTION_2LINES;
-  hspi2.Init.DataSize = SPI_DATASIZE_8BIT;
-  hspi2.Init.CLKPolarity = SPI_POLARITY_LOW;
-  hspi2.Init.CLKPhase = SPI_PHASE_1EDGE;
-  hspi2.Init.NSS = SPI_NSS_SOFT;
-  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
-  hspi2.Init.FirstBit = SPI_FIRSTBIT_MSB;
-  hspi2.Init.TIMode = SPI_TIMODE_DISABLE;
-  hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
-  hspi2.Init.CRCPolynomial = 10;
-  if (HAL_SPI_Init(&hspi2) != HAL_OK)
+  /* USER CODE BEGIN Error_Handler_Debug */
+  /* User can add his own implementation to report the HAL error return state */
+  __disable_irq();
+  while (1)
   {
-      //Error_Handler();
   }
+  /* USER CODE END Error_Handler_Debug */
 }
-
-static void usart2_init(void)
+#ifdef USE_FULL_ASSERT
+/**
+  * @brief  Reports the name of the source file and the source line number
+  *         where the assert_param error has occurred.
+  * @param  file: pointer to the source file name
+  * @param  line: assert_param error line source number
+  * @retval None
+  */
+void assert_failed(uint8_t *file, uint32_t line)
 {
-  huart2.Instance = USART2;
-  huart2.Init.BaudRate = 115200;
-  huart2.Init.WordLength = UART_WORDLENGTH_8B;
-  huart2.Init.StopBits = UART_STOPBITS_1;
-  huart2.Init.Parity = UART_PARITY_NONE;
-  huart2.Init.Mode = UART_MODE_TX_RX;
-  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
-  if (HAL_UART_Init(&huart2) != HAL_OK)
-  {
-      //Error_Handler();
-  }
+  /* USER CODE BEGIN 6 */
+  /* User can add his own implementation to report the file name and line number,
+     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+  /* USER CODE END 6 */
+}
+#endif /* USE_FULL_ASSERT */
+
+void pwm_thread(void) {
+    int cnt = 0;
+    while (1) {
+        __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, cnt);
+        cnt++;
+        sleep (100 * MILLISECONDS);
+        if (cnt > 50) cnt = 0;
+    }
 }
 
-void communication_init() {
-    gpio_init();
-    spi_init();
-    usart2_init();
+void hal_init() {
+    HAL_Init();
+    SystemClock_Config();
+    MX_GPIO_Init();
+    MX_SPI2_Init();
+    MX_USART2_UART_Init();
+    MX_TIM3_Init();
+
+    HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);         // Start PWM on TIM1_CH1
+    __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 20); // 50% duty cycle
+
+    register_thread_auto(&pwm_thread, 1000, 10, "pwm_thread");
+}
+
+void interrupt_init() {
+    // configure systick handler
+    // rvr = (cpu clock / 1000) - 1 = 168 MHz / 1000 - 1 = 167999
+    // SysTick->LOAD = 167999;
+    // SysTick->VAL = 0;
+    // SysTick->CTRL |= (1 << 2); // cpu clock source
+    // SysTick->CTRL |= (1 << 1); // set status to pending on count == 0
+
+    //// set pendsv prio to 0xff and systick to 0x00
+    // SCB->SHP[10] = 0xff;
+    // SCB->SHP[11] = 0x05;
+    ////NVIC_SetPriority(DMA1_Stream6_IRQn, 3);
+    //// enable systick and pendsv
+    // SysTick->CTRL |= (1 << 0); // enable
+    //  enable global interrupts
+
+    // some more work is needed to preserve fpu context on expetion
+    FPU->FPCCR |= (1 << 31); // Set ASPEN (Automatic State Preservation Enable)
+    FPU->FPCCR |= (1 << 30); // Set LSPEN (Lazy State Preservation Enable)
+    __enable_irq();
 }

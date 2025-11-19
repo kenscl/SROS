@@ -37,13 +37,12 @@
 //
 //}
 
+
 int main(void) {
     // system config
-    hal_init();
-    clock_init();
-    communication_init();
     mem_init();
     scheduler_init();
+    hal_init();
     interrupt_init();
     miscellaneous_init();
 
