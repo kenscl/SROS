@@ -3,224 +3,219 @@
 #include "../../globals.h"
 
 #include "../../hw_init.h"
-#include "stm32f407xx.h"
+#include "./Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h"
+#include "../../sensors/LSM9DS1.h"
 #include <stdint.h>
 
-// cs-lines
-void CS_A_H() {
-    GPIOA->BSRR = GPIO_BSRR_BS_4;
+volatile SPI_State_t spi_current_state = SPI_STATE_IDLE;
+volatile int spi_next_state = SPI_STATE_IDLE;
+volatile uint8_t spi_busy = 0;
+volatile uint8_t lsm9_has_init = 0;
+volatile uint8_t lsm9_who_am_i_correct = 0;
+
+SPI_INFO SPI_current;
+
+void CS1_Select() {
+    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_4, GPIO_PIN_RESET);
+}
+void CS1_Unselect() {
+    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_4, GPIO_PIN_SET);
 }
 
-void CS_A_L() {
-    GPIOA->BSRR = GPIO_BSRR_BR_4;
+void CS2_Select() {
+    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_5, GPIO_PIN_RESET);
+}
+void CS2_Unselect() {
+    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_5, GPIO_PIN_SET);
 }
 
-void CS_M_H() {
-    GPIOA->BSRR = GPIO_BSRR_BS_1;
+void CS3_Select() {
+    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_6, GPIO_PIN_RESET);
+}
+void CS3_Unselect() {
+    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_6, GPIO_PIN_SET);
 }
 
-void CS_M_L() {
-    GPIOA->BSRR = GPIO_BSRR_BR_1;
+void CS_A_H(void) {
+    CS1_Unselect();
 }
 
-// SPI queue
-volatile SPI_transmition *SPI_buffer[SPI_buffer_lenght];
-volatile size_t queue_size;
-volatile uint8_t SPI_queue_head;
-volatile struct SPI_transmition *SPI_current;
-volatile uint8_t SPI_queue_tail;
-
-volatile struct SPI_transmition dmy;
-void dummy_cs() {}
-
-void queue_init(volatile SPI_transmition **buffer, size_t size) {
-    queue_size = size;
-    SPI_queue_head = 0;
-    SPI_queue_tail = 0;
-
-    dmy.size = 0;
-    dmy.state = done;
-    dmy.rx_buffer = 0;
-    dmy.tx_buffer = 0;
-    dmy.cs_high = dummy_cs;
-    dmy.cs_low = dummy_cs;
-    SPI_current = &dmy;
-    for (int i = 0; i < SPI_buffer_lenght; ++i) {
-        SPI_buffer[i] = &dmy;
-    }
+void CS_A_L(void) {
+    CS1_Select();
 }
 
-int is_empty() {
-    return SPI_queue_head == SPI_queue_tail;
+void CS_M_H(void) {
+    CS2_Unselect();
 }
 
-int is_full() {
-    return (SPI_queue_head + 1) % queue_size == SPI_queue_tail;
+void CS_M_L(void) {
+    CS2_Select();
 }
 
-int in_queue(volatile struct SPI_transmition *element) {
 
-    for (int i = 0; i < queue_size; ++i) {
-        if (element == SPI_buffer[i]) return 1;
-    }
-    return 0;
-}
-
-int enqueue(volatile struct SPI_transmition *element) {
-    if (is_full())
-        return 0;
-    SPI_buffer[SPI_queue_head] = element;
-    SPI_queue_head = (SPI_queue_head + 1) % queue_size;
-    return 1;
-}
-
-int dequeue(volatile struct SPI_transmition **ret) {
-    if (is_empty())
-        return 0;
-    *ret = SPI_buffer[SPI_queue_tail];
-    SPI_current = SPI_buffer[SPI_queue_tail];
-    SPI_queue_tail = (SPI_queue_tail + 1) % queue_size;
-    return 1;
-}
-
-// interrupt stuff
-uint8_t dma_done = 1;
 void dma2_stream3_handler() {
+    HAL_DMA_IRQHandler(&hdma_spi1_tx);
 }
 
-void dma2_stream0_handler(void) {
-    //volatile uint32_t state = DMA2->LISR;
-    if (DMA2->LISR & DMA_LISR_TCIF0) {
-        DMA2->LIFCR |= DMA_LIFCR_CTCIF3;
-        DMA2->LIFCR |= DMA_LIFCR_CHTIF3;
-        DMA2->LIFCR |= DMA_LIFCR_CTCIF0;
-        DMA2->LIFCR |= DMA_LIFCR_CHTIF0;
-        DMA2_Stream3->CR &= ~DMA_SxCR_EN;
-        DMA2_Stream0->CR &= ~DMA_SxCR_EN;
-        SPI_current->cs_high();
-        SPI_current->state = done;
-        if (SPI_queue_tail != 0)
-            SPI_buffer[SPI_queue_tail-1] = &dmy;
-        if (SPI_queue_tail == 0)
-            SPI_buffer[queue_size-1] = &dmy;
-    }
+void dma2_stream0_handler() {
+    HAL_DMA_IRQHandler(&hdma_spi1_rx);
 }
 
-void DMA2_init() {
-    RCC->AHB1ENR |= RCC_AHB1ENR_DMA2EN;
 
-    // tx
-    DMA2_Stream3->CR = 0;
-    DMA2_Stream3->PAR = (uint32_t) &SPI1->DR;
-    DMA2_Stream3->CR |= (0b011 << DMA_SxCR_CHSEL_Pos);
-    DMA2_Stream3->CR |= (1 << DMA_SxCR_MINC_Pos);
-    DMA2_Stream3->CR |= (0b01 << DMA_SxCR_DIR_Pos);
-    DMA2_Stream3->CR |= (1 << DMA_SxCR_TCIE_Pos);
-    DMA2_Stream3->CR |= (1 << DMA_SxCR_PL_Pos);
-
-    //rx
-    DMA2_Stream0->CR = 0;
-    DMA2_Stream0->PAR = (uint32_t) &SPI1->DR;
-    DMA2_Stream0->CR |= (0b11 << DMA_SxCR_CHSEL_Pos);
-    DMA2_Stream0->CR |= (1 << DMA_SxCR_MINC_Pos);
-    DMA2_Stream0->CR &= ~(0b011 << DMA_SxCR_DIR_Pos);
-    DMA2_Stream0->CR |= (1 << DMA_SxCR_TCIE_Pos);
-    DMA2_Stream0->CR |= (1 << DMA_SxCR_PL_Pos);
-    DMA2_Stream0->FCR |= DMA_SxFCR_DMDIS;
-
-    // NVIC_EnableIRQ(DMA2_Stream3_IRQn);
-    NVIC_EnableIRQ(DMA2_Stream0_IRQn);
-    // NVIC_SetPriority(DMA2_Stream3_IRQn, 11);
-    NVIC_SetPriority(DMA2_Stream0_IRQn, 10);
-}
-
-void SPI_init() {
-    RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;
-    RCC->APB2ENR |= RCC_APB2ENR_SPI1EN;
-
-    GPIOA->MODER |= (2 << (5 * 2)) | (2 << (6 * 2)) | (2 << (7 * 2));   // af mode
-    GPIOA->OSPEEDR |= (3 << (5 * 2)) | (3 << (6 * 2)) | (3 << (7 * 2)); // High speed
-    GPIOA->AFR[0] |= (5 << (5 * 4)) | (5 << (6 * 4)) | (5 << (7 * 4));  // af 5
-    SPI1->CR1 = 0;
-
-    SPI1->CR1 = SPI_CR1_MSTR  // Master
-                | SPI_CR1_SSM // Software CS management
-                | SPI_CR1_SSI // Set nss high
-                | (3 << 3);   // fPCLK/8
-
-    SPI1->CR1 |= SPI_CR1_SPE;
-    SPI1->CR2 = SPI_CR2_TXDMAEN | SPI_CR2_RXDMAEN;
-
-    DMA2_init();
-
-    queue_init(SPI_buffer, SPI_buffer_lenght);
-}
-
-int SPI_submit(volatile struct SPI_transmition *tx) {
-    if (tx->state != pending) return 0;
-    for (int i = 0; i < queue_size; i++) {
-        if (in_queue(tx)) return 0;
-    }
-    return enqueue(tx);
-}
-
-void SPI_handle() {
-    // called during transmition or error
-    if (SPI_current->state == busy) {
+void SPI_select() {
+    if (spi_busy)
         return;
-    } else if (SPI_current->state == error) {
-        // error routine
-    }
-
-    // called when SPI is inactive
-    volatile SPI_transmition *next;
-    if (SPI_current->state == pending) {
-        next = SPI_current;
-        next->state = busy;
-    } else if (SPI_current->state == done) {
-        int ret = dequeue(&next);
-        if (!ret)
+    // lsm9 init statemachine
+    if (!lsm9_has_init) {
+        if (spi_current_state == SPI_STATE_LSM9_INIT_DONE) {
+            lsm9_has_init = 1;
+            spi_next_state++;
             return;
+        } else {
+            spi_next_state++;
+            return;
+        }
     }
 
-    SPI_current->state = busy;
-    // start next transmition
-    DMA2_Stream3->CR &= ~DMA_SxCR_EN;
-    while(DMA2_Stream3->CR & DMA_SxCR_EN);
-    DMA2_Stream0->CR &= ~DMA_SxCR_EN;
-    while (DMA2_Stream0->CR & DMA_SxCR_EN);
+    if (spi_current_state != SPI_STATE_LSM9_INIT_DONE) {
+        spi_next_state++;
+        return;
+    }
 
-    DMA2_Stream3->M0AR = (uint32_t)next->tx_buffer;
-    DMA2_Stream3->NDTR = next->size;
+    // lsm9 who am i state machine
+    if (!lsm9_who_am_i_correct) {
+        // called only when when who am I is wrong
+        if (spi_current_state == SPI_STATE_LSM9_READ_WHO_AM_I_M) {
+            os_printf("[SPI] ERROR: WHO_AM_I wrong! \n");
+            return;
+        } else {
+            // should only be called once since previous state machine calles the first who am i
+            // funciton
+            spi_next_state++;
+            return;
+        }
+    }
 
-
-    DMA2_Stream0->M0AR = (uint32_t)next->rx_buffer;
-    DMA2_Stream0->NDTR = next->size;
-
-    SPI_current->cs_low();
-    DMA2_Stream3->CR |= DMA_SxCR_EN;
-    DMA2_Stream0->CR |= DMA_SxCR_EN;
+    // state machine cases
+    switch (spi_current_state) {
+    case SPI_STATE_LSM9_READ_GYRO:
+        spi_next_state++;
+        break;
+    case SPI_STATE_LSM9_READ_ACC:
+        spi_next_state++;
+        break;
+    case SPI_STATE_LSM9_READ_MAG:
+        spi_next_state = SPI_STATE_LSM9_READ_GYRO;
+        break;
+    }
 
     return;
 }
 
-void SPI_thread() {
-    SPI_init();
-    while (1) {
-        SPI_handle();
-        sleep(1 * MILLISECONDS);
+void SPI_state_machine() {
+    switch (spi_next_state) {
+    case SPI_STATE_IDLE:
+        return;
+    case SPI_STATE_LSM9_RESET:
+        LSM9DS1_reset(&SPI_current);
+        break;
+    case SPI_STATE_LSM9_WRITE_CTRL_REG1_G:
+        LSM9DS1_WRITE_CTRL_REG1_G(&SPI_current);
+        break;
+    case SPI_STATE_LSM9_WRITE_CTRL_REG3_G:
+        LSM9DS1_WRITE_CTRL_REG3_G(&SPI_current);
+        break;
+    case SPI_STATE_LSM9_WRITE_CTRL_REG6_XL:
+        LSM9DS1_WRITE_CTRL_REG6_XL(&SPI_current);
+        break;
+    case SPI_STATE_LSM9_WRITE_CTRL_REG1_M:
+        LSM9DS1_WRITE_CTRL_REG1_M(&SPI_current);
+        break;
+    case SPI_STATE_LSM9_WRITE_CTRL_REG2_M:
+        LSM9DS1_WRITE_CTRL_REG2_M(&SPI_current);
+        break;
+    case SPI_STATE_LSM9_WRITE_CTRL_REG3_M:
+        LSM9DS1_WRITE_CTRL_REG3_M(&SPI_current);
+        break;
+    case SPI_STATE_LSM9_WRITE_CTRL_REG4_M:
+        LSM9DS1_WRITE_CTRL_REG4_M(&SPI_current);
+        break;
+    case SPI_STATE_LSM9_INIT_DONE:
+        break;
+    case SPI_STATE_LSM9_READ_WHO_AM_I_A:
+        LSM9DS1_read_WHO_AM_I_A(&SPI_current);
+        break;
+    case SPI_STATE_LSM9_READ_WHO_AM_I_M:
+        LSM9DS1_read_WHO_AM_I_M(&SPI_current);
+        break;
+    case SPI_STATE_LSM9_READ_GYRO:
+        LSM9DS1_read_gyro(&SPI_current);
+        break;
+    case SPI_STATE_LSM9_READ_ACC:
+        LSM9DS1_read_acc(&SPI_current);
+        break;
+    case SPI_STATE_LSM9_READ_MAG:
+        LSM9DS1_read_mag(&SPI_current);
+        break;
+    }
+
+    return;
+}
+
+int trans_cnt = 0;
+int whoami = 0;
+void SPI_send() {
+    if (spi_busy) return;
+    spi_busy = 1;
+
+    os_printf("SPI send: %d\n", SPI_current.tx[0]);
+    // sending logic
+    SPI_current.cs_low();
+
+    if (HAL_SPI_TransmitReceive_DMA(&hspi1, SPI_current.tx, SPI_current.rx, SPI_current.size) != HAL_OK)
+    {
+        SPI_current.cs_high();
+        os_printf("[SPI] Transmition error! CNT: %d \n", trans_cnt);
+        return;
+    }
+    trans_cnt++;
+    return;
+}
+
+void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
+{
+    if (hspi->Instance == SPI1)
+    {
+
+        whoami = SPI_current.rx[1]; // response byte
+        os_printf("WHO: %d \n", whoami);
+        SPI_current.cs_high();
+        CS_A_H();
+        CS_M_H();
+        spi_busy = 0;
+        SPI_process();
     }
 }
 
-void setup_cs_lines() {
-    RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;
-    RCC->APB2ENR |= RCC_APB2ENR_SPI1EN;
 
-    GPIOA->MODER &= ~(0x3 << (4 * 2)); // Clear mode bits for pin 4
-    GPIOA->MODER |= (0x1 << (4 * 2));
-    SPI1->CR1 &= ~SPI_CR1_SPE;
-    GPIOA->MODER &= ~(0x3 << (1 * 2));  // Clear mode bits for PA1
-    GPIOA->MODER |= (0x1 << (1 * 2));   // Set as output
-    GPIOA->OTYPER &= ~(1 << 1);         // Push-pull
+void SPI_process() {
+    if (spi_busy) return;
+    SPI_select();
+    SPI_state_machine();
+    SPI_send();
+}
 
+void SPI_thread() {
+    spi_current_state = SPI_STATE_IDLE;
+    spi_next_state = spi_current_state;
+        CS_A_H();
+        CS_M_H();
+
+    while (1) {
+        if (!spi_busy) {
+            SPI_process();
+        }
+
+        sleep(2 * MILLISECONDS);
+    }
 }

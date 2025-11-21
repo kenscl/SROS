@@ -12,11 +12,11 @@ void default_handler(void);
 void hard_fault_handler(void);
 
 // Cortex-M system exceptions
-void nmi_handler(void) __attribute__((weak, alias("default_handler")));
+void nmi_handler(void);
 void bus_fault_handler(void) __attribute__((weak, alias("default_handler")));
 void usage_fault_handler(void) __attribute__((weak, alias("default_handler")));
-void svcall_handler(void) __attribute__((weak, alias("default_handler")));
-void debug_monitor_handler(void) __attribute__((weak, alias("default_handler")));
+void svcall_handler(void);
+void debug_monitor_handler(void);
 void pendsv_handler(void) __attribute__((naked, weak, alias("default_handler")));
 void systick_handler(void)__attribute__((weak, alias("default_handler")));
 
@@ -229,7 +229,11 @@ void reset_handler(void)
 
 void default_handler(void)
 {
-  while(1);
+    volatile uint32_t ipsr = __get_IPSR();
+    // Exception numbers: 1=Reset, 2=NMI, 3=HardFault, ... 16=EXTI0, etc.
+    volatile uint32_t irq_number = ipsr - 16;
+    while (1)
+        ;
 }
 volatile uint32_t memManageFault = 0;
 volatile uint32_t busFault = 0;
@@ -272,3 +276,12 @@ void hard_fault_handler(void) {
                    "MRSNE R0, PSP \n"
                    "B hard_fault_handler_c \n");
 }
+void nmi_handler(void)
+{
+   while (1)
+  {
+  }
+}
+
+void svcall_handler(void) {}
+void debug_monitor_handler(void){}

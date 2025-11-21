@@ -42,6 +42,7 @@ int main(void) {
     // system config
     mem_init();
     scheduler_init();
+    enable_usart();
     hal_init();
     interrupt_init();
     miscellaneous_init();
@@ -51,8 +52,8 @@ int main(void) {
     register_thread_auto(&idle_thread, 10, 0, "idle_thread");
 
     // User Threads are defined here
-    //register_thread_auto(&SPI_thread, 1500, 10, "SPI_thread");
-    //register_thread_auto(&LSM9DS1_thread, 2000, 10, "LSM9DS1_thread");
+    register_thread_auto(&SPI_thread, 1500, 10, "SPI_thread");
+    register_thread_auto(&LSM9DS1_thread, 2000, 10, "LSM9DS1_thread");
     //register_thread_auto(&attitude_thread, 4000, 10, "EKF");
     //register_thread_auto(&test, 4000, 10, "EKF2");
     //register_thread_auto(&complementary_thread, 1000, 10, "c_thread");

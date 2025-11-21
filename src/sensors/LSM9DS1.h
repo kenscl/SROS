@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdint.h>
+#include "../communication/SPI.h"
 #include "../math/vector.h"
 #include "../math/matrix.h"
 
@@ -72,21 +73,29 @@
 #define LSM9DS1_READ_REGISTER(reg)    ((reg) | 0x80)
 
 // cs-lines
-void CS_A_H();
-
-void CS_A_L();
-
-void CS_M_H();
-
-void CS_M_L();
+extern void CS_A_H(void);
+extern void CS_A_L(void);
+extern void CS_M_H(void);
+extern void CS_M_L(void);
 
 void setup_cs_lines();
 
 // configuration
-void LSM9DS1_reset();
-void LSM9DS1_configure_gyro();
-void LSM9DS1_configure_accel();
-void LSM9DS1_configure_mag();
+void LSM9DS1_reset(SPI_INFO *fill);
+void LSM9DS1_WRITE_CTRL_REG1_G(SPI_INFO *fill);
+void LSM9DS1_WRITE_CTRL_REG3_G(SPI_INFO *fill);
+void LSM9DS1_WRITE_CTRL_REG6_XL(SPI_INFO *fill);
+void LSM9DS1_WRITE_CTRL_REG1_M(SPI_INFO *fill);
+void LSM9DS1_WRITE_CTRL_REG2_M(SPI_INFO *fill);
+void LSM9DS1_WRITE_CTRL_REG3_M(SPI_INFO *fill);
+void LSM9DS1_WRITE_CTRL_REG4_M(SPI_INFO *fill);
+
+// reading
+void LSM9DS1_read_WHO_AM_I_A(SPI_INFO *fill);
+void LSM9DS1_read_WHO_AM_I_M(SPI_INFO *fill);
+void LSM9DS1_read_gyro(SPI_INFO *fill);
+void LSM9DS1_read_acc(SPI_INFO *fill);
+void LSM9DS1_read_mag(SPI_INFO *fill);
 
 void LSM9DS1_calibrate_sensors();
 
@@ -100,27 +109,6 @@ extern float LSM9DS1_acc_availiable;
 extern Vec LSM9DS1_mag;
 extern Vec LSM9DS1_mag_filtered;
 extern float LSM9DS1_mag_availiable;
-
-// data read
-void LSM9DS1_read_status();
-void LSM9DS1_read_gyro();
-void LSM9DS1_read_accel();
-void LSM9DS1_read_mag();
-void LSM9DS1_read_WHO_AM_I();
-
-// check i2c status
-uint8_t LSM9DS1_check_status();
-uint8_t LSM9DS1_check_gyro();
-uint8_t LSM9DS1_check_accel();
-uint8_t LSM9DS1_check_mag();
-uint8_t LSM9DS1_check_WHO_AM_I();
-
-// enable send
-void LSM9DS1_enable_status();
-void LSM9DS1_enable_gyro();
-void LSM9DS1_enable_accel();
-void LSM9DS1_enable_mag();
-void LSM9DS1_enable_WHO_AM_I();
 
 // process
 void low_pass_filter(float alpha, Vec *mean, Vec *new_measurement);
