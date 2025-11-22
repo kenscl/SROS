@@ -179,21 +179,17 @@ void SPI_state_machine() {
         break;
     }
 
-    //LSM9DS1_READ_CTRL_REG4_M(&SPI_current);
-    //LSM9DS1_WRITE_CTRL_REG1_G(&SPI_current);
-
     return;
 }
 
-int trans_cnt = 0;
-int whoami = 0;
-int who_am_i_a_correct = 0;
-int who_am_i_m_correct = 0;
+volatile int trans_cnt = 0;
+volatile int whoami = 0;
+volatile int who_am_i_a_correct = 0;
+volatile int who_am_i_m_correct = 0;
 void SPI_send() {
     if (spi_busy || spi_next_state == SPI_STATE_IDLE) return;
     spi_busy = 1;
 
-    // sending logic
     SPI_current.cs_low();
 
     if (HAL_SPI_TransmitReceive_DMA(&hspi1, SPI_current.tx, SPI_current.rx, SPI_current.size) != HAL_OK) {
@@ -241,7 +237,6 @@ void SPI_process() {
 }
 
 void SPI_thread() {
-    //spi_current_state = SPI_STATE_IDLE;
     spi_next_state = SPI_STATE_IDLE;
         CS_A_H();
         CS_M_H();

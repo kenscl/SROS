@@ -425,8 +425,6 @@ void EKF_init_final(EKF *ekf) {
     ekf->R->r[5 + 6 * 5] = ss_mag * ss_mag;
 
     ekf->gyro_variance = ss_gyro * ss_gyro;
-    mat_print(ekf->Q);
-    mat_print(ekf->R);
 
     ekf->acc_refrence->r[0] = 0;
     ekf->acc_refrence->r[1] = 0;
@@ -466,8 +464,10 @@ volatile void attitude_thread() {
         update_measurements();
         EKF_predict(&ekf, &LSM9DS1_gyro_filtered, 0.005);
         EKF_update(&ekf);
+        scheduler_disable();
         os_printf("Attitude: ");
         quat_print(ekf.attitude);
+        scheduler_enable();
         sleep_until(next_time);
     }
 }

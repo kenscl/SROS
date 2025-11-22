@@ -4,7 +4,7 @@
 
 typedef uint64_t os_time_t;
 
-#define DEBUG                 2
+#define DEBUG                 0
 
 #define MAX_MATRIX            10
 
