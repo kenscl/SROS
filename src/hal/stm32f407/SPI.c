@@ -128,7 +128,6 @@ void SPI_state_machine() {
         //LSM9DS1_reset(&SPI_current);
         break;
     case SPI_STATE_LSM9_WRITE_CTRL_REG1_G:
-        os_printf("ctrl write \n");;
         LSM9DS1_WRITE_CTRL_REG1_G(&SPI_current);
         break;
     case SPI_STATE_LSM9_WRITE_CTRL_REG3_G:
@@ -159,9 +158,11 @@ void SPI_state_machine() {
         break;
     case SPI_STATE_LSM9_READ_GYRO:
         LSM9DS1_read_gyro(&SPI_current);
+        LSM9DS1_read_mag(&SPI_current);
         break;
     case SPI_STATE_LSM9_READ_ACC:
         LSM9DS1_read_acc(&SPI_current);
+        LSM9DS1_read_mag(&SPI_current);
         break;
     case SPI_STATE_LSM9_READ_MAG:
         LSM9DS1_read_mag(&SPI_current);
@@ -216,13 +217,8 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
         SPI_current.cs_high();
         CS_A_H();
         CS_M_H();
-        os_printf("res: ");
-        for (int i = 0; i < SPI_current.size; ++i) {
-            os_printf("%d ", SPI_current.rx[i]);
-        }
-        os_printf("\n");
         spi_busy = 0;
-        //SPI_process();
+        SPI_process();
     }
 }
 
