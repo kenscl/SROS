@@ -97,6 +97,8 @@ void LSM9DS1_read_gyro(SPI_INFO *fill);
 void LSM9DS1_read_acc(SPI_INFO *fill);
 void LSM9DS1_read_mag(SPI_INFO *fill);
 
+void LSM9DS1_READ_CTRL_REG4_M(SPI_INFO *fill);
+
 void LSM9DS1_calibrate_sensors();
 
 // data values

@@ -155,6 +155,7 @@ uint8_t ctrl_reg4_m = 0b00001100;
 
 void LSM9DS1_WRITE_CTRL_REG1_M(SPI_INFO *fill) {
     data1_m[0] = LSM9DS1_WRITE_REGISTER(CTRL_REG1_M);
+    data1_m[1] = ctrl_reg1_m;
     dummy_rx[0] = 0;
     dummy_rx[1] = 0;
 
@@ -167,6 +168,7 @@ void LSM9DS1_WRITE_CTRL_REG1_M(SPI_INFO *fill) {
 
 void LSM9DS1_WRITE_CTRL_REG2_M(SPI_INFO *fill) {
     data2_m[0] = LSM9DS1_WRITE_REGISTER(CTRL_REG2_M);
+    data2_m[1] = ctrl_reg2_m;
     dummy_rx[0] = 0;
     dummy_rx[1] = 0;
 
@@ -178,7 +180,8 @@ void LSM9DS1_WRITE_CTRL_REG2_M(SPI_INFO *fill) {
 }
 
 void LSM9DS1_WRITE_CTRL_REG3_M(SPI_INFO *fill) {
-    data1_m[0] = LSM9DS1_WRITE_REGISTER(CTRL_REG3_M);
+    data3_m[0] = LSM9DS1_WRITE_REGISTER(CTRL_REG3_M);
+    data3_m[1] = ctrl_reg3_m;
     dummy_rx[0] = 0;
     dummy_rx[1] = 0;
 
@@ -190,7 +193,8 @@ void LSM9DS1_WRITE_CTRL_REG3_M(SPI_INFO *fill) {
 }
 
 void LSM9DS1_WRITE_CTRL_REG4_M(SPI_INFO *fill) {
-    data1_m[0] = LSM9DS1_WRITE_REGISTER(CTRL_REG4_M);
+    data4_m[0] = LSM9DS1_WRITE_REGISTER(CTRL_REG4_M);
+    data4_m[1] = ctrl_reg4_m;
     dummy_rx[0] = 0;
     dummy_rx[1] = 0;
 
@@ -203,6 +207,20 @@ void LSM9DS1_WRITE_CTRL_REG4_M(SPI_INFO *fill) {
 
 uint8_t who_data[2], who_data_m[2] = {};
 uint8_t who_data_tx[2], who_data_tx_m[2] = {};
+
+void LSM9DS1_READ_CTRL_REG4_M(SPI_INFO *fill) {
+    who_data_tx_m[0] = LSM9DS1_READ_REGISTER(CTRL_REG4_M);
+    who_data_tx_m[1] = 0;
+    dummy_rx[0] = 0;
+    dummy_rx[1] = 0;
+
+    fill->rx = dummy_rx;
+    fill->tx = who_data_tx_m;
+    fill->cs_high = &CS_M_H;
+    fill->cs_low = &CS_M_L;
+    fill->size = 2;
+}
+
 
 void LSM9DS1_read_WHO_AM_I_A(SPI_INFO *fill) {
     who_data_tx[0] = LSM9DS1_READ_REGISTER(LSM9DS1_WHO_AM_I);
@@ -276,8 +294,8 @@ void LSM9DS1_read_mag(SPI_INFO *fill) {
         mag_data[i] = 0x00;
     }
 
-    fill->rx = acc_data;
-    fill->tx = acc_data_tx;
+    fill->rx = mag_data;
+    fill->tx = mag_data_tx;
     fill->cs_high = &CS_M_H;
     fill->cs_low = &CS_M_L;
     fill->size = 7;

@@ -5,9 +5,10 @@
 #include "../../hw_init.h"
 #include "./Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h"
 #include "../../sensors/LSM9DS1.h"
+#include "stm32f4xx_hal_spi.h"
 #include <stdint.h>
 
-volatile SPI_State_t spi_current_state = SPI_STATE_IDLE;
+//volatile SPI_State_t spi_current_state = SPI_STATE_IDLE;
 volatile int spi_next_state = SPI_STATE_IDLE;
 volatile uint8_t spi_busy = 0;
 volatile uint8_t lsm9_has_init = 0;
@@ -67,7 +68,7 @@ void SPI_select() {
         return;
     // lsm9 init statemachine
     if (!lsm9_has_init) {
-        if (spi_current_state == SPI_STATE_LSM9_INIT_DONE) {
+        if (spi_next_state >= SPI_STATE_LSM9_INIT_DONE) {
             lsm9_has_init = 1;
             spi_next_state++;
             return;
@@ -77,7 +78,7 @@ void SPI_select() {
         }
     }
 
-    if (spi_current_state != SPI_STATE_LSM9_INIT_DONE) {
+    if (spi_next_state == SPI_STATE_LSM9_INIT_DONE) {
         spi_next_state++;
         return;
     }
@@ -85,7 +86,7 @@ void SPI_select() {
     // lsm9 who am i state machine
     if (!lsm9_who_am_i_correct) {
         // called only when when who am I is wrong
-        if (spi_current_state == SPI_STATE_LSM9_READ_WHO_AM_I_M) {
+        if (spi_next_state == SPI_STATE_LSM9_READ_WHO_AM_I_M) {
             os_printf("[SPI] ERROR: WHO_AM_I wrong! \n");
             return;
         } else {
@@ -95,9 +96,12 @@ void SPI_select() {
             return;
         }
     }
+    if (lsm9_who_am_i_correct && spi_next_state == SPI_STATE_LSM9_READ_WHO_AM_I_M) {
+        spi_next_state++;
+    }
 
     // state machine cases
-    switch (spi_current_state) {
+    switch (spi_next_state) {
     case SPI_STATE_LSM9_READ_GYRO:
         spi_next_state++;
         break;
@@ -108,6 +112,9 @@ void SPI_select() {
         spi_next_state = SPI_STATE_LSM9_READ_GYRO;
         break;
     }
+    if( spi_next_state > SPI_STATE_LSM9_READ_MAG) {
+        spi_next_state = SPI_STATE_LSM9_READ_GYRO;
+    }
 
     return;
 }
@@ -117,9 +124,11 @@ void SPI_state_machine() {
     case SPI_STATE_IDLE:
         return;
     case SPI_STATE_LSM9_RESET:
-        LSM9DS1_reset(&SPI_current);
+        LSM9DS1_READ_CTRL_REG4_M(&SPI_current);
+        //LSM9DS1_reset(&SPI_current);
         break;
     case SPI_STATE_LSM9_WRITE_CTRL_REG1_G:
+        os_printf("ctrl write \n");;
         LSM9DS1_WRITE_CTRL_REG1_G(&SPI_current);
         break;
     case SPI_STATE_LSM9_WRITE_CTRL_REG3_G:
@@ -159,25 +168,30 @@ void SPI_state_machine() {
         break;
     }
 
+    //LSM9DS1_READ_CTRL_REG4_M(&SPI_current);
+    //LSM9DS1_WRITE_CTRL_REG1_G(&SPI_current);
+
     return;
 }
 
 int trans_cnt = 0;
 int whoami = 0;
+int who_am_i_a_correct = 0;
+int who_am_i_m_correct = 0;
 void SPI_send() {
-    if (spi_busy) return;
+    if (spi_busy || spi_next_state == SPI_STATE_IDLE) return;
     spi_busy = 1;
 
-    os_printf("SPI send: %d\n", SPI_current.tx[0]);
     // sending logic
     SPI_current.cs_low();
 
-    if (HAL_SPI_TransmitReceive_DMA(&hspi1, SPI_current.tx, SPI_current.rx, SPI_current.size) != HAL_OK)
-    {
+    if (HAL_SPI_TransmitReceive_DMA(&hspi1, SPI_current.tx, SPI_current.rx, SPI_current.size) != HAL_OK) {
         SPI_current.cs_high();
-        os_printf("[SPI] Transmition error! CNT: %d \n", trans_cnt);
+        os_printf("[SPI] Transmission error! CNT: %d\n", trans_cnt);
+        spi_busy = 0;
         return;
     }
+
     trans_cnt++;
     return;
 }
@@ -188,12 +202,27 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
     {
 
         whoami = SPI_current.rx[1]; // response byte
-        os_printf("WHO: %d \n", whoami);
+        if (spi_next_state == SPI_STATE_LSM9_READ_WHO_AM_I_A) {
+            if (whoami == 104) {
+                who_am_i_a_correct = 1;
+            }
+        }
+        if (spi_next_state == SPI_STATE_LSM9_READ_WHO_AM_I_M) {
+            if (whoami == 61) {
+                who_am_i_m_correct = 1;
+                lsm9_who_am_i_correct = 1;
+            }
+        }
         SPI_current.cs_high();
         CS_A_H();
         CS_M_H();
+        os_printf("res: ");
+        for (int i = 0; i < SPI_current.size; ++i) {
+            os_printf("%d ", SPI_current.rx[i]);
+        }
+        os_printf("\n");
         spi_busy = 0;
-        SPI_process();
+        //SPI_process();
     }
 }
 
@@ -206,8 +235,8 @@ void SPI_process() {
 }
 
 void SPI_thread() {
-    spi_current_state = SPI_STATE_IDLE;
-    spi_next_state = spi_current_state;
+    //spi_current_state = SPI_STATE_IDLE;
+    spi_next_state = SPI_STATE_IDLE;
         CS_A_H();
         CS_M_H();
 
@@ -216,6 +245,6 @@ void SPI_thread() {
             SPI_process();
         }
 
-        sleep(2 * MILLISECONDS);
+        sleep(1 * MILLISECONDS);
     }
 }

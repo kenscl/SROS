@@ -65,6 +65,7 @@ int main(void) {
     // start system
     scheduler_enable();
 
+
     while (1) {
         //OS_WARN("Scheduler didn't start!");
     }
