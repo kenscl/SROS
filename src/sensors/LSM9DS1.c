@@ -385,13 +385,15 @@ uint32_t next_mag = 0;
 VEC_ALLOC_STATIC(comparison, 3);
 
 volatile void LSM9DS1_thread() {
+    sleep(20 * MILLISECONDS);
+    LSM9DS1_calibrate_sensors();
     while (1) {
         volatile uint32_t next_time = now() + 3 * MILLISECONDS;
         sleep(2 * MILLISECONDS);
-
         process_sensors();
 
-        if (DEBUG == 2) {
+        if (DEBUG == 2 && !spi_busy) {
+            scheduler_disable();
             os_printf("[LSM9DS1_gyro] ");
             vec_print(&LSM9DS1_gyro_filtered);
 
@@ -400,6 +402,7 @@ volatile void LSM9DS1_thread() {
 
             os_printf("[LSM9DS1_mag] ");
             vec_print(&LSM9DS1_mag_filtered);
+            scheduler_enable();
         }
         sleep_until(next_time);
     }

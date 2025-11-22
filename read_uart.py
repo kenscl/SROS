@@ -1,8 +1,8 @@
 import serial
 import time
 
-port = '/dev/ttyUSB0'  
-baudrate = 115200 
+port = '/dev/ttyUSB0'
+baudrate = 115200
 
 ser = serial.Serial(port, baudrate)
 
@@ -13,16 +13,15 @@ while True:
     try:
         try:
             while True:
-                data = ser.readline().decode('utf-8').strip()  
+                data = ser.readline().decode('utf-8').strip()
                 print(data)
                 count += 1
                 if (last_time + 1< time.time()):
-                    print("nbr of messages per second: %d" % count)
                     last_time = time.time()
                     count = 0
 
-                
-                
+
+
         except KeyboardInterrupt:
             ser.close()
             output_file.close()

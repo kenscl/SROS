@@ -4,7 +4,7 @@
 
 typedef uint64_t os_time_t;
 
-#define DEBUG                 0
+#define DEBUG                 2
 
 #define MAX_MATRIX            10
 
@@ -24,8 +24,3 @@ typedef uint64_t os_time_t;
 #define MINUTES SECONDS * 60
 #define HOURS MINUTES * 60
 #define DAYS HOURS * 24
-
-extern uint8_t forced_restard;
-
-void OS_WARN (char * msg);
-void OS_PANIC (char* msg);

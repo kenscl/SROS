@@ -62,7 +62,7 @@ void dma2_stream0_handler() {
     HAL_DMA_IRQHandler(&hdma_spi1_rx);
 }
 
-
+uint64_t last_time_send = 0;
 void SPI_select() {
     if (spi_busy)
         return;
@@ -100,21 +100,33 @@ void SPI_select() {
         spi_next_state++;
     }
 
-    // state machine cases
-    switch (spi_next_state) {
-    case SPI_STATE_LSM9_READ_GYRO:
-        spi_next_state++;
-        break;
-    case SPI_STATE_LSM9_READ_ACC:
-        spi_next_state++;
-        break;
-    case SPI_STATE_LSM9_READ_MAG:
-        spi_next_state = SPI_STATE_LSM9_READ_GYRO;
-        break;
+    if (spi_next_state < SPI_STATE_LSM9_READ_GYRO) {
+        spi_next_state = SPI_STATE_LSM9_READ_GYRO - 1;
     }
+
+    // state machine cases
+    if (last_time_send + 3 * MILLISECONDS < now()) {
+        switch (spi_next_state) {
+        case SPI_STATE_LSM9_READ_GYRO:
+            spi_next_state++;
+            break;
+        case SPI_STATE_LSM9_READ_ACC:
+            spi_next_state++;
+            break;
+        case SPI_STATE_LSM9_READ_MAG:
+            spi_next_state = SPI_STATE_LSM9_READ_GYRO;
+            last_time_send = now();
+            break;
+        }
+    }
+    else {
+        spi_next_state = SPI_STATE_IDLE;
+    }
+
     if( spi_next_state > SPI_STATE_LSM9_READ_MAG) {
         spi_next_state = SPI_STATE_LSM9_READ_GYRO;
     }
+
 
     return;
 }
@@ -158,11 +170,9 @@ void SPI_state_machine() {
         break;
     case SPI_STATE_LSM9_READ_GYRO:
         LSM9DS1_read_gyro(&SPI_current);
-        LSM9DS1_read_mag(&SPI_current);
         break;
     case SPI_STATE_LSM9_READ_ACC:
         LSM9DS1_read_acc(&SPI_current);
-        LSM9DS1_read_mag(&SPI_current);
         break;
     case SPI_STATE_LSM9_READ_MAG:
         LSM9DS1_read_mag(&SPI_current);

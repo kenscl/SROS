@@ -8,6 +8,7 @@
 extern SPI_HandleTypeDef hspi1;
 extern DMA_HandleTypeDef hdma_spi1_rx;
 extern DMA_HandleTypeDef hdma_spi1_tx;
+extern volatile uint8_t spi_busy;
 
 typedef enum {
     SPI_STATE_IDLE = 0,
