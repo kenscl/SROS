@@ -6,7 +6,9 @@
 extern uint64_t ticks;
 
 extern os_pcb *volatile current_thread;
+extern "C" {
 void schedule();
+}
 extern uint8_t sched_on;
 
 void scheduler_init();

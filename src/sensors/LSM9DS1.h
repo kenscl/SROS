@@ -102,18 +102,18 @@ void LSM9DS1_READ_CTRL_REG4_M(SPI_INFO *fill);
 void LSM9DS1_calibrate_sensors();
 
 // data values
-extern Vec LSM9DS1_gyro;
-extern Vec LSM9DS1_gyro_filtered;
+extern Vec3 LSM9DS1_gyro;
+extern Vec3 LSM9DS1_gyro_filtered;
 extern float LSM9DS1_gyro_availiable;
-extern Vec LSM9DS1_acc;
-extern Vec LSM9DS1_acc_filtered;
+extern Vec3 LSM9DS1_acc;
+extern Vec3 LSM9DS1_acc_filtered;
 extern float LSM9DS1_acc_availiable;
-extern Vec LSM9DS1_mag;
-extern Vec LSM9DS1_mag_filtered;
+extern Vec3 LSM9DS1_mag;
+extern Vec3 LSM9DS1_mag_filtered;
 extern float LSM9DS1_mag_availiable;
 
 // process
-void low_pass_filter(float alpha, Vec *mean, Vec *new_measurement);
+void low_pass_filter(float alpha, Vec3 *mean, Vec3 *new_measurement);
 void LSM9DS1_process_status();
 void LSM9DS1_process_gyro();
 void LSM9DS1_process_accel();

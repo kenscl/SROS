@@ -10,7 +10,7 @@ void * os_alloc(size_t size);
 void os_free(void * pointer);
 
 /*
- * Test weather or not pointer was allocated with os_alloc 
+ * Test weather or not pointer was allocated with os_alloc
  */
 int os_test_mem(void * pointer);
 

@@ -10,49 +10,44 @@
 
 typedef struct EKF {
     // data
-    Quat *attitude;
-    Vec *bias; // 3
+    Quat attitude;
+    Vec3 bias; // 3
     // EKF components
-    Vec *x; // 7
-    Vec *h, *z, *y; // 6
-    Mat *P, *F, *Q; //7 x 7
-    Mat *H; // 4 x 7
-    Mat *K;// 7 x 4
-    Mat *R; // 6 x 6
+    Vec<7> x; // 7
+    Vec<6> h, z, y; // 6
+    Mat<7, 7> P, F, Q; //7 x 7
+    Mat<6, 7> H; // 4 x 7
+    Mat<7, 6> K;// 7 x 4
+    Mat<6, 6> R; // 6 x 6
     // helper data
-    Quat *q;
+    Quat q;
 
-    Mat *temp_mat1; // 7 x 7
-    Mat *temp_mat2; // 7 x 7
-    Mat *F_trans; // 7 x 7
-    Mat *W; // 3 x 4
-    Mat *W_trans; // 4 x 3
+    Mat<7, 7> temp_mat1; // 7 x 7
+    Mat<7, 7> temp_mat2; // 7 x 7
+    Mat<7, 7> F_trans; // 7 x 7
+    Mat<3, 4> W; // 3 x 4
+    Mat<4, 3> W_trans; // 4 x 3
 
-    Mat *S; // 4 x 4
-    Mat *S_inv; // 4 x 4
-    Mat *H_trans; // 7 x 4
-    Mat *tmp1; // 7 x 4
-    Mat *tmp2; //4 x 4
+    Mat<4, 4> S; // 4 x 4
+    Mat<4, 4> S_inv; // 4 x 4
+    Mat<7, 6> H_trans; // 7 x 4
 
-    Vec *tmp; // 7
 
-    Mat *i7; // 7 x 7
-    Mat *tmp3; // 7 x 7
-    Mat *tmp4; // 7 x 7
-    Mat *rot; // 3 x 3
-    Mat *rot_inv; // 3 x 3
-    Vec *acc_refrence; // 3
-    Vec *mag_refrence; // 3
-    Vec *vtmp; // 3
+    Mat<7, 7> i7; // 7 x 7
+    Mat<3, 3> rot; // 3 x 3
+    Mat<3, 3> rot_inv; // 3 x 3
+    Vec3 acc_refrence; // 3
+    Vec3 mag_refrence; // 3
+    Vec3 vtmp; // 3
 
     float gyro_variance;
 } EKF;
 
-void EKF_init_incremental(EKF *ekf, Vec *gyro, Vec *acc, Vec *mag);
+void EKF_init_incremental(EKF *ekf, Vec3 *gyro, Vec3 *acc, Vec3 *mag);
 void EKF_init_final(EKF *ekf);
-void EKF_update_acc(EKF *ekf, Vec *acc);
-void EKF_update_mag(EKF *ekf, Vec *mag, Vec *acc);
-void EKF_predict(EKF *ekf,Vec *gyro, float dt);
+void EKF_update_acc(EKF *ekf, Vec3 *acc);
+void EKF_update_mag(EKF *ekf, Vec3 *mag, Vec3 *acc);
+void EKF_predict(EKF *ekf,Vec3 *gyro, float dt);
 void EKF_update(EKF *ekf);
 
 volatile void attitude_thread();
