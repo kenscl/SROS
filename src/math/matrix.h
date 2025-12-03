@@ -126,56 +126,46 @@ template <size_t m, size_t n> class Mat {
         return result;
     }
 
-    float det() {
-        if (m != n) {
-            OS_WARN("Error: Determinant of non-square matrix!");
-            return 0;
+    Mat<m - 1, n - 1> minor(size_t row, size_t col) const {
+        Mat<m - 1, n - 1> result;
+        size_t r_idx = 0;
+        for (size_t i = 0; i < m; ++i) {
+            if (i == row) continue;
+            size_t c_idx = 0;
+            for (size_t j = 0; j < n; ++j) {
+                if (j == col) continue;
+                result[r_idx][c_idx] = r[i][j];
+                ++c_idx;
+            }
+            ++r_idx;
         }
-        if (n == 1)
-            return this->r[0][0];
-        Mat<m, n> temp = *this;
-        float det = 1;
-
-        for (int i = 0; i < n; ++i) {
-            float max_elem = temp[i][i];
-            int max_row = i;
-            for (int k = i + 1; k < n; ++k) {
-                if (fabs(temp[k][i]) > fabs(max_elem)) {
-                    max_elem = temp[k][i];
-                    max_row = k;
-                }
+	return result;
+    }
+    float det() __attribute__((optimize("O0"))){
+        if constexpr (m == 1) {
+            return r[0][0];
+        } else if constexpr (m == 2) {
+            return r[0][0] * r[1][1] - r[0][1] * r[1][0];
+        } else if constexpr (m == 3) {
+            return r[0][0] * (r[1][1] * r[2][2] - r[1][2] * r[2][1]) -
+                   r[0][1] * (r[1][0] * r[2][2] - r[1][2] * r[2][0]) +
+                   r[0][2] * (r[1][0] * r[2][1] - r[1][1] * r[2][0]);
+        } else {
+            // General recursive formula
+            volatile float det = 0.0;
+            for (size_t j = 0; j < n; ++j) {
+                float m_det = minor(0, j).det();
+                det += ((j % 2 == 0) ? 1 : -1) * r[0][j] * m_det;
             }
-
-            if (max_row != i) {
-                for (int j = 0; j < n; ++j) {
-                    float temp_val = temp[i][j];
-                    temp[i][j] = temp[max_row][j];
-                    temp[max_row][j] = temp_val;
-                }
-                det *= -1;
-            }
-            if (temp[i][i] == 0) {
-                return 0;
-            }
-
-            for (int k = i + 1; k < n; ++k) {
-                float factor = temp[k][i] / temp[i][i];
-                for (int j = i; j < n; ++j) {
-                    temp[k][j] -= factor * temp[i][j];
-                }
-            }
-
-            det *= temp[i][i];
+            return det;
         }
-
-        return det;
     }
 
     // cofactor for the adjugate since submatrix causes issues.
     float coaf(size_t i, size_t j) {
         Mat<m - 1, n - 1> minor;
-        int minor_row = 0, minor_col = 0;
-        float sign = ((i + j) % 2 == 0) ? 1 : -1;
+	int minor_row = 0, minor_col = 0;
+	float sign = ((i + j) % 2 == 0) ? 1 : -1;
 
         for (int row = 0; row < m; ++row) {
             if (row == i)
@@ -189,7 +179,8 @@ template <size_t m, size_t n> class Mat {
             }
             minor_row++;
         }
-        return sign * minor.det();
+        float res = sign * minor.det();
+        return res;
     }
 
     Mat adjugate() {
@@ -225,8 +216,7 @@ template <size_t m, size_t n> class Mat {
     Mat inverse() {
         float det = this->det();
         if (n != m || det == 0) {
-            OS_WARN("M err inverse!");
-            scheduler_disable();
+            os_printf("M err inverse! \n");
             while (1) {
             }
             return *this;

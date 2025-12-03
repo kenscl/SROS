@@ -136,6 +136,7 @@ class Vec {
         }
 
         void print_bare() {
+            os_putstr("Vector: [ ");
             for (int i = 0; i < size - 1; ++i) {
                 if (r[i] != r[i])
                     os_putstr("NaN ");
@@ -145,7 +146,7 @@ class Vec {
                 }
             }
             os_putf(this->r[size-1]);
-            os_putstr("\n");
+            os_putstr(" ]\n");
         }
 };
 typedef Vec<4> Vec4;

@@ -13,27 +13,27 @@ typedef struct EKF {
     Quat attitude;
     Vec3 bias; // 3
     // EKF components
-    Vec<7> x; // 7
+    Vec<4> x; // 7
     Vec<6> h, z, y; // 6
-    Mat<7, 7> P, F, Q; //7 x 7
-    Mat<6, 7> H; // 4 x 7
-    Mat<7, 6> K;// 7 x 4
+    Mat<4, 4> P, F, Q; //7 x 7
+    Mat<6, 4> H; // 4 x 7
+    Mat<4, 6> K;// 4 x 4
     Mat<6, 6> R; // 6 x 6
     // helper data
     Quat q;
 
-    Mat<7, 7> temp_mat1; // 7 x 7
-    Mat<7, 7> temp_mat2; // 7 x 7
-    Mat<7, 7> F_trans; // 7 x 7
-    Mat<3, 4> W; // 3 x 4
-    Mat<4, 3> W_trans; // 4 x 3
+    Mat<4, 4> temp_mat1; // 4 x 4
+    Mat<4, 4> temp_mat2; // 4 x 4
+    Mat<4, 4> F_trans; // 4 x 4
+    Mat<4, 3> W; // 3 x 4
+    Mat<3, 4> W_trans; // 4 x 3
 
     Mat<4, 4> S; // 4 x 4
     Mat<4, 4> S_inv; // 4 x 4
-    Mat<7, 6> H_trans; // 7 x 4
+    Mat<4, 6> H_trans; // 4 x 4
 
 
-    Mat<7, 7> i7; // 7 x 7
+    Mat<4, 4> i4; // 4 x 4
     Mat<3, 3> rot; // 3 x 3
     Mat<3, 3> rot_inv; // 3 x 3
     Vec3 acc_refrence; // 3
