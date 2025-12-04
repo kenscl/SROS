@@ -191,7 +191,7 @@ class Quat {
         }
 
         void print_bare() const {
-            os_printf("%f, %f, %f, %f \n", q, i, j, k);
+            os_printf("[ %f %f %f %f ]\n", q, i, j, k);
         }
 };
 

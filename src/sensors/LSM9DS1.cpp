@@ -304,10 +304,10 @@ void LSM9DS1_process_gyro() {
     volatile int16_t x = (gyro_data[1 + 1] << 8) | gyro_data[0 + 1];
     volatile int16_t y = (gyro_data[3 + 1] << 8) | gyro_data[2 + 1];
     volatile int16_t z = (gyro_data[5 + 1] << 8) | gyro_data[4 + 1];
-    LSM9DS1_gyro[0] = (float)(x * GYRO_SENSITIVITY) / 1000 * M_PI / 180;
-    LSM9DS1_gyro[1] = (float)(y * GYRO_SENSITIVITY) / 1000 * M_PI / 180;
-    LSM9DS1_gyro[2] = (float)(z * GYRO_SENSITIVITY) / 1000 * M_PI / 180;
-    LSM9DS1_gyro = LSM9DS1_gyro - gyro_bias;
+    LSM9DS1_gyro[0] = (float)(x * GYRO_SENSITIVITY) / 1000;
+    LSM9DS1_gyro[1] = (float)(y * GYRO_SENSITIVITY) / 1000;
+    LSM9DS1_gyro[2] = (float)(z * GYRO_SENSITIVITY) / 1000;
+    LSM9DS1_gyro = (LSM9DS1_gyro - gyro_bias) * (M_PI / 180);
     low_pass_filter(a_gyro, &LSM9DS1_gyro_filtered, &LSM9DS1_gyro);
 }
 
