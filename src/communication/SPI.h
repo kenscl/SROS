@@ -10,6 +10,8 @@ extern DMA_HandleTypeDef hdma_spi1_rx;
 extern DMA_HandleTypeDef hdma_spi1_tx;
 extern volatile uint8_t spi_busy;
 
+extern uint32_t SPI_error_count;
+
 typedef enum {
 SPI_STATE_IDLE = 0,
   //// LSM9 initi stuff
@@ -54,6 +56,7 @@ void SPI_state_machine();
 void SPI_select();
 void SPI_send();
 void SPI_process();
+void SPI_reconnect();
 volatile void SPI_thread();
 
 #endif

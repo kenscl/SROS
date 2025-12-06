@@ -28,45 +28,45 @@ Mat3 acc_scale;
 
 void LSM9DS1_calibrate_sensors() {
     //// Gyroscope
-    gyro_bias[0] = -0.525990;
-    gyro_bias[1] = 2.009206;
-    gyro_bias[2] = 1.901428;
+    gyro_bias[0] = 0;
+    gyro_bias[1] = 0;
+    gyro_bias[2] = 0;
 
     //// Magnetometer
 
-    soft_iron[0][0] = 0.863373;
-    soft_iron[0][1] = 0.043898;
-    soft_iron[0][2] = 0.008326;
+    soft_iron[0][0] = 1;
+    soft_iron[0][1] = 0;
+    soft_iron[0][2] = 0;
 
-    soft_iron[1][0] = 0.000861;
-    soft_iron[1][1] = 0.486198;
-    soft_iron[1][2] = -0.003300;
+    soft_iron[1][0] = 0;
+    soft_iron[1][1] = 1;
+    soft_iron[1][2] = 0;
 
-    soft_iron[2][0] = 0.005396;
-    soft_iron[2][1] = -0.032683;
-    soft_iron[2][2] = 0.768943;
+    soft_iron[2][0] = 0;
+    soft_iron[2][1] = 0;
+    soft_iron[2][2] = 1;
 
-    hard_iron[0] = 0.164978;
-    hard_iron[1] = -0.395368;
-    hard_iron[2] = -0.046471;
+    hard_iron[0] = 0;
+    hard_iron[1] = 0;
+    hard_iron[2] = 0;
 
     //// Accelerometer
 
-    acc_bias[0] = -0.008113;
-    acc_bias[1] = -0.001464;
-    acc_bias[2] = 0.002196;
+    acc_bias[0] = 0;
+    acc_bias[1] = 0;
+    acc_bias[2] = 0;
 
-    acc_scale[0][0] = 6.064908;
-    acc_scale[0][1] = 0.000000;
-    acc_scale[0][2] = 0.000000;
+    acc_scale[0][0] = 1;
+    acc_scale[0][1] = 0;
+    acc_scale[0][2] = 0;
 
-    acc_scale[1][0] = 0.000000;
-    acc_scale[1][1] = 5.996138;
-    acc_scale[1][2] = 0.000000;
+    acc_scale[1][0] = 0;
+    acc_scale[1][1] = 1;
+    acc_scale[1][2] = 0;
 
-    acc_scale[2][0] = 0.000000;
-    acc_scale[2][1] = 0.000000;
-    acc_scale[2][2] = 5.991755;
+    acc_scale[2][0] = 0;
+    acc_scale[2][1] = 0;
+    acc_scale[2][2] = 1;
 }
 
 float LSM9DS1_gyro_availiable = 0;
@@ -305,7 +305,7 @@ void LSM9DS1_process_gyro() {
     volatile int16_t y = (gyro_data[3 + 1] << 8) | gyro_data[2 + 1];
     volatile int16_t z = (gyro_data[5 + 1] << 8) | gyro_data[4 + 1];
     LSM9DS1_gyro[0] = (float)(x * GYRO_SENSITIVITY) / 1000;
-    LSM9DS1_gyro[1] = (float)(y * GYRO_SENSITIVITY) / 1000;
+    LSM9DS1_gyro[1] = -(float)(y * GYRO_SENSITIVITY) / 1000;
     LSM9DS1_gyro[2] = (float)(z * GYRO_SENSITIVITY) / 1000;
     LSM9DS1_gyro = (LSM9DS1_gyro - gyro_bias) * (M_PI / 180);
     low_pass_filter(a_gyro, &LSM9DS1_gyro_filtered, &LSM9DS1_gyro);
@@ -315,8 +315,8 @@ void LSM9DS1_process_accel() {
     int16_t x = (acc_data[1 + 1] << 8) | acc_data[0 + 1];
     int16_t y = (acc_data[3 + 1] << 8) | acc_data[2 + 1];
     int16_t z = (acc_data[5 + 1] << 8) | acc_data[4 + 1];
-    LSM9DS1_acc[0] = (float)(x * ACC_SENSITIVITY) / 1000;
-    LSM9DS1_acc[1] = (float)(y * ACC_SENSITIVITY) / 1000;
+    LSM9DS1_acc[0] = -(float)(x * ACC_SENSITIVITY) / 1000;
+    LSM9DS1_acc[1] = -(float)(y * ACC_SENSITIVITY) / 1000;
     LSM9DS1_acc[2] = (float)(z * ACC_SENSITIVITY) / 1000;
     LSM9DS1_acc = acc_scale * (LSM9DS1_acc - acc_bias);
 

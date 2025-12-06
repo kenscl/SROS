@@ -16,6 +16,7 @@ volatile uint8_t lsm9_who_am_i_correct = 0;
 
 SPI_INFO SPI_current;
 
+uint32_t SPI_error_count;
 void CS1_Select() {
     HAL_GPIO_WritePin(GPIOE, GPIO_PIN_4, GPIO_PIN_RESET);
 }
@@ -52,7 +53,6 @@ void CS_M_H(void) {
 void CS_M_L(void) {
     CS2_Select();
 }
-
 
 extern "C" {
 void dma2_stream3_handler() {
@@ -186,6 +186,7 @@ volatile int trans_cnt = 0;
 volatile int whoami = 0;
 volatile int who_am_i_a_correct = 0;
 volatile int who_am_i_m_correct = 0;
+int spi_error = 0;
 void SPI_send() {
     if (spi_busy || spi_next_state == SPI_STATE_IDLE)
         return;
@@ -198,6 +199,8 @@ void SPI_send() {
         SPI_current.cs_high();
         os_printf("[SPI] Transmission error! CNT: %d\n", trans_cnt);
         spi_busy = 0;
+	spi_error = true;
+	SPI_error_count += 1;
         return;
     }
 
@@ -228,6 +231,27 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi) {
         SPI_process();
     }
 }
+
+}
+
+void SPI_reconnect() {
+    HAL_SPI_DeInit(&hspi1);
+    HAL_SPI_Init(&hspi1);
+
+    SPI_current.cs_low();
+    uint8_t reset_cmd[2] = {0x22, 0x05}; // CTRL_REG8, reset value
+    HAL_SPI_Transmit(&hspi1, reset_cmd, 2, 10);
+    SPI_current.cs_high();
+
+    sleep(50);
+
+    spi_next_state = SPI_STATE_LSM9_RESET;
+    lsm9_has_init = 0;
+    lsm9_who_am_i_correct = 0;
+    who_am_i_a_correct = 0;
+    who_am_i_m_correct = 0;
+    spi_error = false;
+
 }
 
 void SPI_process() {
@@ -244,6 +268,10 @@ volatile void SPI_thread() {
     CS_M_H();
 
     while (1) {
+	if (spi_error) {
+	    SPI_reconnect();
+	}
+
         if (!spi_busy) {
             SPI_process();
         }

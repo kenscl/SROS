@@ -5,15 +5,16 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stm32f4xx.h>
+#include "../../communication/SPI.h"
 
 // ill use usart 2 / pa2 tx, pa3 rx
 
 void enable_usart() {}
 
 void os_putchar(char c) {
-    USART2->DR = c;
-    while (!(USART2->SR & USART_SR_TC))
-        ;
+	USART2->DR = c;
+	while (!(USART2->SR & USART_SR_TC))
+	    ;
 }
 
 void os_putstr(char *s) {
