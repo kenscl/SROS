@@ -472,16 +472,6 @@ void assert_failed(uint8_t *file, uint32_t line)
 #endif /* USE_FULL_ASSERT */
 
 }
-void pwm_thread(void) {
-    int cnt = 0;
-    while (1) {
-        __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, cnt);
-        cnt++;
-        sleep(100 * MILLISECONDS);
-        if (cnt > 50)
-            cnt = 0;
-    }
-}
 
 
 void hal_init() {

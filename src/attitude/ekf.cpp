@@ -269,7 +269,7 @@ void EKF_init_final(EKF *ekf) {
 
     ss_acc = 0.01;
     ss_mag = 0.01;
-    ss_gyro = 0.005;
+    ss_gyro = 0.004;
     ekf->R[0][0] = ss_acc;
     ekf->R[1][1] = ss_acc;
     ekf->R[2][2] = ss_acc;
@@ -291,11 +291,8 @@ void EKF_init_final(EKF *ekf) {
 }
 uint64_t next_mag_time = 0;
 void update_measurements() {
-    if (next_mag_time <= now()) {
-        EKF_update_acc(&ekf, &LSM9DS1_acc_filtered);
-        EKF_update_mag(&ekf, &LSM9DS1_mag_filtered, &LSM9DS1_acc_filtered);
-        next_mag_time = now() + 20 * MILLISECONDS;
-    }
+    EKF_update_acc(&ekf, &LSM9DS1_acc_filtered);
+    EKF_update_mag(&ekf, &LSM9DS1_mag_filtered, &LSM9DS1_acc_filtered);
 }
 
 volatile void attitude_thread() {
@@ -308,14 +305,26 @@ volatile void attitude_thread() {
 
     EKF_init_final(&ekf);
 
-    uint64_t next_time = now();
+    update_measurements();
+    uint32_t next_time = now();
+    uint32_t last_time_prediction = now();
+    uint32_t last_time_update = now();
+    uint32_t last_time_print = now();
     while (1) {
-      next_time = now() + 5 * MILLISECONDS;
-      update_measurements();
-      EKF_predict(&ekf, &LSM9DS1_gyro_filtered, 0.005);
-      EKF_update(&ekf);
-      os_printf("Attitude: ");
-      ekf.attitude.print_bare();
-      sleep_until(next_time);
+	if (last_time_prediction + 2 < now()) {
+	    EKF_predict(&ekf, &LSM9DS1_gyro_filtered, 0.002);
+	    last_time_prediction = now();
+	}
+	if (last_time_update + 20 < now()) {
+            update_measurements();
+            EKF_update(&ekf);
+            last_time_update = now();
+        }
+        if (last_time_print + 100 < now()) {
+            last_time_print = now();
+            os_printf("Attitude: ");
+            ekf.attitude.print_bare();
+        }
+        yield();
     }
 }

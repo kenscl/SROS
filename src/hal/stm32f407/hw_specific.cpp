@@ -111,6 +111,9 @@ uint64_t now_high_accuracy() {
     return ((uint64_t)high << 32) | low;
 }
 
+uint32_t one_second_stack[1000];
+os_pcb one_second_pcb;
+
 void miscellaneous_init() {
     FPU->FPCCR |= (1 << 30) | (1 << 31); // Set ASPEN and LSPEN
     SCB->CPACR |= (0xF << 20);
@@ -130,7 +133,8 @@ void miscellaneous_init() {
 
     NVIC_EnableIRQ(DMA1_Stream6_IRQn);
     NVIC_EnableIRQ(TIM2_IRQn);
-    register_thread_auto(&one_second_thread, 128, STD_THREAD_PRIORITY, "1_second_thread");
+
+    register_thread_auto(&idle_thread, 1000, one_second_stack, &one_second_pcb, 10, "one_second_thread");
     TIM2_init();
 }
 

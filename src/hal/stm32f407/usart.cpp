@@ -99,7 +99,6 @@ void os_putf(float num) {
 }
 
 void os_printf(char *format, ...) {
-  scheduler_disable();
     va_list args;
     va_start(args, format);
 
@@ -146,8 +145,8 @@ void os_printf(char *format, ...) {
     }
     os_putchar('\0');
     va_end(args);
-  scheduler_enable();
 }
+
 int msg_put(char *msg, size_t size) {
     for (int i = 0; i < size; ++i) {
         os_putchar(msg[i]);

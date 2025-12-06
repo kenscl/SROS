@@ -20,7 +20,7 @@ include(${PLATFORM_CONFIG_FILE})
 set(TARGET_NAME SROS)
 
 file(GLOB C_SOURCES ${CMAKE_SOURCE_DIR}/src/*.c ${HAL_FILES_C} )
-file(GLOB CPP_SOURCES ${CMAKE_SOURCE_DIR}/src/*.cpp ${CMAKE_SOURCE_DIR}/src/krnl/*.cpp ${CMAKE_SOURCE_DIR}/src/hal/*.cpp ${CMAKE_SOURCE_DIR}/src/communication/*.cpp ${CMAKE_SOURCE_DIR}/src/math/*.cpp ${CMAKE_SOURCE_DIR}/src/utils/*.cpp ${CMAKE_SOURCE_DIR}/src/attitude/*.cpp ${CMAKE_SOURCE_DIR}/src/sensors/*.cpp)
+file(GLOB CPP_SOURCES ${CMAKE_SOURCE_DIR}/src/*.cpp ${CMAKE_SOURCE_DIR}/src/krnl/*.cpp ${CMAKE_SOURCE_DIR}/src/hal/*.cpp ${CMAKE_SOURCE_DIR}/src/communication/*.cpp ${CMAKE_SOURCE_DIR}/src/math/*.cpp ${CMAKE_SOURCE_DIR}/src/utils/*.cpp ${CMAKE_SOURCE_DIR}/src/attitude/*.cpp ${CMAKE_SOURCE_DIR}/src/sensors/*.cpp ${CMAKE_SOURCE_DIR}/src/actuators/*.cpp)
 
 set(SOURCES  ${CPP_SOURCES} ${C_SOURCES} ${OUTHER_SOURCES})
 

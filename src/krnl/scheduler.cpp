@@ -48,39 +48,60 @@ int remove_thread(os_pcb * thrd) {
 
 extern "C" {
 void schedule() {
-  static uint64_t schedule_counter = 0;
-  if (current_thread == 0) {
-    current_thread = thread_list[0];
-    ++schedule_counter;
-    return;
-  }
+    static uint64_t schedule_counter = 0;
 
-  current_thread->last_time = now_high_accuracy();
-  if (current_thread->stack_end > current_thread->sp &&
-      current_thread->sp > current_thread->stack_begin) {
-      os_printf("Stack overrun in thread %s \n", current_thread->name);
-  }
-  volatile os_pcb *next_thread = current_thread;
+    uint64_t now_ts = now();
+    uint64_t now_high = now_high_accuracy();
 
-  for (uint16_t i = 0; i < OS_MAX_THREAD_COUNT; ++i) {
-    uint8_t exists = thread_list[i]->sp != 0;
-    uint8_t is_ready = thread_list[i]->rdy == 1;
-    uint8_t is_not_sleeping = thread_list[i]->sleep_until <= now();
-
-    if (exists && is_ready && is_not_sleeping) {
-      uint8_t is_larger_priority =
-          thread_list[i]->priority >= current_thread->priority;
-      uint8_t last_time_was_earlier =
-          thread_list[i]->last_time < current_thread->last_time;
-      uint8_t current_is_sleeping = (current_thread->sleep_until >= now());
-      if ((is_larger_priority || current_is_sleeping) &&
-          last_time_was_earlier) {
-        next_thread = thread_list[i];
-      }
+    if (current_thread == NULL) {
+        current_thread = thread_list[0];
+        current_thread->last_time = now_high;
+        ++schedule_counter;
+        return;
     }
-  }
-  ++schedule_counter;
-  current_thread = (os_pcb *)next_thread;
+
+    current_thread->last_time = now_high;
+
+    if (current_thread->stack_end > current_thread->sp &&
+        current_thread->sp > current_thread->stack_begin) {
+        os_printf("Stack overrun in thread %s \n", current_thread->name);
+    }
+
+    os_pcb *best = NULL;
+
+    for (uint16_t i = 0; i < OS_MAX_THREAD_COUNT; ++i) {
+        os_pcb *t = thread_list[i];
+
+        if (t == NULL || t->sp == 0)
+            continue;
+
+        if (t->rdy == 0)
+            continue;
+
+        if (t->sleep_until > now_ts)
+            continue;
+
+        if (best == NULL) {
+            best = t;
+            continue;
+        }
+
+        if (t->priority > best->priority) {
+            best = t;
+            continue;
+        }
+
+        if (t->priority == best->priority &&
+            t->last_time < best->last_time) {
+            best = t;
+            continue;
+        }
+    }
+
+    if (best != NULL)
+        current_thread = best;
+
+    ++schedule_counter;
 }
 }
 
