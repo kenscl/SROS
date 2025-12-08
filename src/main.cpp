@@ -30,7 +30,8 @@ int main(void) {
 
     OS_THREAD(SPI_thread, 1000, 10, "SPI_thread");
     OS_THREAD(LSM9DS1_thread, 2000, 10, "LSM9DS1_thread");
-    OS_THREAD(attitude_thread, 2000, 10, "EKF_thread");
+    //OS_THREAD(attitude_thread, 2000, 10, "EKF_thread");
+    OS_THREAD(complementary_thread, 500, 10, "complementary_thread");
 
     // End of user thread definitions
 
