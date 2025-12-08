@@ -267,9 +267,10 @@ void EKF_init_final(EKF *ekf) {
     ekf->x[5] = 0.0;
     ekf->x[6] = 0.0;
 
-    ss_acc = 0.01;
-    ss_mag = 0.01;
-    ss_gyro = 0.004;
+    //ss_acc = 0.000001;
+    //ss_mag = 0.01;
+    os_printf("[ekf] ss_acc: %f, ss_mag %f, ss_gyro %f \n", ss_acc, ss_mag, ss_gyro);
+    //ss_gyro = 0.004;
     ekf->R[0][0] = ss_acc;
     ekf->R[1][1] = ss_acc;
     ekf->R[2][2] = ss_acc;
@@ -300,7 +301,7 @@ volatile void attitude_thread() {
     for (int i = 0; i < CALIB_COUNT; i++) {
 	EKF_init_incremental(&ekf, &LSM9DS1_gyro_filtered, &LSM9DS1_acc_filtered,
 			     &LSM9DS1_mag_filtered);
-	sleep(5 * MILLISECONDS);
+	sleep(20 * MILLISECONDS);
     }
 
     EKF_init_final(&ekf);

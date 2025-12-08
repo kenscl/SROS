@@ -44,7 +44,7 @@ int main(void) {
     // User Threads are defined here
     register_thread_auto(&SPI_thread, 1500, spi_stack, &spi_pcb, 10, "SPI_thread");
     register_thread_auto(&LSM9DS1_thread, 2000, lsm_stack, &lsm_pcb, 10, "LSM9DS1_thread");
-    //register_thread_auto(&attitude_thread, 4000, ekf_stack, &ekf_pcb, 10, "EKF");
+    register_thread_auto(&attitude_thread, 4000, ekf_stack, &ekf_pcb, 10, "EKF");
     //register_thread_auto(&test, 4000, 10, "EKF2");
     //register_thread_auto(&motor_thread, 2000, motor_stack, &motor_pcb, 10, "Motors");
     //register_thread_auto(&complementary_thread, 1000, 10, "c_thread");
