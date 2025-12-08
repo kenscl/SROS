@@ -29,7 +29,11 @@ void os_stack_init(os_pcb * thread, void * thread_handler, void * stack, uint32_
 //os_pcb *register_thread_auto(volatile void (*thread_handler)(), uint32_t stack_size, uint8_t priority, char* name);
 os_pcb *register_thread_auto(volatile void (*thread_handler)(), uint32_t stack_size, uint32_t *stack, os_pcb * pcb, uint8_t priority, char* name);
 
-//#define OS_THREAD(handler) register_thread_auto(&handler);
+#define OS_THREAD(handler, size, priority, name)                                                   \
+    static uint32_t handler##_stack[size];                                                         \
+    static os_pcb handler##_pcb;                                                                   \
+    register_thread_auto(&handler, size, handler##_stack, &handler##_pcb, priority, name);
+
 
 
 #endif

@@ -8,10 +8,12 @@
 EKF ekf;
 
 void EKF_update_acc(EKF *ekf, Vec3 *acc) {
-    Vec3 norm = acc->normalize();
-    ekf->z[0] = norm[0];
-    ekf->z[1] = norm[1];
-    ekf->z[2] = norm[2];
+    if (fabsf(1 - acc->norm()) < 0.2) {
+	Vec3 norm = acc->normalize();
+	ekf->z[0] = norm[0];
+	ekf->z[1] = norm[1];
+	ekf->z[2] = norm[2];
+    }
 }
 
 void EKF_update_mag(EKF *ekf, Vec3 *mag, Vec3 *acc) {
@@ -59,7 +61,6 @@ void F_jacobian(EKF *ekf, Vec3 *gyro, float dt) {
     float wy = (*gyro)[1] - ekf->bias[1];
     float wz = (*gyro)[2] - ekf->bias[2];
 
-    // mat_fill(ekf->F, 0);
     ekf->F[0][0] = 1;
     ekf->F[0][1] = -0.5 * dt * wx;
     ekf->F[0][2] = -0.5 * dt * wy;
@@ -268,10 +269,14 @@ void EKF_init_final(EKF *ekf) {
     ekf->x[5] = 0.0;
     ekf->x[6] = 0.0;
 
-    //ss_acc = 0.000001;
-    //ss_mag = 0.01;
+    ss_acc = 0.005;
+    ss_mag = 0.005;
+    ss_gyro = 0.005;
+
+    ss_acc = fmaxf(ss_acc, 1e-6);
+    ss_mag = fmaxf(ss_mag, 1e-6);
+    ss_gyro = fmaxf(ss_gyro, 1e-6);
     os_printf("[ekf] ss_acc: %f, ss_mag %f, ss_gyro %f \n", ss_acc, ss_mag, ss_gyro);
-    //ss_gyro = 0.004;
     ekf->R[0][0] = ss_acc;
     ekf->R[1][1] = ss_acc;
     ekf->R[2][2] = ss_acc;
@@ -314,21 +319,25 @@ volatile void attitude_thread() {
     uint32_t last_time_print = now();
     while (1) {
 	if (last_time_prediction + 2 < now()) {
-	    EKF_predict(&ekf, &LSM9DS1_gyro_filtered, 0.002);
+	    Vec3 zero;
+	    EKF_predict(&ekf, &zero, 0.002);
+	    //EKF_predict(&ekf, &LSM9DS1_gyro_filtered, 0.002);
 	    last_time_prediction = now();
 	}
-	if (last_time_update + 20 < now()) {
-            update_measurements();
-            EKF_update(&ekf);
-            last_time_update = now();
-        }
-#if PRINT_ATTITUDE == 1
-	if (last_time_print + 100 < now()) {
-	    last_time_print = now();
-	    os_printf("Attitude: ");
-	    ekf.attitude.print_bare();
+	if (last_time_update + 2 < now()) {
+	    update_measurements();
+	    EKF_update(&ekf);
+	    last_time_update = now();
 	}
+
+#if PRINT_ATTITUDE == 1
+        if (last_time_print + 100 < now()) {
+            last_time_print = now();
+            os_printf("Attitude: ");
+            ekf.attitude.print_bare();
+        }
 #endif
+
         yield();
     }
 }
