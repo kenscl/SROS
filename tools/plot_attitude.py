@@ -25,7 +25,7 @@ def read_data(queue, shutdownEvent):
                 now = time.time() - start
                 try:
                     print(data)
-                    sensor, _Vector, _bracket1, _q, _i, _j, _k, _bracket2 = data.split(" ")
+                    sensor, _bracket1, _q, _i, _j, _k, _bracket2 = data.split(" ")
                     if str(sensor) == str('Attitude:'):
                         last_attitude = np.array([float(_q), float(_i), float(_j), float(_k)])
 

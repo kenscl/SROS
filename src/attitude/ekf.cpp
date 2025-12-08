@@ -3,6 +3,7 @@
 #include "../math/quaternion.h"
 #include <math.h>
 #include <stdint.h>
+#include "../config.h"
 
 EKF ekf;
 
@@ -321,11 +322,13 @@ volatile void attitude_thread() {
             EKF_update(&ekf);
             last_time_update = now();
         }
-        if (last_time_print + 100 < now()) {
-            last_time_print = now();
-            os_printf("Attitude: ");
-            ekf.attitude.print_bare();
-        }
+#if PRINT_ATTITUDE == 1
+	if (last_time_print + 100 < now()) {
+	    last_time_print = now();
+	    os_printf("Attitude: ");
+	    ekf.attitude.print_bare();
+	}
+#endif
         yield();
     }
 }
