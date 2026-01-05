@@ -316,8 +316,8 @@ void LSM9DS1_process_accel() {
     int16_t x = (acc_data[1 + 1] << 8) | acc_data[0 + 1];
     int16_t y = (acc_data[3 + 1] << 8) | acc_data[2 + 1];
     int16_t z = (acc_data[5 + 1] << 8) | acc_data[4 + 1];
-    LSM9DS1_acc[0] = (float)(x * ACC_SENSITIVITY) / 1000;
-    LSM9DS1_acc[1] = (float)(y * ACC_SENSITIVITY) / 1000;
+    LSM9DS1_acc[0] = -(float)(x * ACC_SENSITIVITY) / 1000;
+    LSM9DS1_acc[1] = -(float)(y * ACC_SENSITIVITY) / 1000;
     LSM9DS1_acc[2] = (float)(z * ACC_SENSITIVITY) / 1000;
     LSM9DS1_acc = acc_scale * (LSM9DS1_acc - acc_bias);
 

@@ -30,9 +30,9 @@ mag_x_data, mag_y_data, mag_z_data = [], [], []
 q_att, i_att, j_att, k_att = [], [], [], []
 att_rpy = list()
 
-plot_gyro = False
+plot_gyro = True
 plot_acc = False
-plot_mag = True
+plot_mag = False
 plot_attitude = False
 last_n = list()
 
