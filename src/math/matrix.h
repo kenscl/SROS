@@ -141,6 +141,7 @@ template <size_t m, size_t n> class Mat {
         }
 	return result;
     }
+
     float det() __attribute__((optimize("O0"))){
         if constexpr (m == 1) {
             return r[0][0];

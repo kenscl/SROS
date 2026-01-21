@@ -1,29 +1,33 @@
 #include "ekf.h"
+#include "../config.h"
 #include "../math/matrix.h"
 #include "../math/quaternion.h"
 #include <math.h>
 #include <stdint.h>
-#include "../config.h"
 
 EKF ekf;
 
-void EKF_update_acc(EKF *ekf, Vec3 *acc) {
-    if (fabsf(1 - acc->norm()) < 0.2) {
-	Vec3 norm = acc->normalize();
-	ekf->z[0] = norm[0];
-	ekf->z[1] = norm[1];
-	ekf->z[2] = norm[2];
+void EKF_update_acc(EKF *ekf, Vec3 *acc)
+{
+    if (fabsf(1 - acc->norm()) < 0.2)
+    {
+        Vec3 norm = acc->normalize();
+        ekf->z[0] = norm[0];
+        ekf->z[1] = norm[1];
+        ekf->z[2] = norm[2];
     }
 }
 
-void EKF_update_mag(EKF *ekf, Vec3 *mag, Vec3 *acc) {
+void EKF_update_mag(EKF *ekf, Vec3 *mag, Vec3 *acc)
+{
     Vec3 norm = mag->normalize();
     ekf->z[3] = norm[0];
     ekf->z[4] = norm[1];
     ekf->z[5] = norm[2];
 }
 
-void predict_state(EKF *ekf, Vec3 *gyro, float dt) {
+void predict_state(EKF *ekf, Vec3 *gyro, float dt)
+{
     float qw = ekf->x[0];
     float qi = ekf->x[1];
     float qj = ekf->x[2];
@@ -38,7 +42,7 @@ void predict_state(EKF *ekf, Vec3 *gyro, float dt) {
     float qjp1 = qj + 0.5f * dt * (wx * qk + wy * qw - wz * qi);
     float qkp1 = qk + 0.5f * dt * (-wx * qj + wy * qi + wz * qw);
 
-    float norm = 1; //sqrtf(qwp1*qwp1 + qip1*qip1 + qjp1*qjp1 + qkp1*qkp1);
+    float norm = 1; // sqrtf(qwp1*qwp1 + qip1*qip1 + qjp1*qjp1 + qkp1*qkp1);
     qwp1 /= norm;
     qip1 /= norm;
     qjp1 /= norm;
@@ -48,9 +52,11 @@ void predict_state(EKF *ekf, Vec3 *gyro, float dt) {
     ekf->x[1] = qip1;
     ekf->x[2] = qjp1;
     ekf->x[3] = qkp1;
+    ekf->x = ekf->x.normalize();
 }
 
-void F_jacobian(EKF *ekf, Vec3 *gyro, float dt) {
+void F_jacobian(EKF *ekf, Vec3 *gyro, float dt)
+{
     ekf->bias[0] = 0;
     ekf->bias[1] = 0;
     ekf->bias[2] = 0;
@@ -85,10 +91,10 @@ void F_jacobian(EKF *ekf, Vec3 *gyro, float dt) {
     float qi = ekf->x[1];
     float qj = ekf->x[2];
     float qk = ekf->x[3];
-
 }
 
-void Q_prediction(EKF *ekf, float dt) {
+void Q_prediction(EKF *ekf, float dt)
+{
     float w = ekf->attitude.q;
     float x = ekf->attitude.i;
     float y = ekf->attitude.j;
@@ -113,7 +119,8 @@ void Q_prediction(EKF *ekf, float dt) {
     ekf->Q = ekf->W * ekf->W_trans * ekf->gyro_variance;
 }
 
-void EKF_predict(EKF *ekf, Vec3 *gyro, float dt) {
+void EKF_predict(EKF *ekf, Vec3 *gyro, float dt)
+{
     Q_prediction(ekf, dt);
     predict_state(ekf, gyro, dt);
     F_jacobian(ekf, gyro, dt);
@@ -122,7 +129,8 @@ void EKF_predict(EKF *ekf, Vec3 *gyro, float dt) {
     ekf->P = (ekf->F * ekf->P) * ekf->F_trans + ekf->Q;
 }
 
-void h_prediction(EKF *ekf) {
+void h_prediction(EKF *ekf)
+{
     Vec4 tmp_x;
     tmp_x[0] = ekf->x[0];
     tmp_x[1] = ekf->x[1];
@@ -144,7 +152,8 @@ void h_prediction(EKF *ekf) {
     ekf->h[5] = vtmp[2];
 }
 
-void H_jacobian(EKF *ekf) {
+void H_jacobian(EKF *ekf)
+{
     float w = ekf->x[0];
     float i = ekf->x[1];
     float j = ekf->x[2];
@@ -189,12 +198,14 @@ void H_jacobian(EKF *ekf) {
     ekf->H[5][3] = 2 * (x * i + y * j + z * k);
 }
 
-void EKF_update(EKF *ekf) {
+void EKF_update(EKF *ekf)
+{
     h_prediction(ekf);
     ekf->y = ekf->z - ekf->h;
     H_jacobian(ekf);
 
     ekf->H_trans = ekf->H.transpose();
+    //(ekf->H * ekf->P * ekf->H_trans + ekf->R).print();
     ekf->K = ekf->P * ekf->H_trans * (ekf->H * ekf->P * ekf->H_trans + ekf->R).inverse();
 
     ekf->x = ekf->x + ekf->K * ekf->y;
@@ -222,7 +233,8 @@ float M_mag;
 
 int cnt = 0;
 
-void EKF_init_incremental(EKF *ekf, Vec3 *gyro, Vec3 *acc, Vec3 *mag) {
+void EKF_init_incremental(EKF *ekf, Vec3 *gyro, Vec3 *acc, Vec3 *mag)
+{
     cnt += 1;
 
     gyro_mean_old = gyro_mean;
@@ -238,7 +250,8 @@ void EKF_init_incremental(EKF *ekf, Vec3 *gyro, Vec3 *acc, Vec3 *mag) {
     M_mag = M_mag + (*mag - mag_mean_old) * (*mag - mag_mean);
 }
 
-void EKF_init_final(EKF *ekf) {
+void EKF_init_final(EKF *ekf)
+{
     float ss_gyro = M_gyro / (cnt - 1);
     float ss_acc = M_acc / (cnt - 1);
     float ss_mag = M_mag / (cnt - 1);
@@ -255,8 +268,7 @@ void EKF_init_final(EKF *ekf) {
     float pitch = atanf(-m_a_c_x / sqrtf(m_a_c_y * m_a_c_y + m_a_c_z * m_a_c_z));
 
     float mm_c_x = m_x * cosf(pitch) + m_z * sinf(pitch);
-    float mm_c_y =
-        m_x * sinf(roll) * sinf(pitch) + m_y * cosf(roll) - m_z * sinf(roll) * cosf(pitch);
+    float mm_c_y = m_x * sinf(roll) * sinf(pitch) + m_y * cosf(roll) - m_z * sinf(roll) * cosf(pitch);
 
     float yaw = atan2f(-mm_c_y, mm_c_x);
 
@@ -269,13 +281,10 @@ void EKF_init_final(EKF *ekf) {
     ekf->x[5] = 0.0;
     ekf->x[6] = 0.0;
 
-    ss_acc = 0.005;
-    ss_mag = 0.005;
-    ss_gyro = 0.005;
+    //ss_acc = 0.0001;
+    //ss_mag = 0.0001;
+    //ss_gyro = 0.0001;
 
-    ss_acc = fmaxf(ss_acc, 1e-6);
-    ss_mag = fmaxf(ss_mag, 1e-6);
-    ss_gyro = fmaxf(ss_gyro, 1e-6);
     os_printf("[ekf] ss_acc: %f, ss_mag %f, ss_gyro %f \n", ss_acc, ss_mag, ss_gyro);
     ekf->R[0][0] = ss_acc;
     ekf->R[1][1] = ss_acc;
@@ -283,7 +292,6 @@ void EKF_init_final(EKF *ekf) {
     ekf->R[3][3] = ss_mag;
     ekf->R[4][4] = ss_mag;
     ekf->R[5][5] = ss_mag;
-
 
     ekf->gyro_variance = ss_gyro;
 
@@ -297,17 +305,19 @@ void EKF_init_final(EKF *ekf) {
     ekf->P = ekf->P.diag(1);
 }
 uint64_t next_mag_time = 0;
-void update_measurements() {
+void update_measurements()
+{
     EKF_update_acc(&ekf, &LSM9DS1_acc_filtered);
     EKF_update_mag(&ekf, &LSM9DS1_mag_filtered, &LSM9DS1_acc_filtered);
 }
 
-volatile void attitude_thread() {
+volatile void attitude_thread()
+{
     sleep(20 * MILLISECONDS);
-    for (int i = 0; i < CALIB_COUNT; i++) {
-	EKF_init_incremental(&ekf, &LSM9DS1_gyro_filtered, &LSM9DS1_acc_filtered,
-			     &LSM9DS1_mag_filtered);
-	sleep(20 * MILLISECONDS);
+    for (int i = 0; i < CALIB_COUNT; i++)
+    {
+        EKF_init_incremental(&ekf, &LSM9DS1_gyro_filtered, &LSM9DS1_acc_filtered, &LSM9DS1_mag_filtered);
+        sleep(20 * MILLISECONDS);
     }
 
     EKF_init_final(&ekf);
@@ -317,21 +327,25 @@ volatile void attitude_thread() {
     uint32_t last_time_prediction = now();
     uint32_t last_time_update = now();
     uint32_t last_time_print = now();
-    while (1) {
-	if (last_time_prediction + 2 < now()) {
-	    Vec3 zero;
-	    EKF_predict(&ekf, &zero, 0.002);
-	    //EKF_predict(&ekf, &LSM9DS1_gyro_filtered, 0.002);
-	    last_time_prediction = now();
-	}
-	if (last_time_update + 2 < now()) {
-	    update_measurements();
-	    EKF_update(&ekf);
-	    last_time_update = now();
-	}
+    while (1)
+    {
+        if (last_time_prediction + 2 < now())
+        {
+            Vec3 zero;
+            // EKF_predict(&ekf, &zero, 0.002);
+            EKF_predict(&ekf, &LSM9DS1_gyro_filtered, 0.002);
+            last_time_prediction = now();
+        }
+        if (last_time_update + 2 < now())
+        {
+            update_measurements();
+            EKF_update(&ekf);
+            last_time_update = now();
+        }
 
 #if PRINT_ATTITUDE == 1
-        if (last_time_print + 100 < now()) {
+        if (last_time_print + 100 < now())
+        {
             last_time_print = now();
             os_printf("Attitude: ");
             ekf.attitude.print_bare();

@@ -17,9 +17,10 @@
 #define OS_ALLOC_HEAP_SIZE    1024 * 60
 
 /*
- * EKF
+ * Attitude
  */
 #define PRINT_ATTITUDE        1
+#define ATTITUDE_MODE_EKF     1
 
 /*
  * Sensors
