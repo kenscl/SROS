@@ -12,7 +12,6 @@
 #include "sensors/LSM9DS1.h"
 #include "attitude/ekf.h"
 #include "attitude/complementary.h"
-#include "actuators/motors.h"
 
 int main(void) {
     // system config
@@ -32,7 +31,7 @@ int main(void) {
     OS_THREAD(LSM9DS1_thread, 2000, 10, "LSM9DS1_thread");
 
 #if (ATTITUDE_MODE_EKF)
-    OS_THREAD(attitude_thread, 2000, 10, "EKF_thread");
+    OS_THREAD(attitude_thread, 3000, 10, "EKF_thread");
 #else
     OS_THREAD(complementary_thread, 500, 10, "complementary_thread");
 #endif

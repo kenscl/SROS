@@ -21,9 +21,8 @@ void complementary_update(Vec3 *acc, Vec3 *mag) {
     roll_acc = atan2(ay, az);
     pitch_acc = atan2(-ax, sqrtf(ay * ay + az * az));
 
-    float mx2 = mx * cosf(pitch_acc) + mz * sinf(pitch_acc);
-    float my2 = mx * sinf(roll_acc) * sinf(pitch_acc) + my * cosf(roll_acc) -
-                mz * sinf(roll_acc) * cosf(pitch_acc);
+    float mx2 = mx * cosf(pitch_acc) + my * sinf(roll_acc) * sinf(pitch_acc) + sinf(roll_acc) * cosf(pitch_acc);
+    float my2 = my * cosf(pitch_acc) - mz * sinf(pitch_acc);
     yaw_mag = atan2f(-my2, mx2);
 }
 
@@ -47,7 +46,7 @@ volatile void complementary_thread() {
 	volatile uint64_t next_time = now() + 5 * MILLISECONDS;
 	if (next_mag_time < now()) {
 
-	    complementary_update(&LSM9DS1_acc, &LSM9DS1_mag);
+	    complementary_update(&LSM9DS1_acc_filtered, &LSM9DS1_mag_filtered);
 
             next_mag_time = now() + 20 * MILLISECONDS;
         }

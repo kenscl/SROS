@@ -1,326 +1,398 @@
 #include "ekf.h"
 #include "../config.h"
-#include "../math/matrix.h"
-#include "../math/quaternion.h"
-#include <math.h>
-#include <stdint.h>
+#include "../math/vector.h"
+#include "../sensors/LSM9DS1.h"
+#include <cmath>
 
-EKF ekf;
-
-void EKF_update_acc(EKF *ekf, Vec3 *acc)
+EKF::EKF()
 {
-    if (fabsf(1 - acc->norm()) < 0.2)
+}
+
+void EKF::init(Vec3 *gyro, Vec3 *acc, Vec3 *mag)
+{
+    int num_init = 20;
+    Vec3 mean_gyro;
+    Vec3 mean_acc;
+    Vec3 mean_mag;
+    for (int i = 0; i < num_init; ++i)
     {
-        Vec3 norm = acc->normalize();
-        ekf->z[0] = norm[0];
-        ekf->z[1] = norm[1];
-        ekf->z[2] = norm[2];
+        mean_gyro = mean_gyro + gyro[i] / num_init;
+        mean_acc = mean_acc - acc[i] / num_init;
+        mean_mag = mean_mag + mag[i] / num_init;
     }
+
+    float roll_init = atan2(mean_acc[1], mean_acc[2]);
+    float pitch_init = atan2(-mean_acc[0], sqrt(mean_acc[1] * mean_acc[1] + mean_acc[2] * mean_acc[2]));
+
+    float cp = cos(pitch_init);
+    float sp = sin(pitch_init);
+    float cr = cos(roll_init);
+    float sr = sin(roll_init);
+
+    this->Rot[0][0] = cp;
+    this->Rot[0][1] = sp * sr;
+    this->Rot[0][2] = sp * cr;
+
+    this->Rot[1][0] = 0;
+    this->Rot[1][1] = cr;
+    this->Rot[1][2] = -sr;
+
+    this->Rot[2][0] = -sp;
+    this->Rot[2][1] = cp * sr;
+    this->Rot[2][2] = cp * cr;
+
+    Vec3 mr = this->Rot * mean_mag;
+    float yaw_init = atan2(-mr[1], mr[0]);
+
+    Quat q_init(roll_init, pitch_init, yaw_init);
+
+    this->x[0] = q_init.q;
+    this->x[1] = q_init.i;
+    this->x[2] = q_init.j;
+    this->x[3] = q_init.k;
+    this->x[7] = mean_gyro[0];
+    this->x[8] = mean_gyro[1];
+    this->x[9] = mean_gyro[2];
+
+    this->P = Mat<10, 10>().identity() * 10;
+
+    float v_bias = 1.0e-11;
+
+    Vec3 gyro_sum;
+    Vec3 acc_sum;
+    float mag_sum;
+
+    for (int i = 0; i < num_init; ++i)
+    {
+        gyro_sum = gyro_sum + (gyro[i] - mean_gyro).mult(gyro[i] - mean_gyro);
+        acc_sum = acc_sum + (acc[i] + mean_acc).mult(acc[i] + mean_acc);
+
+        Vec3 mw = this->Rot * mag[i];
+        float mag_yaw = atan2(-mw[1], mw[0]);
+        mag_sum = mag_sum + (mag_yaw - yaw_init) * (mag_yaw - yaw_init);
+    }
+
+    float s_gyro =
+        (sqrt(gyro_sum[0] / (num_init - 1)) + sqrt(gyro_sum[1] / (num_init - 1)) + sqrt(gyro_sum[2] / (num_init - 1))) /
+        3;
+    float s_acc =
+        (sqrt(acc_sum[0] / (num_init - 1)) + sqrt(acc_sum[1] / (num_init - 1)) + sqrt(acc_sum[2] / (num_init - 1))) / 3;
+    float s_yaw = sqrt(mag_sum / (num_init - 1));
+
+    this->R[0][0] = s_acc * s_acc;
+    this->R[1][1] = s_acc * s_acc;
+    this->R[2][2] = s_acc * s_acc;
+    this->R[3][3] = s_yaw * s_yaw;
+
+    Mat<10, 6> Fu;
+    Fu[4][0] = 1;
+    Fu[5][1] = 1;
+    Fu[6][2] = 1;
+    Fu[7][3] = 1;
+    Fu[8][4] = 1;
+    Fu[9][5] = 1;
+
+    float q0 = this->x[0];
+    float q1 = this->x[1];
+    float q2 = this->x[2];
+    float q3 = this->x[3];
+
+    this->Rot[0][0] = q0 * q0 + q1 * q1 - q2 * q2 - q3 * q3;
+    this->Rot[0][1] = 2 * (q1 * q2 - q0 * q3);
+    this->Rot[0][2] = 2 * (q0 * q2 + q1 * q3);
+
+    this->Rot[1][0] = 2 * (q1 * q2 + q0 * q3);
+    this->Rot[1][1] = (q0 * q0 - q1 * q1 + q2 * q2 - q3 * q3);
+    this->Rot[1][2] = 2 * (q2 * q3 - q0 * q1);
+
+    this->Rot[2][0] = 2 * (q1 * q3 - q0 * q2);
+    this->Rot[2][1] = 2 * (q0 * q1 + q2 * q3);
+    this->Rot[2][2] = (q0 * q0 - q1 * q1 - q2 * q2 + q3 * q3);
+    this->Rot_inv = Rot.transpose();
+
+    Mat<6, 6> U;
+    U[0][0] = s_gyro * s_gyro;
+    U[1][1] = s_gyro * s_gyro;
+    U[2][2] = s_gyro * s_gyro;
+    U[3][3] = v_bias;
+    U[4][4] = v_bias;
+    U[5][5] = v_bias;
+    this->Q = Fu * U * Fu.transpose();
 }
 
-void EKF_update_mag(EKF *ekf, Vec3 *mag, Vec3 *acc)
+void EKF::update_acc(Vec3 acc)
 {
-    Vec3 norm = mag->normalize();
-    ekf->z[3] = norm[0];
-    ekf->z[4] = norm[1];
-    ekf->z[5] = norm[2];
+    this->y[0] = acc[0];
+    this->y[1] = acc[1];
+    this->y[2] = acc[2];
 }
 
-void predict_state(EKF *ekf, Vec3 *gyro, float dt)
+void EKF::update_mag(Vec3 mag)
 {
-    float qw = ekf->x[0];
-    float qi = ekf->x[1];
-    float qj = ekf->x[2];
-    float qk = ekf->x[3];
-
-    float wx = (*gyro)[0]; // - ekf->bias->r[0];
-    float wy = (*gyro)[1]; // - ekf->bias->r[1];
-    float wz = (*gyro)[2]; // - ekf->bias->r[2];
-
-    float qwp1 = qw + 0.5f * dt * (-wx * qi - wy * qj - wz * qk);
-    float qip1 = qi + 0.5f * dt * (wx * qw - wy * qk + wz * qj);
-    float qjp1 = qj + 0.5f * dt * (wx * qk + wy * qw - wz * qi);
-    float qkp1 = qk + 0.5f * dt * (-wx * qj + wy * qi + wz * qw);
-
-    float norm = 1; // sqrtf(qwp1*qwp1 + qip1*qip1 + qjp1*qjp1 + qkp1*qkp1);
-    qwp1 /= norm;
-    qip1 /= norm;
-    qjp1 /= norm;
-    qkp1 /= norm;
-
-    ekf->x[0] = qwp1;
-    ekf->x[1] = qip1;
-    ekf->x[2] = qjp1;
-    ekf->x[3] = qkp1;
-    ekf->x = ekf->x.normalize();
+    Vec3 m = this->Rot * mag;
+    m[2] = 0;
+    m = this->Rot_inv * m;
+    float yaw = atan2(-m[1], m[0]);
+    this->y[3] = yaw;
 }
 
-void F_jacobian(EKF *ekf, Vec3 *gyro, float dt)
+void EKF::predict(Vec3 gyro, float dt)
 {
-    ekf->bias[0] = 0;
-    ekf->bias[1] = 0;
-    ekf->bias[2] = 0;
-    ekf->x[4] = 0;
-    ekf->x[5] = 0;
-    ekf->x[6] = 0;
-    float wx = (*gyro)[0] - ekf->bias[0];
-    float wy = (*gyro)[1] - ekf->bias[1];
-    float wz = (*gyro)[2] - ekf->bias[2];
+    float q0 = this->x[0];
+    float q1 = this->x[1];
+    float q2 = this->x[2];
+    float q3 = this->x[3];
+    float wx = this->x[4];
+    float wy = this->x[5];
+    float wz = this->x[6];
+    float xgx = this->x[7];
+    float xgy = this->x[8];
+    float xgz = this->x[9];
 
-    ekf->F[0][0] = 1;
-    ekf->F[0][1] = -0.5 * dt * wx;
-    ekf->F[0][2] = -0.5 * dt * wy;
-    ekf->F[0][3] = -0.5 * dt * wz;
+    this->x[0] = q0 + 0.5 * dt * (-q1 * wx - q2 * wy - q3 * wz);
+    this->x[1] = q1 + 0.5 * dt * (q0 * wx - q3 * wy + q2 * wz);
+    this->x[2] = q2 + 0.5 * dt * (q3 * wx + q0 * wy - q1 * wz);
+    this->x[3] = q3 + 0.5 * dt * (-q2 * wx + q1 * wy + q0 * wz);
+    this->x[4] = gyro[0]; // - xgx;
+    this->x[5] = gyro[1]; // - xgy;
+    this->x[6] = gyro[2]; // - xgz;
+    this->x[7] = xgx;
+    this->x[8] = xgy;
+    this->x[9] = xgz;
 
-    ekf->F[1][0] = 0.5 * dt * wx;
-    ekf->F[1][1] = 1;
-    ekf->F[1][2] = 0.5 * dt * wz;
-    ekf->F[1][3] = -0.5 * dt * wy;
+    Quat q(this->x[0], this->x[1], this->x[2], this->x[3]);
+    q = q.normalize();
+    this->x[0] = q.q;
+    this->x[1] = q.i;
+    this->x[2] = q.j;
+    this->x[3] = q.k;
 
-    ekf->F[2][0] = 0.5 * dt * wy;
-    ekf->F[2][1] = -0.5 * dt * wz;
-    ekf->F[2][2] = 1;
-    ekf->F[2][3] = 0.5 * dt * wx;
+    this->F[0][0] = 1;
+    this->F[0][1] = -0.5 * dt * wx;
+    this->F[0][2] = -0.5 * dt * wy;
+    this->F[0][3] = -0.5 * dt * wz;
+    this->F[0][4] = -0.5 * dt * q1;
+    this->F[0][5] = -0.5 * dt * q2;
+    this->F[0][6] = -0.5 * dt * q3;
+    this->F[0][7] = 0;
+    this->F[0][8] = 0;
+    this->F[0][9] = 0;
 
-    ekf->F[3][0] = 0.5 * dt * wz;
-    ekf->F[3][1] = 0.5 * dt * wy;
-    ekf->F[3][2] = -0.5 * dt * wx;
-    ekf->F[3][3] = 1;
+    this->F[1][0] = 0.5 * dt * wx;
+    this->F[1][1] = 1;
+    this->F[1][2] = 0.5 * dt * wz;
+    this->F[1][3] = -0.5 * dt * wy;
+    this->F[1][4] = 0.5 * dt * q0;
+    this->F[1][5] = -0.5 * dt * q3;
+    this->F[1][6] = 0.5 * dt * q2;
+    this->F[1][7] = 0;
+    this->F[1][8] = 0;
+    this->F[1][9] = 0;
 
-    float qw = ekf->x[0];
-    float qi = ekf->x[1];
-    float qj = ekf->x[2];
-    float qk = ekf->x[3];
+    this->F[2][0] = 0.5 * dt * wy;
+    this->F[2][1] = -0.5 * dt * wz;
+    this->F[2][2] = 1;
+    this->F[2][3] = 0.5 * dt * wx;
+    this->F[2][4] = 0.5 * dt * q3;
+    this->F[2][5] = 0.5 * dt * q0;
+    this->F[2][6] = -0.5 * dt * q1;
+    this->F[2][7] = 0;
+    this->F[2][8] = 0;
+    this->F[2][9] = 0;
+
+    this->F[3][0] = 0.5 * dt * wz;
+    this->F[3][1] = 0.5 * dt * wy;
+    this->F[3][2] = -0.5 * dt * wx;
+    this->F[3][3] = 1;
+    this->F[3][4] = -0.5 * dt * q2;
+    this->F[3][5] = 0.5 * dt * q1;
+    this->F[3][6] = 0.5 * dt * q0;
+    this->F[3][7] = 0;
+    this->F[3][8] = 0;
+    this->F[3][9] = 0;
+
+    this->F[4][0] = 0;
+    this->F[4][1] = 0;
+    this->F[4][2] = 0;
+    this->F[4][3] = 0;
+    this->F[4][4] = 0;
+    this->F[4][5] = 0;
+    this->F[4][6] = 0;
+    this->F[4][7] = -1;
+    this->F[4][8] = 0;
+    this->F[4][9] = 0;
+
+    this->F[5][0] = 0;
+    this->F[5][1] = 0;
+    this->F[5][2] = 0;
+    this->F[5][3] = 0;
+    this->F[5][4] = 0;
+    this->F[5][5] = 0;
+    this->F[5][6] = 0;
+    this->F[5][7] = 0;
+    this->F[5][8] = -1;
+    this->F[5][9] = 0;
+
+    this->F[6][0] = 0;
+    this->F[6][1] = 0;
+    this->F[6][2] = 0;
+    this->F[6][3] = 0;
+    this->F[6][4] = 0;
+    this->F[6][5] = 0;
+    this->F[6][6] = 0;
+    this->F[6][7] = 0;
+    this->F[6][8] = 0;
+    this->F[6][9] = -1;
+
+    this->F[7][0] = 0;
+    this->F[7][1] = 0;
+    this->F[7][2] = 0;
+    this->F[7][3] = 0;
+    this->F[7][4] = 0;
+    this->F[7][5] = 0;
+    this->F[7][6] = 0;
+    this->F[7][7] = 1;
+    this->F[7][8] = 0;
+    this->F[7][9] = 0;
+
+    this->F[8][0] = 0;
+    this->F[8][1] = 0;
+    this->F[8][2] = 0;
+    this->F[8][3] = 0;
+    this->F[8][4] = 0;
+    this->F[8][5] = 0;
+    this->F[8][6] = 0;
+    this->F[8][7] = 0;
+    this->F[8][8] = 1;
+    this->F[8][9] = 0;
+
+    this->F[9][0] = 0;
+    this->F[9][1] = 0;
+    this->F[9][2] = 0;
+    this->F[9][3] = 0;
+    this->F[9][4] = 0;
+    this->F[9][5] = 0;
+    this->F[9][6] = 0;
+    this->F[9][7] = 0;
+    this->F[9][8] = 0;
+    this->F[9][9] = 1;
+
+    this->P = this->F * this->P * this->F.transpose() + this->Q;
+
+    q0 = this->x[0];
+    q1 = this->x[1];
+    q2 = this->x[2];
+    q3 = this->x[3];
+
+    q = Quat(this->x[0], this->x[1], this->x[2], this->x[3]);
+    this->Rot = q.to_rotation_matrix();
+    this->Rot_inv = this->Rot.transpose();
+
+    this->z[0] = - 2 * (q1 * q3 - q0 * q2);
+    this->z[1] = - 2 * (q2 * q3 + q0 * q1);
+    this->z[2] = - (q0*q0 - q1*q1 - q2*q2 + q3*q3);
+    this->z[3] = atan2(2 * (q0 * q3 + q1 * q2), 1 - 2 * (q2 * q2 + q3 * q3));
+
+    float dhm_dqw = (2 * q3 * (1 - 2 *(q2*q2 + q3*q3)))/(4 * (q1 * q2 + q0 * q3) * (q1 * q2 + q0 * q3) + (1 - 2 * (q2*q2 + q3*q3)) * (1 - 2 * (q2*q2 + q3*q3)));
+    float dhm_dqi = (2 * q2 * (1 - 2 * (q2*q2 + q3*q3)))/(4 * (q1 * q2 + q0 * q3) * (q1 * q2 + q0 * q3) + (1 - 2 *(q2*q2 + q3*q3))* (1 - 2 *(q2*q2 + q3*q3)));
+    float dhm_dqj = (2 * (q1 + 2 * q1 * q2*q2 + 4 * q0 * q2 * q3 - 2 * q1 * q3*q3))/(1 + 4 * q2 * q2 + 8 * q0 * q1 * q2 * q3 + 4 * (-1 + q0 * q0) * q3 * q3 + 4 * q3 * q3 * q3 * q3 + 4 * q2 * q2 *(-1 + q1*q1 + 2 * q3*q3));
+    float dhm_dqk = (8 * q1 * q2 * q3 + q0 * (2 - 4 * q2*q2 + 4 * q3*q3))/(1 + 4 * q2*q2 + 8 * q0 * q1 * q2 * q3 + 4 * (-1 + q0 * q0) * q3*q3 + 4 * q3 * q3 * q3 * q3 + 4 * q2 * q2 *(-1 + q1 * q1 + 2 * q3 * q3));
+
+    this->H[0][0] = 2 * q2;
+    this->H[0][1] = -2 * q3;
+    this->H[0][2] = 2 * q0;
+    this->H[0][3] = -2 * q1;
+    this->H[0][4] = 0;
+    this->H[0][5] = 0;
+    this->H[0][6] = 0;
+    this->H[0][7] = 0;
+    this->H[0][8] = 0;
+    this->H[0][9] = 0;
+
+    this->H[1][0] = -2 * q1;
+    this->H[1][1] = -2 * q0;
+    this->H[1][2] = -2 * q3;
+    this->H[1][3] = -2 * q2;
+    this->H[1][4] = 0;
+    this->H[1][5] = 0;
+    this->H[1][6] = 0;
+    this->H[1][7] = 0;
+    this->H[1][8] = 0;
+    this->H[1][9] = 0;
+
+    this->H[2][0] = -2 * q0;
+    this->H[2][1] = 2 * q1;
+    this->H[2][2] = 2 * q2;
+    this->H[2][3] = -2 * q3;
+    this->H[2][4] = 0;
+    this->H[2][5] = 0;
+    this->H[2][6] = 0;
+    this->H[2][7] = 0;
+    this->H[2][8] = 0;
+    this->H[2][9] = 0;
+
+    this->H[3][0] = dhm_dqw;
+    this->H[3][1] = dhm_dqi;
+    this->H[3][2] = dhm_dqj;
+    this->H[3][3] = dhm_dqk;
+    this->H[3][4] = 0;
+    this->H[3][5] = 0;
+    this->H[3][6] = 0;
+    this->H[3][7] = 0;
+    this->H[3][8] = 0;
+    this->H[3][9] = 0;
 }
 
-void Q_prediction(EKF *ekf, float dt)
+void EKF::update()
 {
-    float w = ekf->attitude.q;
-    float x = ekf->attitude.i;
-    float y = ekf->attitude.j;
-    float z = ekf->attitude.k;
-    ekf->W[0][0] = -x * dt * 0.5;
-    ekf->W[0][1] = -y * dt * 0.5;
-    ekf->W[0][2] = -z * dt * 0.5;
+    Vec4 v = this->y - this->z;
+    if (v[3] > M_PI)
+    {
+        v[3] -= 2 * M_PI;
+    }
+    else if (v[3] < -M_PI)
+    {
+        v[3] += 2 * M_PI;
+    }
 
-    ekf->W[1][0] = w * dt * 0.5;
-    ekf->W[1][1] = -z * dt * 0.5;
-    ekf->W[1][2] = y * dt * 0.5;
-
-    ekf->W[2][0] = z * dt * 0.5;
-    ekf->W[2][1] = w * dt * 0.5;
-    ekf->W[2][2] = -x * dt * 0.5;
-
-    ekf->W[3][0] = -y * dt * 0.5;
-    ekf->W[3][1] = x * dt * 0.5;
-    ekf->W[3][2] = w * dt * 0.5;
-
-    ekf->W_trans = ekf->W.transpose();
-    ekf->Q = ekf->W * ekf->W_trans * ekf->gyro_variance;
+    Mat<4, 4> S = this->H * this->P * this->H.transpose() + this->R;
+    this->K = this->P * this->H.transpose() * S.inverse();
+    // this->K.print_norm();
+    this->x = this->x + this->K * v;
+    Quat q(this->x[0], this->x[1], this->x[2], this->x[3]);
+    q = q.normalize();
+    this->x[0] = q.q;
+    this->x[1] = q.i;
+    this->x[2] = q.j;
+    this->x[3] = q.k;
+    this->P = (Mat<10, 10>().identity() - (this->K * this->H)) * this->P;
+    this->attitude = q;
 }
 
-void EKF_predict(EKF *ekf, Vec3 *gyro, float dt)
-{
-    Q_prediction(ekf, dt);
-    predict_state(ekf, gyro, dt);
-    F_jacobian(ekf, gyro, dt);
-
-    ekf->F_trans = ekf->F.transpose();
-    ekf->P = (ekf->F * ekf->P) * ekf->F_trans + ekf->Q;
-}
-
-void h_prediction(EKF *ekf)
-{
-    Vec4 tmp_x;
-    tmp_x[0] = ekf->x[0];
-    tmp_x[1] = ekf->x[1];
-    tmp_x[2] = ekf->x[2];
-    tmp_x[3] = ekf->x[3];
-    tmp_x = tmp_x.normalize();
-    ekf->q = Quat(tmp_x);
-    ekf->rot = ekf->q.to_rotation_matrix();
-    ekf->rot_inv = ekf->rot.transpose();
-
-    Vec3 vtmp = ekf->rot_inv * ekf->acc_refrence;
-    ekf->h[0] = vtmp[0];
-    ekf->h[1] = vtmp[1];
-    ekf->h[2] = vtmp[2];
-
-    vtmp = ekf->rot_inv * ekf->mag_refrence;
-    ekf->h[3] = vtmp[0];
-    ekf->h[4] = vtmp[1];
-    ekf->h[5] = vtmp[2];
-}
-
-void H_jacobian(EKF *ekf)
-{
-    float w = ekf->x[0];
-    float i = ekf->x[1];
-    float j = ekf->x[2];
-    float k = ekf->x[3];
-
-    float x = ekf->acc_refrence[0];
-    float y = ekf->acc_refrence[1];
-    float z = ekf->acc_refrence[2];
-
-    ekf->H[0][0] = 2 * (x * w + y * k - z * j);
-    ekf->H[0][1] = 2 * (x * i + y * j + z * k);
-    ekf->H[0][2] = 2 * (-x * j + y * i - z * w);
-    ekf->H[0][3] = 2 * (-x * k + y * w + z * i);
-
-    ekf->H[1][0] = 2 * (-x * k + y * w + z * i);
-    ekf->H[1][1] = 2 * (x * j - y * i + z * w);
-    ekf->H[1][2] = 2 * (x * i + y * j + z * k);
-    ekf->H[1][3] = 2 * (-x * w - y * k + z * j);
-
-    ekf->H[2][0] = 2 * (x * j - y * i + z * w);
-    ekf->H[2][1] = 2 * (x * k - y * w - z * i);
-    ekf->H[2][2] = 2 * (x * w + y * k - z * j);
-    ekf->H[2][3] = 2 * (x * i + y * j + z * k);
-
-    x = ekf->mag_refrence[0];
-    y = ekf->mag_refrence[1];
-    z = ekf->mag_refrence[2];
-
-    ekf->H[3][0] = 2 * (x * w + y * k - z * j);
-    ekf->H[3][1] = 2 * (x * i + y * j + z * k);
-    ekf->H[3][2] = 2 * (-x * j + y * i - z * w);
-    ekf->H[3][3] = 2 * (-x * k + y * w + z * i);
-
-    ekf->H[4][0] = 2 * (-x * k + y * w + z * i);
-    ekf->H[4][1] = 2 * (x * j - y * i + z * w);
-    ekf->H[4][2] = 2 * (x * i + y * j + z * k);
-    ekf->H[4][3] = 2 * (-x * w - y * k + z * j);
-
-    ekf->H[5][0] = 2 * (x * j - y * i + z * w);
-    ekf->H[5][1] = 2 * (x * k - y * w - z * i);
-    ekf->H[5][2] = 2 * (x * w + y * k - z * j);
-    ekf->H[5][3] = 2 * (x * i + y * j + z * k);
-}
-
-void EKF_update(EKF *ekf)
-{
-    h_prediction(ekf);
-    ekf->y = ekf->z - ekf->h;
-    H_jacobian(ekf);
-
-    ekf->H_trans = ekf->H.transpose();
-    //(ekf->H * ekf->P * ekf->H_trans + ekf->R).print();
-    ekf->K = ekf->P * ekf->H_trans * (ekf->H * ekf->P * ekf->H_trans + ekf->R).inverse();
-
-    ekf->x = ekf->x + ekf->K * ekf->y;
-
-    ekf->q = Quat(ekf->x[0], ekf->x[1], ekf->x[2], ekf->x[3]);
-    ekf->q = ekf->q.normalize();
-    ekf->x[0] = ekf->q.q;
-    ekf->x[1] = ekf->q.i;
-    ekf->x[2] = ekf->q.j;
-    ekf->x[3] = ekf->q.k;
-
-    ekf->P = (Mat<4, 4>().identity() - ekf->K * ekf->H) * ekf->P;
-
-    ekf->attitude = ekf->q;
-}
-
-Vec3 gyro_mean, gyro_mean_old;
-float M_gyro;
-
-Vec3 acc_mean, acc_mean_old;
-float M_acc;
-
-Vec3 mag_mean, mag_mean_old;
-float M_mag;
-
-int cnt = 0;
-
-void EKF_init_incremental(EKF *ekf, Vec3 *gyro, Vec3 *acc, Vec3 *mag)
-{
-    cnt += 1;
-
-    gyro_mean_old = gyro_mean;
-    gyro_mean = gyro_mean + (*gyro - gyro_mean) / cnt;
-    M_gyro = M_gyro + (*gyro - gyro_mean_old) * (*gyro - gyro_mean);
-
-    acc_mean_old = acc_mean;
-    acc_mean = acc_mean + (*acc - acc_mean) / cnt;
-    M_acc = M_acc + (*acc - acc_mean_old) * (*acc - acc_mean);
-
-    mag_mean_old = mag_mean;
-    mag_mean = mag_mean + (*mag - mag_mean) / cnt;
-    M_mag = M_mag + (*mag - mag_mean_old) * (*mag - mag_mean);
-}
-
-void EKF_init_final(EKF *ekf)
-{
-    float ss_gyro = M_gyro / (cnt - 1);
-    float ss_acc = M_acc / (cnt - 1);
-    float ss_mag = M_mag / (cnt - 1);
-
-    float m_a_c_x = acc_mean[0];
-    float m_a_c_y = acc_mean[1];
-    float m_a_c_z = acc_mean[2];
-
-    float m_x = mag_mean[0];
-    float m_y = mag_mean[1];
-    float m_z = mag_mean[2];
-
-    float roll = atan2f(m_a_c_y, m_a_c_z);
-    float pitch = atanf(-m_a_c_x / sqrtf(m_a_c_y * m_a_c_y + m_a_c_z * m_a_c_z));
-
-    float mm_c_x = m_x * cosf(pitch) + m_z * sinf(pitch);
-    float mm_c_y = m_x * sinf(roll) * sinf(pitch) + m_y * cosf(roll) - m_z * sinf(roll) * cosf(pitch);
-
-    float yaw = atan2f(-mm_c_y, mm_c_x);
-
-    ekf->attitude = Quat(roll, pitch, yaw);
-    ekf->x[0] = ekf->attitude.q;
-    ekf->x[1] = ekf->attitude.i;
-    ekf->x[2] = ekf->attitude.j;
-    ekf->x[3] = ekf->attitude.k;
-    ekf->x[4] = 0.0;
-    ekf->x[5] = 0.0;
-    ekf->x[6] = 0.0;
-
-    //ss_acc = 0.0001;
-    //ss_mag = 0.0001;
-    //ss_gyro = 0.0001;
-
-    os_printf("[ekf] ss_acc: %f, ss_mag %f, ss_gyro %f \n", ss_acc, ss_mag, ss_gyro);
-    ekf->R[0][0] = ss_acc;
-    ekf->R[1][1] = ss_acc;
-    ekf->R[2][2] = ss_acc;
-    ekf->R[3][3] = ss_mag;
-    ekf->R[4][4] = ss_mag;
-    ekf->R[5][5] = ss_mag;
-
-    ekf->gyro_variance = ss_gyro;
-
-    ekf->acc_refrence[0] = 0;
-    ekf->acc_refrence[1] = 0;
-    ekf->acc_refrence[2] = 1;
-
-    ekf->rot = ekf->attitude.to_rotation_matrix();
-    ekf->mag_refrence = (ekf->rot * mag_mean).normalize();
-
-    ekf->P = ekf->P.diag(1);
-}
 uint64_t next_mag_time = 0;
+EKF ekf;
 void update_measurements()
 {
-    EKF_update_acc(&ekf, &LSM9DS1_acc_filtered);
-    EKF_update_mag(&ekf, &LSM9DS1_mag_filtered, &LSM9DS1_acc_filtered);
+    ekf.update_acc(LSM9DS1_acc_filtered);
+    ekf.update_mag(LSM9DS1_mag_filtered);
 }
 
+Vec3 gyro_arr[20];
+Vec3 acc_arr[20];
+Vec3 mag_arr[20];
 volatile void attitude_thread()
 {
     sleep(20 * MILLISECONDS);
-    for (int i = 0; i < CALIB_COUNT; i++)
+    for (int i = 0; i < 20; i++)
     {
-        EKF_init_incremental(&ekf, &LSM9DS1_gyro_filtered, &LSM9DS1_acc_filtered, &LSM9DS1_mag_filtered);
+        gyro_arr[i] = LSM9DS1_gyro;
+        acc_arr[i] = LSM9DS1_acc;
+        mag_arr[i] = LSM9DS1_mag;
         sleep(20 * MILLISECONDS);
     }
 
-    EKF_init_final(&ekf);
+    ekf.init(gyro_arr, acc_arr, mag_arr);
+    ekf.R.print();
 
     update_measurements();
     uint32_t next_time = now();
@@ -332,14 +404,15 @@ volatile void attitude_thread()
         if (last_time_prediction + 2 < now())
         {
             Vec3 zero;
-            // EKF_predict(&ekf, &zero, 0.002);
-            EKF_predict(&ekf, &LSM9DS1_gyro_filtered, 0.002);
+            // ekf.predict(zero / 180 * M_PI, 0.002);
+            ekf.predict(LSM9DS1_gyro_filtered, 0.002);
             last_time_prediction = now();
         }
+
         if (last_time_update + 2 < now())
         {
             update_measurements();
-            EKF_update(&ekf);
+            ekf.update();
             last_time_update = now();
         }
 
