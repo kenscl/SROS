@@ -10,41 +10,28 @@ EKF::EKF()
 
 void EKF::init(Vec3 *gyro, Vec3 *acc, Vec3 *mag)
 {
-    int num_init = 20;
+    int num_init = 100;
     Vec3 mean_gyro;
     Vec3 mean_acc;
     Vec3 mean_mag;
     for (int i = 0; i < num_init; ++i)
     {
         mean_gyro = mean_gyro + gyro[i] / num_init;
-        mean_acc = mean_acc - acc[i] / num_init;
+        mean_acc = mean_acc + acc[i] / num_init;
         mean_mag = mean_mag + mag[i] / num_init;
     }
 
     float roll_init = atan2(mean_acc[1], mean_acc[2]);
     float pitch_init = atan2(-mean_acc[0], sqrt(mean_acc[1] * mean_acc[1] + mean_acc[2] * mean_acc[2]));
 
-    float cp = cos(pitch_init);
-    float sp = sin(pitch_init);
-    float cr = cos(roll_init);
-    float sr = sin(roll_init);
-
-    this->Rot[0][0] = cp;
-    this->Rot[0][1] = sp * sr;
-    this->Rot[0][2] = sp * cr;
-
-    this->Rot[1][0] = 0;
-    this->Rot[1][1] = cr;
-    this->Rot[1][2] = -sr;
-
-    this->Rot[2][0] = -sp;
-    this->Rot[2][1] = cp * sr;
-    this->Rot[2][2] = cp * cr;
-
-    Vec3 mr = this->Rot * mean_mag;
-    float yaw_init = atan2(-mr[1], mr[0]);
+    float mrx = mean_mag[0] * cosf(pitch_init) + mean_mag[2] * sinf(pitch_init);
+    float mry = mean_mag[0] * sinf(roll_init) * sinf(pitch_init) + mean_mag[1] * cosf(roll_init) -
+                mean_mag[2] * sinf(roll_init) * cosf(pitch_init);
+    float yaw_init = atan2f(-mry, mrx);
 
     Quat q_init(roll_init, pitch_init, yaw_init);
+    this->Rot = q_init.to_rotation_matrix();
+    this->Rot_inv = Rot.transpose();
 
     this->x[0] = q_init.q;
     this->x[1] = q_init.i;
@@ -54,22 +41,19 @@ void EKF::init(Vec3 *gyro, Vec3 *acc, Vec3 *mag)
     this->x[8] = mean_gyro[1];
     this->x[9] = mean_gyro[2];
 
-    this->P = Mat<10, 10>().identity() * 10;
+    this->P = Mat<10, 10>().identity();
 
     float v_bias = 1.0e-11;
 
     Vec3 gyro_sum;
     Vec3 acc_sum;
-    float mag_sum;
+    Vec3 mag_sum;
 
     for (int i = 0; i < num_init; ++i)
     {
         gyro_sum = gyro_sum + (gyro[i] - mean_gyro).mult(gyro[i] - mean_gyro);
         acc_sum = acc_sum + (acc[i] + mean_acc).mult(acc[i] + mean_acc);
-
-        Vec3 mw = this->Rot * mag[i];
-        float mag_yaw = atan2(-mw[1], mw[0]);
-        mag_sum = mag_sum + (mag_yaw - yaw_init) * (mag_yaw - yaw_init);
+        mag_sum = mag_sum + (mag[i] + mean_mag).mult(mag[i] + mean_mag);
     }
 
     float s_gyro =
@@ -77,12 +61,13 @@ void EKF::init(Vec3 *gyro, Vec3 *acc, Vec3 *mag)
         3;
     float s_acc =
         (sqrt(acc_sum[0] / (num_init - 1)) + sqrt(acc_sum[1] / (num_init - 1)) + sqrt(acc_sum[2] / (num_init - 1))) / 3;
-    float s_yaw = sqrt(mag_sum / (num_init - 1));
+    float s_mag =
+        (sqrt(mag_sum[0] / (num_init - 1)) + sqrt(mag_sum[1] / (num_init - 1)) + sqrt(mag_sum[2] / (num_init - 1))) / 3;
 
     this->R[0][0] = s_acc * s_acc;
     this->R[1][1] = s_acc * s_acc;
     this->R[2][2] = s_acc * s_acc;
-    this->R[3][3] = s_yaw * s_yaw;
+    this->R[3][3] = s_mag * s_mag * 0.01;
 
     Mat<10, 6> Fu;
     Fu[4][0] = 1;
@@ -91,24 +76,6 @@ void EKF::init(Vec3 *gyro, Vec3 *acc, Vec3 *mag)
     Fu[7][3] = 1;
     Fu[8][4] = 1;
     Fu[9][5] = 1;
-
-    float q0 = this->x[0];
-    float q1 = this->x[1];
-    float q2 = this->x[2];
-    float q3 = this->x[3];
-
-    this->Rot[0][0] = q0 * q0 + q1 * q1 - q2 * q2 - q3 * q3;
-    this->Rot[0][1] = 2 * (q1 * q2 - q0 * q3);
-    this->Rot[0][2] = 2 * (q0 * q2 + q1 * q3);
-
-    this->Rot[1][0] = 2 * (q1 * q2 + q0 * q3);
-    this->Rot[1][1] = (q0 * q0 - q1 * q1 + q2 * q2 - q3 * q3);
-    this->Rot[1][2] = 2 * (q2 * q3 - q0 * q1);
-
-    this->Rot[2][0] = 2 * (q1 * q3 - q0 * q2);
-    this->Rot[2][1] = 2 * (q0 * q1 + q2 * q3);
-    this->Rot[2][2] = (q0 * q0 - q1 * q1 - q2 * q2 + q3 * q3);
-    this->Rot_inv = Rot.transpose();
 
     Mat<6, 6> U;
     U[0][0] = s_gyro * s_gyro;
@@ -129,11 +96,18 @@ void EKF::update_acc(Vec3 acc)
 
 void EKF::update_mag(Vec3 mag)
 {
-    Vec3 m = this->Rot * mag;
-    m[2] = 0;
-    m = this->Rot_inv * m;
-    float yaw = atan2(-m[1], m[0]);
-    this->y[3] = yaw;
+    float ax = this->y[0];
+    float ay = this->y[1];
+    float az = this->y[2];
+    float mx = mag[0];
+    float my = mag[1];
+    float mz = mag[2];
+    float roll_acc = atan2(ay, az);
+    float pitch_acc = atan2(-ax, sqrtf(ay * ay + az * az));
+
+    float mx2 = mx * cosf(pitch_acc) + mz * sinf(pitch_acc);
+    float my2 = mx * sinf(roll_acc) * sinf(pitch_acc) + my * cosf(roll_acc) - mz * sinf(roll_acc) * cosf(pitch_acc);
+    this->y[3] = atan2f(-my2, mx2);
 }
 
 void EKF::predict(Vec3 gyro, float dt)
@@ -288,20 +262,28 @@ void EKF::predict(Vec3 gyro, float dt)
     this->Rot = q.to_rotation_matrix();
     this->Rot_inv = this->Rot.transpose();
 
-    this->z[0] = - 2 * (q1 * q3 - q0 * q2);
-    this->z[1] = - 2 * (q2 * q3 + q0 * q1);
-    this->z[2] = - (q0*q0 - q1*q1 - q2*q2 + q3*q3);
+    this->z[0] = 2 * (q1 * q3 - q0 * q2);
+    this->z[1] = 2 * (q2 * q3 + q0 * q1);
+    this->z[2] = (q0 * q0 - q1 * q1 - q2 * q2 + q3 * q3);
     this->z[3] = atan2(2 * (q0 * q3 + q1 * q2), 1 - 2 * (q2 * q2 + q3 * q3));
 
-    float dhm_dqw = (2 * q3 * (1 - 2 *(q2*q2 + q3*q3)))/(4 * (q1 * q2 + q0 * q3) * (q1 * q2 + q0 * q3) + (1 - 2 * (q2*q2 + q3*q3)) * (1 - 2 * (q2*q2 + q3*q3)));
-    float dhm_dqi = (2 * q2 * (1 - 2 * (q2*q2 + q3*q3)))/(4 * (q1 * q2 + q0 * q3) * (q1 * q2 + q0 * q3) + (1 - 2 *(q2*q2 + q3*q3))* (1 - 2 *(q2*q2 + q3*q3)));
-    float dhm_dqj = (2 * (q1 + 2 * q1 * q2*q2 + 4 * q0 * q2 * q3 - 2 * q1 * q3*q3))/(1 + 4 * q2 * q2 + 8 * q0 * q1 * q2 * q3 + 4 * (-1 + q0 * q0) * q3 * q3 + 4 * q3 * q3 * q3 * q3 + 4 * q2 * q2 *(-1 + q1*q1 + 2 * q3*q3));
-    float dhm_dqk = (8 * q1 * q2 * q3 + q0 * (2 - 4 * q2*q2 + 4 * q3*q3))/(1 + 4 * q2*q2 + 8 * q0 * q1 * q2 * q3 + 4 * (-1 + q0 * q0) * q3*q3 + 4 * q3 * q3 * q3 * q3 + 4 * q2 * q2 *(-1 + q1 * q1 + 2 * q3 * q3));
+    float dhm_dqw =
+        (2 * q3 * (1 - 2 * (q2 * q2 + q3 * q3))) /
+        (4 * (q1 * q2 + q0 * q3) * (q1 * q2 + q0 * q3) + (1 - 2 * (q2 * q2 + q3 * q3)) * (1 - 2 * (q2 * q2 + q3 * q3)));
+    float dhm_dqi =
+        (2 * q2 * (1 - 2 * (q2 * q2 + q3 * q3))) /
+        (4 * (q1 * q2 + q0 * q3) * (q1 * q2 + q0 * q3) + (1 - 2 * (q2 * q2 + q3 * q3)) * (1 - 2 * (q2 * q2 + q3 * q3)));
+    float dhm_dqj = (2 * (q1 + 2 * q1 * q2 * q2 + 4 * q0 * q2 * q3 - 2 * q1 * q3 * q3)) /
+                    (1 + 4 * q2 * q2 + 8 * q0 * q1 * q2 * q3 + 4 * (-1 + q0 * q0) * q3 * q3 + 4 * q3 * q3 * q3 * q3 +
+                     4 * q2 * q2 * (-1 + q1 * q1 + 2 * q3 * q3));
+    float dhm_dqk = (8 * q1 * q2 * q3 + q0 * (2 - 4 * q2 * q2 + 4 * q3 * q3)) /
+                    (1 + 4 * q2 * q2 + 8 * q0 * q1 * q2 * q3 + 4 * (-1 + q0 * q0) * q3 * q3 + 4 * q3 * q3 * q3 * q3 +
+                     4 * q2 * q2 * (-1 + q1 * q1 + 2 * q3 * q3));
 
-    this->H[0][0] = 2 * q2;
-    this->H[0][1] = -2 * q3;
-    this->H[0][2] = 2 * q0;
-    this->H[0][3] = -2 * q1;
+    this->H[0][0] = -2 * q2;
+    this->H[0][1] = 2 * q3;
+    this->H[0][2] = -2 * q0;
+    this->H[0][3] = 2 * q1;
     this->H[0][4] = 0;
     this->H[0][5] = 0;
     this->H[0][6] = 0;
@@ -309,10 +291,10 @@ void EKF::predict(Vec3 gyro, float dt)
     this->H[0][8] = 0;
     this->H[0][9] = 0;
 
-    this->H[1][0] = -2 * q1;
-    this->H[1][1] = -2 * q0;
-    this->H[1][2] = -2 * q3;
-    this->H[1][3] = -2 * q2;
+    this->H[1][0] = 2 * q1;
+    this->H[1][1] = 2 * q0;
+    this->H[1][2] = 2 * q3;
+    this->H[1][3] = 2 * q2;
     this->H[1][4] = 0;
     this->H[1][5] = 0;
     this->H[1][6] = 0;
@@ -320,10 +302,10 @@ void EKF::predict(Vec3 gyro, float dt)
     this->H[1][8] = 0;
     this->H[1][9] = 0;
 
-    this->H[2][0] = -2 * q0;
-    this->H[2][1] = 2 * q1;
-    this->H[2][2] = 2 * q2;
-    this->H[2][3] = -2 * q3;
+    this->H[2][0] = 2 * q0;
+    this->H[2][1] = -2 * q1;
+    this->H[2][2] = -2 * q2;
+    this->H[2][3] = 2 * q3;
     this->H[2][4] = 0;
     this->H[2][5] = 0;
     this->H[2][6] = 0;
@@ -377,22 +359,22 @@ void update_measurements()
     ekf.update_mag(LSM9DS1_mag_filtered);
 }
 
-Vec3 gyro_arr[20];
-Vec3 acc_arr[20];
-Vec3 mag_arr[20];
+Vec3 gyro_arr[100];
+Vec3 acc_arr[100];
+Vec3 mag_arr[100];
 volatile void attitude_thread()
 {
     sleep(20 * MILLISECONDS);
-    for (int i = 0; i < 20; i++)
+    for (int i = 0; i < 100; i++)
     {
-        gyro_arr[i] = LSM9DS1_gyro;
-        acc_arr[i] = LSM9DS1_acc;
-        mag_arr[i] = LSM9DS1_mag;
+        gyro_arr[i] = LSM9DS1_gyro_filtered;
+        acc_arr[i] = LSM9DS1_acc_filtered;
+        mag_arr[i] = LSM9DS1_mag_filtered;
         sleep(20 * MILLISECONDS);
     }
 
     ekf.init(gyro_arr, acc_arr, mag_arr);
-    ekf.R.print();
+    // ekf.R.print();
 
     update_measurements();
     uint32_t next_time = now();
@@ -405,7 +387,8 @@ volatile void attitude_thread()
         {
             Vec3 zero;
             // ekf.predict(zero / 180 * M_PI, 0.002);
-            ekf.predict(LSM9DS1_gyro_filtered, 0.002);
+            float dt = ((float)((int)now() - last_time_prediction)) / SECONDS;
+            ekf.predict(LSM9DS1_gyro * -1, dt);
             last_time_prediction = now();
         }
 
@@ -417,7 +400,7 @@ volatile void attitude_thread()
         }
 
 #if PRINT_ATTITUDE == 1
-        if (last_time_print + 100 < now())
+        if (last_time_print + 30 < now())
         {
             last_time_print = now();
             os_printf("Attitude: ");
