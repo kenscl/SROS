@@ -4,8 +4,8 @@ from scipy import linalg
 import asyncio
 
 calib_gyro = False
-calib_acc = True
-calib_mag = False
+calib_acc = False
+calib_mag = True
 
 port = '/dev/ttyUSB0'
 baudrate = 115200

@@ -35,21 +35,21 @@ void LSM9DS1_calibrate_sensors() {
 
     //// Magnetometer
 
-    soft_iron[0][0] = 1;
-    soft_iron[0][1] = 0;
-    soft_iron[0][2] = 0;
+    soft_iron[0][0] = -0.755721;
+    soft_iron[0][1] = 0.029181;
+    soft_iron[0][2] = -0.007688;
 
-    soft_iron[1][0] = 0;
-    soft_iron[1][1] = 1;
-    soft_iron[1][2] = 0;
+    soft_iron[1][0] = 0.025306;
+    soft_iron[1][1] = -0.729125;
+    soft_iron[1][2] = 0.002502;
 
-    soft_iron[2][0] = 0;
-    soft_iron[2][1] = 0;
-    soft_iron[2][2] = 1;
+    soft_iron[2][0] = -0.008223;
+    soft_iron[2][1] = 0.003086;
+    soft_iron[2][2] = -0.766969;
 
-    hard_iron[0] = 0;
-    hard_iron[1] = 0;
-    hard_iron[2] = 0;
+    hard_iron[0] = -0.252356;
+    hard_iron[1] = 0.049974;
+    hard_iron[2] = 0.082529;
 
     //// Accelerometer
 
@@ -307,7 +307,7 @@ void LSM9DS1_process_gyro() {
     volatile int16_t z = (gyro_data[5 + 1] << 8) | gyro_data[4 + 1];
     LSM9DS1_gyro[0] = (float)(x * GYRO_SENSITIVITY) / 1000;
     LSM9DS1_gyro[1] = (float)(y * GYRO_SENSITIVITY) / 1000;
-    LSM9DS1_gyro[2] = -(float)(z * GYRO_SENSITIVITY) / 1000;
+    LSM9DS1_gyro[2] = (float)(z * GYRO_SENSITIVITY) / 1000;
     LSM9DS1_gyro = (LSM9DS1_gyro - gyro_bias) * (M_PI / 180);
     low_pass_filter(a_gyro, &LSM9DS1_gyro_filtered, &LSM9DS1_gyro);
 }
@@ -318,7 +318,7 @@ void LSM9DS1_process_accel() {
     int16_t z = (acc_data[5 + 1] << 8) | acc_data[4 + 1];
     LSM9DS1_acc[0] = (float)(x * ACC_SENSITIVITY) / 1000;
     LSM9DS1_acc[1] = (float)(y * ACC_SENSITIVITY) / 1000;
-    LSM9DS1_acc[2] = -(float)(z * ACC_SENSITIVITY) / 1000;
+    LSM9DS1_acc[2] = (float)(z * ACC_SENSITIVITY) / 1000;
     LSM9DS1_acc = acc_scale * (LSM9DS1_acc - acc_bias);
 
     low_pass_filter(a_acc, &LSM9DS1_acc_filtered, &LSM9DS1_acc);
@@ -329,9 +329,9 @@ void LSM9DS1_process_mag() {
     int16_t x = (mag_data[1 + 1] << 8) | mag_data[0 + 1];
     int16_t y = (mag_data[3 + 1] << 8) | mag_data[2 + 1];
     int16_t z = (mag_data[5 + 1] << 8) | mag_data[4 + 1];
-    LSM9DS1_mag[0] = -(float)(y * MAG_SENSITIVITY) / 1000;
-    LSM9DS1_mag[1] = -(float)(x * MAG_SENSITIVITY) / 1000;
-    LSM9DS1_mag[2] = -(float)(z * MAG_SENSITIVITY) / 1000;
+    LSM9DS1_mag[0] = -(float)(x * MAG_SENSITIVITY) / 1000;
+    LSM9DS1_mag[1] = (float)(y * MAG_SENSITIVITY) / 1000;
+    LSM9DS1_mag[2] = (float)(z * MAG_SENSITIVITY) / 1000;
 
     LSM9DS1_mag = LSM9DS1_mag - hard_iron;
     LSM9DS1_mag = soft_iron * LSM9DS1_mag;

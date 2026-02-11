@@ -21,21 +21,22 @@ void complementary_update(Vec3 *acc, Vec3 *mag) {
     roll_acc = atan2(ay, az);
     pitch_acc = atan2(-ax, sqrtf(ay * ay + az * az));
 
-    float mx2 = mx * cosf(pitch_acc) + my * sinf(roll_acc) * sinf(pitch_acc) + sinf(roll_acc) * cosf(pitch_acc);
-    float my2 = my * cosf(pitch_acc) - mz * sinf(pitch_acc);
+    float mx2 = mx * cosf(pitch_acc) + mz * sinf(pitch_acc);
+    float my2 = mx * sinf(roll_acc) * sinf(pitch_acc) + my * cosf(roll_acc) - mz * sinf(roll_acc) * cosf(pitch_acc);
+
     yaw_mag = atan2f(-my2, mx2);
 }
 
 void complementary_predict(Vec3 *gyro, float dt) {
-    float gx = (*gyro)[0];
-    float gy = (*gyro)[1];
-    float gz = (*gyro)[2];
+    float gx = -(*gyro)[0];
+    float gy = -(*gyro)[1];
+    float gz = -(*gyro)[2];
 
-    float alpha = 0.9; // Higher = trust gyro more, lower = trust accel more
+    float alpha = 0.98; // Higher = trust gyro more, lower = trust accel more
 
-    roll = alpha * (roll + gx * dt / 57.2) + (1.0 - alpha) * roll_acc;
-    pitch = alpha * (pitch + gy * dt / 57.2) + (1.0 - alpha) * pitch_acc;
-    yaw = alpha * (yaw + gz * dt / 57.2) + (1.0 - alpha) * yaw_mag;
+    roll = alpha * (roll + gx * dt) + (1.0 - alpha) * roll_acc;
+    pitch = alpha * (pitch + gy * dt) + (1.0 - alpha) * pitch_acc;
+    yaw = alpha * (yaw + gz * dt) + (1.0 - alpha) * yaw_mag;
 }
 
 volatile void complementary_thread() {

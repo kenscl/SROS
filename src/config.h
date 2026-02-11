@@ -20,7 +20,7 @@
  * Attitude
  */
 #define PRINT_ATTITUDE        1
-#define ATTITUDE_MODE_EKF     1
+#define ATTITUDE_MODE_EKF     0
 
 /*
  * Sensors
